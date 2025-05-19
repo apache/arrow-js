@@ -40,7 +40,8 @@ export function recordBatchFromJSON(b: any) {
     return new RecordBatch(
         b['count'],
         fieldNodesFromJSON(b['columns']),
-        buffersFromJSON(b['columns'])
+        buffersFromJSON(b['columns']),
+        null
     );
 }
 
