@@ -66,9 +66,6 @@ package-lock.json
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
-
 # compilation targets
 doc
 dist
@@ -86,6 +83,9 @@ test/__snapshots__/
 
 # jest cache
 .jest-cache/
+
+# Docker cache
+.docker/
 
 # VSCode
 !.vscode
