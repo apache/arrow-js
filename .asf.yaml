@@ -28,6 +28,7 @@ github:
     merge: false
     rebase: false
     squash: true
+    squash_commit_message: PR_TITLE_AND_DESC
   features:
     discussions: true
     issues: true
