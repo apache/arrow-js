@@ -360,11 +360,13 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
     }
 
     protected _loadRecordBatch(header: metadata.RecordBatch, body: Uint8Array): RecordBatch<T> {
+        let vectorBody: Uint8Array | Uint8Array[] = body;
+
         if (header.compression != null) {
             const codec = compressionRegistry.get(header.compression);
             if (codec?.decode && typeof codec.decode === 'function') {
                 const { decommpressedBody, buffers } = this._decompressBuffers(header, body, codec);
-                body = decommpressedBody;
+                vectorBody = decommpressedBody;
                 header = new metadata.RecordBatch(
                     header.length,
                     header.nodes,
@@ -375,7 +377,7 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
                 throw new Error('Record batch is compressed but codec not found');
             }
         }
-        const children = this._loadVectors(header, body, this.schema.fields);
+        const children = this._loadVectors(header, vectorBody, this.schema.fields);
         const data = makeData({ type: new Struct(this.schema.fields), length: header.length, children });
         return new RecordBatch(this.schema, data);
     }
@@ -389,11 +391,11 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
             new Vector(data)) :
             new Vector(data)).memoize() as Vector;
     }
-    protected _loadVectors(header: metadata.RecordBatch, body: Uint8Array, types: (Field | DataType)[]) {
+    protected _loadVectors(header: metadata.RecordBatch, body: Uint8Array | Uint8Array[], types: (Field | DataType)[]) {
         return new VectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion).visitMany(types);
     }
 
-    private _decompressBuffers(header: metadata.RecordBatch, body: Uint8Array, codec: Codec): { decommpressedBody: Uint8Array; buffers: metadata.BufferRegion[] } {
+    private _decompressBuffers(header: metadata.RecordBatch, body: Uint8Array, codec: Codec): { decommpressedBody: Uint8Array[]; buffers: metadata.BufferRegion[] } {
         const decompressedBuffers: Uint8Array[] = [];
         const newBufferRegions: metadata.BufferRegion[] = [];
 
@@ -406,7 +408,6 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
             }
             const byteBuf = new flatbuffers.ByteBuffer(body.subarray(offset, offset + length));
             const uncompressedLenth = bigIntToNumber(byteBuf.readInt64(0));
-
 
             const bytes = byteBuf.bytes().subarray(LENGTH_OF_PREFIX_DATA);
 
@@ -422,15 +423,8 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
             currentOffset += decompressed.length;
         }
 
-        const totalSize = currentOffset;
-        const combined = new Uint8Array(totalSize);
-
-        for (const [i, decompressedBuffer] of decompressedBuffers.entries()) {
-            combined.set(decompressedBuffer, newBufferRegions[i].offset);
-        }
-
         return {
-            decommpressedBody: combined,
+            decommpressedBody: decompressedBuffers,
             buffers: newBufferRegions
         };
     }
