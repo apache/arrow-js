@@ -37,14 +37,14 @@ export interface VectorLoader extends Visitor {
 
 /** @ignore */
 export class VectorLoader extends Visitor {
-    private bytes: Uint8Array | Uint8Array[];
+    private bytes: Uint8Array;
     private nodes: FieldNode[];
     private nodesIndex = -1;
     private buffers: BufferRegion[];
-    private buffersIndex = -1;
+    protected buffersIndex = -1;
     private dictionaries: Map<number, Vector<any>>;
     private readonly metadataVersion: MetadataVersion;
-    constructor(bytes: Uint8Array | Uint8Array[], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion = MetadataVersion.V5) {
+    constructor(bytes: Uint8Array, nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion = MetadataVersion.V5) {
         super();
         this.bytes = bytes;
         this.nodes = nodes;
@@ -140,9 +140,7 @@ export class VectorLoader extends Visitor {
     protected readOffsets<T extends DataType>(type: T, buffer?: BufferRegion) { return this.readData(type, buffer); }
     protected readTypeIds<T extends DataType>(type: T, buffer?: BufferRegion) { return this.readData(type, buffer); }
     protected readData<T extends DataType>(_type: T, { length, offset } = this.nextBufferRange()) {
-        return Array.isArray(this.bytes)
-            ? this.bytes[this.buffersIndex]
-            : this.bytes.subarray(offset, offset + length);
+        return this.bytes.subarray(offset, offset + length);
     }
     protected readDictionary<T extends type.Dictionary>(type: T): Vector<T['dictionary']> {
         return this.dictionaries.get(type.id)!;
@@ -206,4 +204,15 @@ function binaryDataFromJSON(values: string[]) {
         data[i >> 1] = Number.parseInt(joined.slice(i, i + 2), 16);
     }
     return data;
+}
+
+export class CompressedVectorLoader extends VectorLoader {
+    private bodyChunks: Uint8Array[];
+    constructor(bodyChunks: Uint8Array[], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion) {
+        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion);
+        this.bodyChunks = bodyChunks;
+    }
+    protected readData<T extends DataType>(_type: T, _buffer = this.nextBufferRange()) {
+        return this.bodyChunks[this.buffersIndex];
+    }
 }
