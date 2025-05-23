@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { makeData } from '../data.js';
+import { Data, makeData } from '../data.js';
 import { Vector } from '../vector.js';
 import { DataType, Struct, TypeMap } from '../type.js';
 import { MessageHeader } from '../enum.js';
@@ -27,7 +27,7 @@ import * as metadata from './metadata/message.js';
 import { ArrayBufferViewInput } from '../util/buffer.js';
 import { ByteStream, AsyncByteStream } from '../io/stream.js';
 import { RandomAccessFile, AsyncRandomAccessFile } from '../io/file.js';
-import { VectorLoader, JSONVectorLoader } from '../visitor/vectorloader.js';
+import { VectorLoader, JSONVectorLoader, CompressedVectorLoader } from '../visitor/vectorloader.js';
 import { RecordBatch, _InternalEmptyPlaceholderRecordBatch } from '../recordbatch.js';
 import {
     FileHandle,
@@ -46,8 +46,13 @@ import {
     isFileHandle, isFetchResponse,
     isReadableDOMStream, isReadableNodeStream
 } from '../util/compat.js';
+import { Codec, compressionRegistry, LENGTH_NO_COMPRESSED_DATA, LENGTH_OF_PREFIX_DATA } from './compression.js';
+import { bigIntToNumber } from './../util/bigint.js';
+import * as flatbuffers from 'flatbuffers';
 
 import type { DuplexOptions, Duplex } from 'node:stream';
+
+const DEFAULT_ALIGNMENT = 8;
 
 /** @ignore */ export type FromArg0 = ArrowJSONLike;
 /** @ignore */ export type FromArg1 = PromiseLike<ArrowJSONLike>;
@@ -354,12 +359,31 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
         return this;
     }
 
-    protected _loadRecordBatch(header: metadata.RecordBatch, body: any) {
-        const children = this._loadVectors(header, body, this.schema.fields);
+    protected _loadRecordBatch(header: metadata.RecordBatch, body: Uint8Array): RecordBatch<T> {
+        let children: Data<any>[];
+        if (header.compression != null) {
+            const codec = compressionRegistry.get(header.compression);
+            if (codec?.decode && typeof codec.decode === 'function') {
+                const { decommpressedBody, buffers } = this._decompressBuffers(header, body, codec);
+                children = this._loadCompressedVectors(header, decommpressedBody, this.schema.fields);
+                header = new metadata.RecordBatch(
+                    header.length,
+                    header.nodes,
+                    buffers,
+                    null
+                );
+            } else {
+                throw new Error('Record batch is compressed but codec not found');
+            }
+        } else {
+            children = this._loadVectors(header, body, this.schema.fields);
+        }
+
         const data = makeData({ type: new Struct(this.schema.fields), length: header.length, children });
         return new RecordBatch(this.schema, data);
     }
-    protected _loadDictionaryBatch(header: metadata.DictionaryBatch, body: any) {
+
+    protected _loadDictionaryBatch(header: metadata.DictionaryBatch, body: Uint8Array) {
         const { id, isDelta } = header;
         const { dictionaries, schema } = this;
         const dictionary = dictionaries.get(id);
@@ -369,8 +393,47 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
             new Vector(data)) :
             new Vector(data)).memoize() as Vector;
     }
-    protected _loadVectors(header: metadata.RecordBatch, body: any, types: (Field | DataType)[]) {
+
+    protected _loadVectors(header: metadata.RecordBatch, body: Uint8Array, types: (Field | DataType)[]) {
         return new VectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion).visitMany(types);
+    }
+
+    protected _loadCompressedVectors(header: metadata.RecordBatch, body: Uint8Array[], types: (Field | DataType)[]) {
+        return new CompressedVectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion).visitMany(types);
+    }
+
+    private _decompressBuffers(header: metadata.RecordBatch, body: Uint8Array, codec: Codec): { decommpressedBody: Uint8Array[]; buffers: metadata.BufferRegion[] } {
+        const decompressedBuffers: Uint8Array[] = [];
+        const newBufferRegions: metadata.BufferRegion[] = [];
+
+        let currentOffset = 0;
+        for (const { offset, length } of header.buffers) {
+            if (length === 0) {
+                decompressedBuffers.push(new Uint8Array(0));
+                newBufferRegions.push(new metadata.BufferRegion(currentOffset, 0));
+                continue;
+            }
+            const byteBuf = new flatbuffers.ByteBuffer(body.subarray(offset, offset + length));
+            const uncompressedLenth = bigIntToNumber(byteBuf.readInt64(0));
+
+            const bytes = byteBuf.bytes().subarray(LENGTH_OF_PREFIX_DATA);
+
+            const decompressed = (uncompressedLenth === LENGTH_NO_COMPRESSED_DATA)
+                ? bytes
+                : codec.decode!(bytes);
+
+            decompressedBuffers.push(decompressed);
+
+            const padding = (DEFAULT_ALIGNMENT - (currentOffset % DEFAULT_ALIGNMENT)) % DEFAULT_ALIGNMENT;
+            currentOffset += padding;
+            newBufferRegions.push(new metadata.BufferRegion(currentOffset, decompressed.length));
+            currentOffset += decompressed.length;
+        }
+
+        return {
+            decommpressedBody: decompressedBuffers,
+            buffers: newBufferRegions
+        };
     }
 }
 
