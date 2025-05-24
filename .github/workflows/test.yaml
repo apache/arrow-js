@@ -36,7 +36,7 @@ permissions:
 jobs:
 
   docker:
-    name: AMD64 Debian Node.js 18
+    name: Debian Node.js 18
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -54,7 +54,7 @@ jobs:
           docker compose run debian
 
   macos:
-    name: AMD64 macOS Node.JS ${{ matrix.node }}
+    name: macOS Node.JS ${{ matrix.node }}
     runs-on: macos-latest
     timeout-minutes: 45
     strategy:
@@ -80,7 +80,7 @@ jobs:
         run: ci/scripts/test.sh $(pwd)
 
   windows:
-    name: AMD64 Windows NodeJS ${{ matrix.node }}
+    name: Windows NodeJS ${{ matrix.node }}
     runs-on: windows-latest
     timeout-minutes: 45
     strategy:
@@ -106,7 +106,7 @@ jobs:
         run: ci/scripts/test.sh $(pwd)
 
   integration:
-    name: AMD64 integration
+    name: Integration
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
