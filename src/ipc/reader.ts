@@ -53,8 +53,6 @@ import * as flatbuffers from 'flatbuffers';
 import type { DuplexOptions, Duplex } from 'node:stream';
 import { COMPRESS_LENGTH_PREFIX, LENGTH_NO_COMPRESSED_DATA } from './compression/constants.js';
 
-const DEFAULT_ALIGNMENT = 8;
-
 /** @ignore */ export type FromArg0 = ArrowJSONLike;
 /** @ignore */ export type FromArg1 = PromiseLike<ArrowJSONLike>;
 /** @ignore */ export type FromArg2 = Iterable<ArrayBufferViewInput> | ArrayBufferViewInput;
@@ -425,7 +423,7 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
 
             decompressedBuffers.push(decompressed);
 
-            const padding = (DEFAULT_ALIGNMENT - (currentOffset % DEFAULT_ALIGNMENT)) % DEFAULT_ALIGNMENT;
+            const padding = ((currentOffset + 7) & ~7) - currentOffset;
             currentOffset += padding;
             newBufferRegions.push(new metadata.BufferRegion(currentOffset, decompressed.length));
             currentOffset += decompressed.length;
