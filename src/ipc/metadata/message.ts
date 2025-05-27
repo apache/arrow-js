@@ -41,6 +41,8 @@ import { FixedSizeList as _FixedSizeList } from '../../fb/fixed-size-list.js';
 import { Map as _Map } from '../../fb/map.js';
 import { Message as _Message } from '../../fb/message.js';
 import { CompressionType as _CompressionType } from '../../fb/compression-type.js';
+import { BodyCompression as _BodyCompression } from '../../fb/body-compression.js';
+import { BodyCompressionMethod as _BodyCompressionMethod } from '../../fb/body-compression-method.js';
 
 import { Schema, Field } from '../../schema.js';
 import { toUint8Array } from '../../util/buffer.js';
@@ -123,9 +125,11 @@ export class Message<T extends MessageHeader = any> {
     protected _headerType: T;
     protected _bodyLength: number;
     protected _version: MetadataVersion;
+    protected _compression: BodyCompression | null;
     public get type() { return this.headerType; }
     public get version() { return this._version; }
     public get headerType() { return this._headerType; }
+    public get compression() { return this._compression; }
     public get bodyLength() { return this._bodyLength; }
     declare protected _createHeader: MessageHeaderDecoder;
     public header() { return this._createHeader<T>(); }
@@ -137,6 +141,7 @@ export class Message<T extends MessageHeader = any> {
         this._version = version;
         this._headerType = headerType;
         this.body = new Uint8Array(0);
+        this._compression = header?.compression;
         header && (this._createHeader = () => header);
         this._bodyLength = bigIntToNumber(bodyLength);
     }
@@ -150,7 +155,7 @@ export class RecordBatch {
     protected _length: number;
     protected _nodes: FieldNode[];
     protected _buffers: BufferRegion[];
-    protected _compression: _CompressionType | null;
+    protected _compression: BodyCompression | null;
     public get nodes() { return this._nodes; }
     public get length() { return this._length; }
     public get buffers() { return this._buffers; }
@@ -159,7 +164,7 @@ export class RecordBatch {
         length: bigint | number,
         nodes: FieldNode[],
         buffers: BufferRegion[],
-        compression: _CompressionType | null
+        compression: BodyCompression | null
     ) {
         this._nodes = nodes;
         this._buffers = buffers;
@@ -217,6 +222,19 @@ export class FieldNode {
     }
 }
 
+/**
+ * @ignore
+ * @private
+ **/
+export class BodyCompression {
+    public type: _CompressionType;
+    public method: _BodyCompressionMethod;
+    constructor(type: _CompressionType, method: _BodyCompressionMethod = _BodyCompressionMethod.BUFFER) {
+        this.type = type;
+        this.method = method;
+    }
+}
+
 /** @ignore */
 function messageHeaderFromJSON(message: any, type: MessageHeader) {
     return (() => {
@@ -263,6 +281,9 @@ FieldNode['decode'] = decodeFieldNode;
 BufferRegion['encode'] = encodeBufferRegion;
 BufferRegion['decode'] = decodeBufferRegion;
 
+BodyCompression['encode'] = encodeBodyCompression;
+BodyCompression['decode'] = decodeBodyCompression;
+
 declare module '../../schema' {
     namespace Field {
         export { encodeField as encode };
@@ -295,6 +316,10 @@ declare module './message' {
         export { encodeBufferRegion as encode };
         export { decodeBufferRegion as decode };
     }
+    namespace BodyCompression {
+        export { encodeBodyCompression as encode };
+        export { decodeBodyCompression as decode };
+    }
 }
 
 /** @ignore */
@@ -309,7 +334,7 @@ function decodeRecordBatch(batch: _RecordBatch, version = MetadataVersion.V5) {
         batch.length(),
         decodeFieldNodes(batch),
         decodeBuffers(batch, version),
-        batch.compression()?.codec() ?? null
+        decodeBodyCompression(batch.compression())
     );
     return recordBatch;
 }
@@ -504,6 +529,11 @@ function decodeFieldType(f: _Field, children?: Field[]): DataType<any> {
 }
 
 /** @ignore */
+function decodeBodyCompression(b: _BodyCompression | null) {
+    return b ? new BodyCompression(b.codec(), b.method()) : null;
+}
+
+/** @ignore */
 function encodeSchema(b: Builder, schema: Schema) {
 
     const fieldOffsets = schema.fields.map((f) => Field.encode(b, f));
@@ -595,11 +625,27 @@ function encodeRecordBatch(b: Builder, recordBatch: RecordBatch) {
 
     const buffersVectorOffset = b.endVector();
 
+    let bodyCompressionOffset = null;
+    if (recordBatch.compression !== null) {
+        bodyCompressionOffset = encodeBodyCompression(b, recordBatch.compression);
+    }
+
     _RecordBatch.startRecordBatch(b);
     _RecordBatch.addLength(b, BigInt(recordBatch.length));
     _RecordBatch.addNodes(b, nodesVectorOffset);
     _RecordBatch.addBuffers(b, buffersVectorOffset);
+    if (recordBatch.compression !== null && bodyCompressionOffset) {
+        _RecordBatch.addCompression(b, bodyCompressionOffset);
+    }
     return _RecordBatch.endRecordBatch(b);
+}
+
+/** @ignore */
+function encodeBodyCompression(b: Builder, node: BodyCompression) {
+    _BodyCompression.startBodyCompression(b);
+    _BodyCompression.addCodec(b, node.type);
+    _BodyCompression.addMethod(b, node.method);
+    return _BodyCompression.endBodyCompression(b);
 }
 
 /** @ignore */
