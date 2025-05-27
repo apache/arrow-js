@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import { CompressionType } from '../fb/compression-type.js';
 import { Table } from '../table.js';
 import { TypeMap } from '../type.js';
 import { isPromise } from '../util/compat.js';
@@ -24,7 +25,7 @@ import {
     RecordBatchFileReader, RecordBatchStreamReader,
     AsyncRecordBatchFileReader, AsyncRecordBatchStreamReader
 } from './reader.js';
-import { RecordBatchFileWriter, RecordBatchStreamWriter } from './writer.js';
+import { RecordBatchFileWriter, RecordBatchStreamWriter, RecordBatchStreamWriterOptions } from './writer.js';
 
 type RecordBatchReaders<T extends TypeMap = any> = RecordBatchFileReader<T> | RecordBatchStreamReader<T>;
 type AsyncRecordBatchReaders<T extends TypeMap = any> = AsyncRecordBatchFileReader<T> | AsyncRecordBatchStreamReader<T>;
@@ -58,8 +59,9 @@ export function tableFromIPC<T extends TypeMap = any>(input: any): Table<T> | Pr
  * @param table The Table to serialize.
  * @param type Whether to serialize the Table as a file or a stream.
  */
-export function tableToIPC<T extends TypeMap = any>(table: Table, type: 'file' | 'stream' = 'stream'): Uint8Array {
+export function tableToIPC<T extends TypeMap = any>(table: Table, type: 'file' | 'stream' = 'stream', compressionType: CompressionType | null = null): Uint8Array {
+    const writerOptions: RecordBatchStreamWriterOptions = { compressionType };
     return (type === 'stream' ? RecordBatchStreamWriter : RecordBatchFileWriter)
-        .writeAll<T>(table)
+        .writeAll<T>(table, writerOptions)
         .toUint8Array(true);
 }
