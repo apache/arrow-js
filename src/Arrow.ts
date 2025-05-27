@@ -93,7 +93,7 @@ export type { ReadableSource, WritableSink } from './io/stream.js';
 export { RecordBatchReader, RecordBatchFileReader, RecordBatchStreamReader, AsyncRecordBatchFileReader, AsyncRecordBatchStreamReader } from './ipc/reader.js';
 export { RecordBatchWriter, RecordBatchFileWriter, RecordBatchStreamWriter, RecordBatchJSONWriter } from './ipc/writer.js';
 export { tableToIPC, tableFromIPC } from './ipc/serialization.js';
-export { compressionRegistry } from './ipc/compression.js';
+export { compressionRegistry } from './ipc/compression/registry.js';
 export { MessageReader, AsyncMessageReader, JSONMessageReader } from './ipc/message.js';
 export { Message } from './ipc/metadata/message.js';
 export { RecordBatch } from './recordbatch.js';

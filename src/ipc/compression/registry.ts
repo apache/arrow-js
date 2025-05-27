@@ -15,10 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { CompressionType } from '../fb/compression-type.js';
-
-export const LENGTH_NO_COMPRESSED_DATA: number = -1;
-export const LENGTH_OF_PREFIX_DATA: number = 8;
+import { CompressionType } from '../../fb/compression-type.js';
 
 export interface Codec {
     encode?(data: Uint8Array): Uint8Array;
@@ -36,11 +33,8 @@ class _CompressionRegistry {
         this.registry[compression] = codec;
     }
 
-    get(compression?: CompressionType): Codec | null {
-        if (compression !== undefined) {
-            return this.registry?.[compression] || null;
-        }
-        return null;
+    get(compression: CompressionType): Codec | null {
+        return this.registry?.[compression] || null;
     }
 
 }
