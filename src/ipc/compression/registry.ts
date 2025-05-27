@@ -16,6 +16,7 @@
 // under the License.
 
 import { CompressionType } from '../../fb/compression-type.js';
+import { compressionValidators } from './validators.js';
 
 export interface Codec {
     encode?(data: Uint8Array): Uint8Array;
@@ -30,6 +31,9 @@ class _CompressionRegistry {
     }
 
     set(compression: CompressionType, codec: Codec) {
+        if (codec?.encode && typeof codec.encode === 'function' && !compressionValidators[compression].isValidCodecEncode(codec)) {
+            throw new Error(`Encoder for ${CompressionType[compression]} is not valid.`);
+        }
         this.registry[compression] = codec;
     }
 
