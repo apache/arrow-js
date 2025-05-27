@@ -59,7 +59,7 @@ class Lz4FrameValidator implements CompressionValidator {
 }
 
 class ZstdValidator implements CompressionValidator {
-    // private readonly LZ4_FRAME_MAGIC = new Uint8Array([40, 181, 47, 253]);
+    // private readonly ZSTD_MAGIC = new Uint8Array([40, 181, 47, 253]);
     isValidCodecEncode(_: Codec): boolean {
         console.warn('ZSTD encode validator is not implemented yet.');
         return true;

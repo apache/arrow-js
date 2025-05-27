@@ -363,7 +363,7 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
     protected _loadRecordBatch(header: metadata.RecordBatch, body: Uint8Array): RecordBatch<T> {
         let children: Data<any>[];
         if (header.compression != null) {
-            const codec = compressionRegistry.get(header.compression);
+            const codec = compressionRegistry.get(header.compression.type);
             if (codec?.decode && typeof codec.decode === 'function') {
                 const { decommpressedBody, buffers } = this._decompressBuffers(header, body, codec);
                 children = this._loadCompressedVectors(header, decommpressedBody, this.schema.fields);
