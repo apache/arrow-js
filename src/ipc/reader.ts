@@ -46,11 +46,12 @@ import {
     isFileHandle, isFetchResponse,
     isReadableDOMStream, isReadableNodeStream
 } from '../util/compat.js';
-import { Codec, compressionRegistry, LENGTH_NO_COMPRESSED_DATA, LENGTH_OF_PREFIX_DATA } from './compression.js';
+import { Codec, compressionRegistry } from './compression/registry.js';
 import { bigIntToNumber } from './../util/bigint.js';
 import * as flatbuffers from 'flatbuffers';
 
 import type { DuplexOptions, Duplex } from 'node:stream';
+import { COMPRESS_LENGTH_PREFIX, LENGTH_NO_COMPRESSED_DATA } from './compression/constants.js';
 
 const DEFAULT_ALIGNMENT = 8;
 
@@ -416,7 +417,7 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
             const byteBuf = new flatbuffers.ByteBuffer(body.subarray(offset, offset + length));
             const uncompressedLenth = bigIntToNumber(byteBuf.readInt64(0));
 
-            const bytes = byteBuf.bytes().subarray(LENGTH_OF_PREFIX_DATA);
+            const bytes = byteBuf.bytes().subarray(COMPRESS_LENGTH_PREFIX);
 
             const decompressed = (uncompressedLenth === LENGTH_NO_COMPRESSED_DATA)
                 ? bytes
