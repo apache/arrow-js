@@ -351,7 +351,8 @@ function gets_expected_values<T extends Int | Float>(vector: Vector<T>, typed: T
 function iterates_expected_values<T extends Int | Float>(vector: Vector<T>, typed: T['TArray'], values: any[] = [...typed]) {
     test(`iterates expected values`, () => {
         expect.hasAssertions();
-        let i = -1, n = vector.length;
+        let i = -1;
+        const n = vector.length;
         try {
             for (const v of vector) {
                 expect(++i).toBeLessThan(n);
@@ -382,7 +383,8 @@ function indexof_returns_expected_values<T extends Int | Float>(vector: Vector<T
         const original = values.slice();
         // Combine with the expected values and shuffle the order
         const shuffled = shuffle(values.concat([...missing]));
-        let i = -1, j: number, k: number, n = shuffled.length;
+        let i = -1, j: number, k: number;
+        const n = shuffled.length;
 
         try {
             while (++i < n) {

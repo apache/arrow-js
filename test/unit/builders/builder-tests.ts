@@ -102,7 +102,7 @@ const byteLengthQueueingStrategy = { highWaterMark: 64 };
 const iterableBuilderOptions = <T extends DataType = any>({ vector }: generate.GeneratedVector, { type, ...opts }: BuilderOptions<T>) => ({
     ...opts, type,
     valueToChildTypeId: !DataType.isUnion(type) ? undefined : (() => {
-        let { typeIds } = vector.data[0];
+        const { typeIds } = vector.data[0];
         let lastChunkLength = 0, chunksLength = 0;
         return (builder: Builder<T>, _value: any, index: number) => {
             if (index === 0) {
@@ -117,7 +117,7 @@ const iterableBuilderOptions = <T extends DataType = any>({ vector }: generate.G
 const domStreamBuilderOptions = <T extends DataType = any>({ vector }: generate.GeneratedVector, { type, queueingStrategy, ...opts }: Partial<BuilderTransformOptions<T>>) => ({
     ...opts, type,
     valueToChildTypeId: !DataType.isUnion(type) ? undefined : (() => {
-        let { typeIds } = vector.data[0];
+        const { typeIds } = vector.data[0];
         let lastChunkLength = 0, chunksLength = 0;
         return (builder: Builder<T>, _value: any, index: number) => {
             if (index === 0) {
@@ -135,7 +135,7 @@ const domStreamBuilderOptions = <T extends DataType = any>({ vector }: generate.
 const nodeStreamBuilderOptions = <T extends DataType = any>({ vector }: generate.GeneratedVector, { type, queueingStrategy, ...opts }: Partial<BuilderDuplexOptions<T>>) => ({
     ...opts, type,
     valueToChildTypeId: !DataType.isUnion(type) ? undefined : (() => {
-        let { typeIds } = vector.data[0];
+        const { typeIds } = vector.data[0];
         let lastChunkLength = 0, chunksLength = 0;
         return (builder: Builder<T>, _value: any, index: number) => {
             if (index === 0) {

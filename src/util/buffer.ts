@@ -131,6 +131,7 @@ const pump = <T extends Iterator<any> | AsyncIterator<any>>(iterator: T) => { it
 
 /** @ignore */
 export function* toArrayBufferViewIterator<T extends TypedArray>(ArrayCtor: TypedArrayConstructor<T>, source: ArrayBufferViewIteratorInput) {
+    // eslint-disable-next-line unicorn/consistent-function-scoping
     const wrap = function*<T>(x: T) { yield x; };
     const buffers: Iterable<ArrayBufferViewInput> =
         (typeof source === 'string') ? wrap(source)
@@ -169,6 +170,7 @@ export async function* toArrayBufferViewAsyncIterator<T extends TypedArray>(Arra
         return yield* toArrayBufferViewAsyncIterator(ArrayCtor, await source);
     }
 
+    // eslint-disable-next-line unicorn/consistent-function-scoping
     const wrap = async function*<T>(x: T) { yield await x; };
     const emit = async function* <T extends Iterable<any>>(source: T) {
         yield* pump((function* (it: Iterator<any>) {

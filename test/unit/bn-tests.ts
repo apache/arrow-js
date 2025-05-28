@@ -102,11 +102,11 @@ describe(`BN`, () => {
     test(`bigNumToNumber`, () => {
         const n1 = new BN(new Uint32Array([3, 2, 1, 0]));
         expect(() => bigNumToNumber(n1)).toThrow('18446744082299486211');
-        /* eslint-disable @typescript-eslint/no-loss-of-precision */
+        /* eslint-disable no-loss-of-precision */
         expect(bigNumToNumber(n1, 10)).toBeCloseTo(1844674408.2299486);
         expect(bigNumToNumber(n1, 15)).toBeCloseTo(18446.744082299486);
         expect(bigNumToNumber(n1, 20)).toBeCloseTo(0.18446744082299486);
         expect(bigNumToNumber(n1, 25)).toBeCloseTo(0.0000018446744082299486);
-        /* eslint-enable @typescript-eslint/no-loss-of-precision */
+        /* eslint-enable no-loss-of-precision */
     });
 });

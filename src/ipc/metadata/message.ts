@@ -15,8 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/* eslint-disable brace-style */
-
 import * as flatbuffers from 'flatbuffers';
 
 import { Schema as _Schema } from '../../fb/schema.js';

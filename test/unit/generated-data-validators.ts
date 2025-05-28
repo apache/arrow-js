@@ -106,7 +106,8 @@ function vectorTests(values: any[], vector: Vector<any>, keys?: number[]) {
     });
     test(`gets expected values`, () => {
         expect.hasAssertions();
-        let i = -1, n = vector.length, actual, expected;
+        let i = -1, actual, expected;
+        const n = vector.length;
         try {
             while (++i < n) {
                 actual = vector.get(i);
@@ -121,7 +122,8 @@ function vectorTests(values: any[], vector: Vector<any>, keys?: number[]) {
         test(`dictionary indices should match`, () => {
             expect.hasAssertions();
             const indices = new Vector(vector.data.map((data) => data.clone(vector.type.indices)));
-            let i = -1, n = indices.length;
+            let i = -1;
+            const n = indices.length;
             try {
                 while (++i < n) {
                     indices.isValid(i)
@@ -135,7 +137,8 @@ function vectorTests(values: any[], vector: Vector<any>, keys?: number[]) {
     }
     test(`sets expected values`, () => {
         expect.hasAssertions();
-        let i = -1, n = vector.length, actual, expected;
+        let i = -1, actual, expected;
+        const n = vector.length;
         try {
             while (++i < n) {
                 expected = values[i];
@@ -161,7 +164,8 @@ function vectorTests(values: any[], vector: Vector<any>, keys?: number[]) {
     });
     test(`indexOf returns expected values`, () => {
         expect.hasAssertions();
-        let i = -1, n = vector.length;
+        let i = -1;
+        const n = vector.length;
         const shuffled = shuffle(values);
         let value: any, actual, expected;
         try {
