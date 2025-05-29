@@ -349,7 +349,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
             let size = 0;
             for (let j = -1; ++j < bufGroupSize;) {
                 bufs[j] = buffers[i + j];
-                size += bufs[j].length;
+                size += bufs[j].byteLength;
             }
 
             if (size === 0) {
