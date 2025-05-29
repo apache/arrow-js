@@ -15,10 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-fund=false
-audit=false
-save-prefix=
-save-exact=true
-engine-strict=true
-update-notifier=false
-registry=https://registry.npmjs.org/
+repos:
+  - repo: local
+    hooks:
+      - id: rat
+        name: Release Audit Tool
+        language: system
+        entry: |
+          bash -c " \
+            git archive HEAD \
+              --prefix=apache-arrow-js/ \
+              --output=apache-arrow-js.tar.gz && \
+              dev/release/run_rat.sh apache-arrow-js.tar.gz && \
+              rm -f apache-arrow-js.tar.gz"
+        always_run: true
+        pass_filenames: false
