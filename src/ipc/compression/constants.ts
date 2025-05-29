@@ -15,7 +15,5 @@
 // specific language governing permissions and limitations
 // under the License.
 
-export type LengthPrefixedBuffer = [lengthPrefix: Uint8Array, body: Uint8Array];
-
 export const LENGTH_NO_COMPRESSED_DATA = -1;
 export const COMPRESS_LENGTH_PREFIX = 8;

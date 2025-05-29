@@ -38,7 +38,7 @@ import { isPromise, isAsyncIterable, isWritableDOMStream, isWritableNodeStream, 
 import type { DuplexOptions, Duplex, ReadableOptions } from 'node:stream';
 import { CompressionType } from '../fb/compression-type.js';
 import { compressionRegistry } from './compression/registry.js';
-import { LENGTH_NO_COMPRESSED_DATA, COMPRESS_LENGTH_PREFIX, LengthPrefixedBuffer } from './compression/constants.js';
+import { LENGTH_NO_COMPRESSED_DATA, COMPRESS_LENGTH_PREFIX } from './compression/constants.js';
 import * as flatbuffers from 'flatbuffers';
 
 export interface RecordBatchStreamWriterOptions {
@@ -269,17 +269,66 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeRecordBatch(batch: RecordBatch<T>) {
-        if (this._compression != null) {
-            return this._writeCompressedRecordBatch(batch);
-        }
-
-        const { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(batch);
-        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, null);
+        const { byteLength, nodes, bufferRegions, buffers } = this._assembleRecordBatch(batch);
+        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression);
         const message = Message.from(recordBatch, byteLength);
         return this
             ._writeDictionaries(batch)
             ._writeMessage(message)
             ._writeBodyBuffers(buffers);
+    }
+
+    protected _assembleRecordBatch(batch: RecordBatch<T>) {
+        let { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(batch);
+        if (this._compression != null) {
+            ({ byteLength, bufferRegions, buffers } = this._compressBodyBuffers(buffers));
+        }
+        return { byteLength, nodes, bufferRegions, buffers };
+    }
+
+    protected _compressBodyBuffers(buffers: ArrayBufferView[]) {
+        const codec = compressionRegistry.get(this._compression!.type!);
+
+        if (!codec?.encode || typeof codec.encode !== 'function') {
+            throw new Error(`Codec for compression type "${CompressionType[this._compression!.type!]}" has invalid encode method`);
+        }
+
+        let currentOffset = 0;
+        const compressedBuffers: ArrayBufferView[] = [];
+        const bufferRegions: metadata.BufferRegion[] = [];
+
+        for (const buffer of buffers) {
+            const byteBuf = toUint8Array(buffer);
+
+            if (byteBuf.length === 0) {
+                compressedBuffers.push(new Uint8Array(0), new Uint8Array(0));
+                bufferRegions.push(new metadata.BufferRegion(currentOffset, 0));
+                continue;
+            }
+
+            const compressed = codec.encode(byteBuf);
+            const isCompressionEffective = compressed.length < byteBuf.length;
+
+            const finalBuffer = isCompressionEffective ? compressed : byteBuf;
+            const byteLength = isCompressionEffective ? finalBuffer.length : LENGTH_NO_COMPRESSED_DATA;
+
+            const lengthPrefix = new flatbuffers.ByteBuffer(new Uint8Array(COMPRESS_LENGTH_PREFIX));
+            lengthPrefix.writeInt64(0, BigInt(byteLength));
+
+            compressedBuffers.push(lengthPrefix.bytes(), new Uint8Array(finalBuffer));
+
+            const padding = ((currentOffset + 7) & ~7) - currentOffset;
+            currentOffset += padding;
+
+            const fullBodyLength = COMPRESS_LENGTH_PREFIX + finalBuffer.length;
+            bufferRegions.push(new metadata.BufferRegion(currentOffset, fullBodyLength));
+
+            currentOffset += fullBodyLength;
+        }
+        const finalPadding = ((currentOffset + 7) & ~7) - currentOffset;
+        currentOffset += finalPadding;
+
+        return { byteLength: currentOffset, bufferRegions, buffers: compressedBuffers };
     }
 
     protected _writeDictionaryBatch(dictionary: Data, id: number, isDelta = false) {
@@ -293,29 +342,24 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeBodyBuffers(buffers: ArrayBufferView[]) {
-        let buffer: ArrayBufferView;
-        let size: number, padding: number;
-        for (let i = -1, n = buffers.length; ++i < n;) {
-            if ((buffer = buffers[i]) && (size = buffer.byteLength) > 0) {
-                this._write(buffer);
-                if ((padding = ((size + 7) & ~7) - size) > 0) {
-                    this._writePadding(padding);
-                }
-            }
-        }
-        return this;
-    }
+        const bufGroupSize = this._compression != null ? 2 : 1;
+        const bufs = new Array(bufGroupSize);
 
-    protected _writeCompressedBodyBuffers(buffers: LengthPrefixedBuffer[]) {
-        let size: number, padding: number;
-        for (let i = -1, n = buffers.length; ++i < n;) {
-            const [lenBuf, dataBuf] = buffers[i];
-            if ((size = lenBuf.byteLength + dataBuf.byteLength) > 0) {
-                this._write(lenBuf);
-                this._write(dataBuf);
-                if ((padding = ((size + 7) & ~7) - size) > 0) {
-                    this._writePadding(padding);
-                }
+        for (let i = 0; i < buffers.length; i += bufGroupSize) {
+            let size = 0;
+            for (let j = -1; ++j < bufGroupSize;) {
+                bufs[j] = buffers[i + j];
+                size += bufs[j].length;
+            }
+
+            if (size === 0) {
+                continue;
+            }
+
+            for (const buf of bufs) this._write(buf);
+            const padding = ((size + 7) & ~7) - size;
+            if (padding > 0) {
+                this._writePadding(padding);
             }
         }
         return this;
@@ -339,60 +383,6 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
             this._dictionaryDeltaOffsets.set(id, chunks.length);
         }
         return this;
-    }
-
-    protected _writeCompressedRecordBatch(batch: RecordBatch<T>) {
-        const codec = compressionRegistry.get(this._compression!.type!);
-
-        if (!codec?.encode || typeof codec.encode !== 'function') {
-            throw new Error(`Codec for compression type "${CompressionType[this._compression!.type!]}" has invalid encode method`);
-        }
-
-        const { nodes, buffers } = VectorAssembler.assemble(batch);
-
-        let currentOffset = 0;
-        const compressedBuffers: LengthPrefixedBuffer[] = [];
-        const bufferRegions: metadata.BufferRegion[] = [];
-
-        for (const buffer of buffers) {
-
-            const byteBuf = toUint8Array(buffer);
-
-            if (byteBuf.length === 0) {
-                compressedBuffers.push([new Uint8Array(0), new Uint8Array(0)]);
-                bufferRegions.push(new metadata.BufferRegion(currentOffset, 0));
-                continue;
-            }
-
-            const compressed = codec.encode(byteBuf);
-            const isCompressionEffective = compressed.length < byteBuf.length;
-
-            const finalBuffer = isCompressionEffective ? compressed : byteBuf;
-            const byteLength = isCompressionEffective ? finalBuffer.length : LENGTH_NO_COMPRESSED_DATA;
-
-            const lengthPrefix = new flatbuffers.ByteBuffer(new Uint8Array(COMPRESS_LENGTH_PREFIX));
-            lengthPrefix.writeInt64(0, BigInt(byteLength));
-
-            compressedBuffers.push([lengthPrefix.bytes(), new Uint8Array(finalBuffer)]);
-
-            const padding = ((currentOffset + 7) & ~7) - currentOffset;
-            currentOffset += padding;
-
-            const fullBodyLength = COMPRESS_LENGTH_PREFIX + finalBuffer.length;
-            bufferRegions.push(new metadata.BufferRegion(currentOffset, fullBodyLength));
-
-            currentOffset += fullBodyLength;
-        }
-        const finalPadding = ((currentOffset + 7) & ~7) - currentOffset;
-        currentOffset += finalPadding;
-
-        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression);
-
-        const message = Message.from(recordBatch, currentOffset);
-        return this
-            ._writeDictionaries(batch)
-            ._writeMessage(message)
-            ._writeCompressedBodyBuffers(compressedBuffers);
     }
 }
 
