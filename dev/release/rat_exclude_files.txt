@@ -15,10 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-fund=false
-audit=false
-save-prefix=
-save-exact=true
-engine-strict=true
-update-notifier=false
-registry=https://registry.npmjs.org/
+.github/pull_request_template.md
+src/fb/*.ts
+yarn.lock

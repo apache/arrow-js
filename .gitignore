@@ -89,3 +89,8 @@ test/__snapshots__/
 
 # VSCode
 !.vscode
+
+# Release Audit Tool
+dev/release/apache-rat-*.jar
+dev/release/filtered_rat.txt
+dev/release/rat.xml
