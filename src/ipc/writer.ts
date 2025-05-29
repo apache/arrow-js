@@ -36,6 +36,10 @@ import { Writable, ReadableInterop, ReadableDOMStreamOptions } from '../io/inter
 import { isPromise, isAsyncIterable, isWritableDOMStream, isWritableNodeStream, isIterable, isObject } from '../util/compat.js';
 
 import type { DuplexOptions, Duplex, ReadableOptions } from 'node:stream';
+import { CompressionType } from '../fb/compression-type.js';
+import { compressionRegistry } from './compression/registry.js';
+import { LENGTH_NO_COMPRESSED_DATA, COMPRESS_LENGTH_PREFIX } from './compression/constants.js';
+import * as flatbuffers from 'flatbuffers';
 
 export interface RecordBatchStreamWriterOptions {
     /**
@@ -49,6 +53,10 @@ export interface RecordBatchStreamWriterOptions {
      * @see https://issues.apache.org/jira/browse/ARROW-6313
      */
     writeLegacyIpcFormat?: boolean;
+    /**
+     * Specifies the optional compression algorithm to use for record batch body buffers.
+     */
+    compressionType?: CompressionType | null;
 }
 
 export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<Uint8Array> implements Writable<RecordBatch<T>> {
@@ -70,15 +78,25 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
 
     constructor(options?: RecordBatchStreamWriterOptions) {
         super();
-        isObject(options) || (options = { autoDestroy: true, writeLegacyIpcFormat: false });
+        isObject(options) || (options = { autoDestroy: true, writeLegacyIpcFormat: false, compressionType: null });
         this._autoDestroy = (typeof options.autoDestroy === 'boolean') ? options.autoDestroy : true;
         this._writeLegacyIpcFormat = (typeof options.writeLegacyIpcFormat === 'boolean') ? options.writeLegacyIpcFormat : false;
+        if (options.compressionType != null) {
+            if (Object.values(CompressionType).includes(options.compressionType)) {
+                this._compression = new metadata.BodyCompression(options.compressionType);
+            } else {
+                throw new Error(`Unsupported compressionType: ${options.compressionType}`);
+            }
+        } else {
+            this._compression = null;
+        }
     }
 
     protected _position = 0;
     protected _started = false;
     protected _autoDestroy: boolean;
     protected _writeLegacyIpcFormat: boolean;
+    protected _compression: metadata.BodyCompression | null = null;
     // @ts-ignore
     protected _sink = new AsyncByteQueue();
     protected _schema: Schema | null = null;
@@ -251,8 +269,8 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeRecordBatch(batch: RecordBatch<T>) {
-        const { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(batch);
-        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions);
+        const { byteLength, nodes, bufferRegions, buffers } = this._assembleRecordBatch(batch);
+        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression);
         const message = Message.from(recordBatch, byteLength);
         return this
             ._writeDictionaries(batch)
@@ -260,9 +278,62 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
             ._writeBodyBuffers(buffers);
     }
 
+    protected _assembleRecordBatch(batch: RecordBatch<T>) {
+        let { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(batch);
+        if (this._compression != null) {
+            ({ byteLength, bufferRegions, buffers } = this._compressBodyBuffers(buffers));
+        }
+        return { byteLength, nodes, bufferRegions, buffers };
+    }
+
+    protected _compressBodyBuffers(buffers: ArrayBufferView[]) {
+        const codec = compressionRegistry.get(this._compression!.type!);
+
+        if (!codec?.encode || typeof codec.encode !== 'function') {
+            throw new Error(`Codec for compression type "${CompressionType[this._compression!.type!]}" has invalid encode method`);
+        }
+
+        let currentOffset = 0;
+        const compressedBuffers: ArrayBufferView[] = [];
+        const bufferRegions: metadata.BufferRegion[] = [];
+
+        for (const buffer of buffers) {
+            const byteBuf = toUint8Array(buffer);
+
+            if (byteBuf.length === 0) {
+                compressedBuffers.push(new Uint8Array(0), new Uint8Array(0));
+                bufferRegions.push(new metadata.BufferRegion(currentOffset, 0));
+                continue;
+            }
+
+            const compressed = codec.encode(byteBuf);
+            const isCompressionEffective = compressed.length < byteBuf.length;
+
+            const finalBuffer = isCompressionEffective ? compressed : byteBuf;
+            const byteLength = isCompressionEffective ? finalBuffer.length : LENGTH_NO_COMPRESSED_DATA;
+
+            const lengthPrefix = new flatbuffers.ByteBuffer(new Uint8Array(COMPRESS_LENGTH_PREFIX));
+            lengthPrefix.writeInt64(0, BigInt(byteLength));
+
+            compressedBuffers.push(lengthPrefix.bytes(), new Uint8Array(finalBuffer));
+
+            const padding = ((currentOffset + 7) & ~7) - currentOffset;
+            currentOffset += padding;
+
+            const fullBodyLength = COMPRESS_LENGTH_PREFIX + finalBuffer.length;
+            bufferRegions.push(new metadata.BufferRegion(currentOffset, fullBodyLength));
+
+            currentOffset += fullBodyLength;
+        }
+        const finalPadding = ((currentOffset + 7) & ~7) - currentOffset;
+        currentOffset += finalPadding;
+
+        return { byteLength: currentOffset, bufferRegions, buffers: compressedBuffers };
+    }
+
     protected _writeDictionaryBatch(dictionary: Data, id: number, isDelta = false) {
         const { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(new Vector([dictionary]));
-        const recordBatch = new metadata.RecordBatch(dictionary.length, nodes, bufferRegions);
+        const recordBatch = new metadata.RecordBatch(dictionary.length, nodes, bufferRegions, this._compression);
         const dictionaryBatch = new metadata.DictionaryBatch(recordBatch, id, isDelta);
         const message = Message.from(dictionaryBatch, byteLength);
         return this
@@ -271,14 +342,24 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeBodyBuffers(buffers: ArrayBufferView[]) {
-        let buffer: ArrayBufferView;
-        let size: number, padding: number;
-        for (let i = -1, n = buffers.length; ++i < n;) {
-            if ((buffer = buffers[i]) && (size = buffer.byteLength) > 0) {
-                this._write(buffer);
-                if ((padding = ((size + 7) & ~7) - size) > 0) {
-                    this._writePadding(padding);
-                }
+        const bufGroupSize = this._compression != null ? 2 : 1;
+        const bufs = new Array(bufGroupSize);
+
+        for (let i = 0; i < buffers.length; i += bufGroupSize) {
+            let size = 0;
+            for (let j = -1; ++j < bufGroupSize;) {
+                bufs[j] = buffers[i + j];
+                size += bufs[j].byteLength;
+            }
+
+            if (size === 0) {
+                continue;
+            }
+
+            for (const buf of bufs) this._write(buf);
+            const padding = ((size + 7) & ~7) - size;
+            if (padding > 0) {
+                this._writePadding(padding);
             }
         }
         return this;
