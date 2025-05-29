@@ -59,10 +59,30 @@ class Lz4FrameValidator implements CompressionValidator {
 }
 
 class ZstdValidator implements CompressionValidator {
-    // private readonly ZSTD_MAGIC = new Uint8Array([40, 181, 47, 253]);
-    isValidCodecEncode(_: Codec): boolean {
-        console.warn('ZSTD encode validator is not implemented yet.');
-        return true;
+    private readonly ZSTD_MAGIC = new Uint8Array([40, 181, 47, 253]);
+    private readonly MIN_HEADER_LENGTH = 6; // 4 (magic) + 2 (min Frame_Header) = 6 min bytes
+
+    isValidCodecEncode(codec: Codec): boolean {
+        const testData = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+        const compressed = codec.encode!(testData);
+        return this._isValidCompressed(compressed);
+    }
+
+    private _isValidCompressed(buffer: Uint8Array): boolean {
+        return (
+            this._hasMinimumLength(buffer) &&
+            this._hasValidMagicNumber(buffer)
+        );
+    }
+
+    private _hasMinimumLength(buffer: Uint8Array): boolean {
+        return buffer.length >= this.MIN_HEADER_LENGTH;
+    }
+
+    private _hasValidMagicNumber(buffer: Uint8Array): boolean {
+        return this.ZSTD_MAGIC.every(
+            (byte, i) => buffer[i] === byte
+        );
     }
 }
 
