@@ -94,3 +94,6 @@ test/__snapshots__/
 dev/release/apache-rat-*.jar
 dev/release/filtered_rat.txt
 dev/release/rat.xml
+
+# Release
+dev/release/.env

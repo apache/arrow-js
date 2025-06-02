@@ -1,0 +1,182 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: RC
+
+on:
+  push:
+    branches:
+      - "**"
+      - "!dependabot/**"
+    tags:
+      - "*-rc*"
+  pull_request:
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.sha }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  target:
+    name: Target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.detect.outputs.version }}
+      rc: ${{ steps.detect.outputs.rc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Detect
+        id: detect
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version=${GITHUB_REF_NAME%-rc*}
+            version=${version#v}
+            rc=${GITHUB_REF_NAME#*-rc}
+          else
+            version=$(jq -r .version package.json)
+            rc=$(date +%Y%m%d)
+          fi
+          echo "version=${version}" >> ${GITHUB_OUTPUT}
+          echo "rc=${rc}" >> ${GITHUB_OUTPUT}
+
+  source:
+    name: Source
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      RC: ${{ needs.target.outputs.rc }}
+      VERSION: ${{ needs.target.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Archive
+        run: |
+          id="apache-arrow-js-${VERSION}"
+          tar_gz="${id}.tar.gz"
+          echo "TAR_GZ=${tar_gz}" >> ${GITHUB_ENV}
+          git archive HEAD --prefix "${id}/" --output "${tar_gz}"
+          sha256sum "${tar_gz}" > "${tar_gz}.sha256"
+          sha512sum "${tar_gz}" > "${tar_gz}.sha512"
+      - name: Upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-source
+          path: |
+            apache-arrow-js-*.tar.gz*
+      - name: Audit
+        run: |
+          dev/release/run_rat.sh "${TAR_GZ}"
+
+  packages:
+    name: Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          cache: yarn
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          yarn install
+      - name: Build
+        run: |
+          yarn gulp build
+
+          shopt -s globstar
+          for package_json in targets/**/package.json; do
+            if [[ ${package_json} =~ bin/package.json$ ]]; then
+              continue
+            fi
+            npm pack "${PWD}/$(dirname ${package_json})"
+          done
+          for tgz in *.tgz; do
+            sha256sum "${tgz}" > "${tgz}.sha256"
+            sha512sum "${tgz}" > "${tgz}.sha512"
+          done
+      - name: Upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-packages
+          path: |
+            apache-arrow-*.tgz*
+
+  verify:
+    name: Verify
+    needs:
+      - packages
+      - source
+      - target
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RC: ${{ needs.target.outputs.rc }}
+      VERSION: ${{ needs.target.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Download
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+      - name: Verify
+        env:
+          VERIFY_DEFAULT: 0
+          VERIFY_PACKAGE: 1
+          VERIFY_SOURCE: 1
+        run: |
+          mv release-*/* ./
+          dev/release/verify_rc.sh "${VERSION}" "${RC}"
+
+  upload:
+    name: Upload
+    needs:
+      - target
+      - verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      RC: ${{ needs.target.outputs.rc }}
+      VERSION: ${{ needs.target.outputs.version }}
+    steps:
+      - name: Download
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+      - name: Upload
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${GITHUB_REF_NAME} \
+            --generate-notes \
+            --prerelease \
+            --repo ${GITHUB_REPOSITORY} \
+            --title "Apache Arrow JS ${VERSION} RC${RC}" \
+            --verify-tag \
+            release-*/*.tar.gz* \
+            release-*/*.tgz*
