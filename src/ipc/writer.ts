@@ -82,10 +82,15 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
         this._autoDestroy = (typeof options.autoDestroy === 'boolean') ? options.autoDestroy : true;
         this._writeLegacyIpcFormat = (typeof options.writeLegacyIpcFormat === 'boolean') ? options.writeLegacyIpcFormat : false;
         if (options.compressionType != null) {
+            if (this._writeLegacyIpcFormat) {
+                throw new Error('Legacy IPC format does not support columnar compression. Use modern IPC format (writeLegacyIpcFormat=false).');
+            }
             if (Object.values(CompressionType).includes(options.compressionType)) {
                 this._compression = new metadata.BodyCompression(options.compressionType);
             } else {
-                throw new Error(`Unsupported compressionType: ${options.compressionType}`);
+                const validCompressionTypes = Object.values(CompressionType)
+                    .filter((v): v is string => typeof v === 'string');
+                throw new Error(`Unsupported compressionType: ${options.compressionType} Available types: ${validCompressionTypes.join(', ')}`);
             }
         } else {
             this._compression = null;
