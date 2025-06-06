@@ -30,6 +30,12 @@ fi
 
 rc=$1
 
+: "${RELEASE_DEFAULT:=1}"
+: "${RELEASE_TAG:=${RELEASE_DEFAULT}}"
+: "${RELEASE_UPLOAD:=${RELEASE_DEFAULT}}"
+: "${RELEASE_CLEAN:=${RELEASE_DEFAULT}}"
+: "${RELEASE_PUBLISH:=${RELEASE_DEFAULT}}"
+
 if [ ! -f "${SOURCE_DIR}/.env" ]; then
   echo "You must create ${SOURCE_DIR}/.env"
   echo "You can use ${SOURCE_DIR}/.env.example as template"
@@ -57,60 +63,68 @@ esac
 
 tag="v${version}"
 rc_tag="${tag}-rc${rc}"
-echo "Tagging for release: ${tag}"
-git tag -a -m "${version}" "${tag}" "${rc_tag}^{}"
-git push origin "${tag}"
+if [ "${RELEASE_TAG}" -gt 0 ]; then
+  echo "Tagging for release: ${tag}"
+  git tag -a -m "${version}" "${tag}" "${rc_tag}^{}"
+  git push origin "${tag}"
+fi
 
 release_id="apache-arrow-js-${version}"
 source_archive="apache-arrow-js-${version}.tar.gz"
 dist_url="https://dist.apache.org/repos/dist/release/arrow"
 dist_base_dir="dev/release/dist"
 dist_dir="${dist_base_dir}/${release_id}"
-echo "Checking out ${dist_url}"
-rm -rf "${dist_base_dir}"
-svn co --depth=empty "${dist_url}" "${dist_base_dir}"
-gh release download "${rc_tag}" \
-  --dir "${dist_dir}" \
-  --pattern "${source_archive}*" \
-  --repo "${repository}" \
-  --skip-existing
+if [ "${RELEASE_UPLOAD}" -gt 0 ]; then
+  echo "Checking out ${dist_url}"
+  rm -rf "${dist_base_dir}"
+  svn co --depth=empty "${dist_url}" "${dist_base_dir}"
+  gh release download "${rc_tag}" \
+    --dir "${dist_dir}" \
+    --pattern "${source_archive}*" \
+    --repo "${repository}" \
+    --skip-existing
 
-echo "Uploading to release/"
-pushd "${dist_base_dir}"
-svn add "${release_id}"
-svn ci -m "Apache Arrow JS ${version}"
-popd
-rm -rf "${dist_base_dir}"
+  echo "Uploading to release/"
+  pushd "${dist_base_dir}"
+  svn add "${release_id}"
+  svn ci -m "Apache Arrow JS ${version}"
+  popd
+  rm -rf "${dist_base_dir}"
+fi
 
-echo "Keep only the latest versions"
-old_releases=$(
-  svn ls https://dist.apache.org/repos/dist/release/arrow/ |
-    grep -E '^apache-arrow-js-' |
-    sort --version-sort --reverse |
-    tail -n +2
-)
-for old_release_version in ${old_releases}; do
-  echo "Remove old release ${old_release_version}"
-  svn \
-    delete \
-    -m "Remove old Apache Arrow JS release: ${old_release_version}" \
-    "https://dist.apache.org/repos/dist/release/arrow/${old_release_version}"
-done
+if [ "${RELEASE_CLEAN}" -gt 0 ]; then
+  echo "Keep only the latest versions"
+  old_releases=$(
+    svn ls https://dist.apache.org/repos/dist/release/arrow/ |
+      grep -E '^apache-arrow-js-' |
+      sort --version-sort --reverse |
+      tail -n +2
+  )
+  for old_release_version in ${old_releases}; do
+    echo "Remove old release ${old_release_version}"
+    svn \
+      delete \
+      -m "Remove old Apache Arrow JS release: ${old_release_version}" \
+      "https://dist.apache.org/repos/dist/release/arrow/${old_release_version}"
+  done
+fi
 
-echo "Publish to npm"
-packages_dir=packages
-rm -rf "${packages_dir}"
-mkdir -p "${packages_dir}"
-pushd "${packages_dir}"
-gh release download "${rc_tag}" \
-  --dir "." \
-  --pattern "*.tgz" \
-  --repo "${repository}"
-read -p "Please enter your npm 2FA one-time password (or leave empty if you don't have 2FA enabled): " NPM_OTP </dev/tty
-for package in *.tgz; do
-  npm publish "${package}" "${NPM_OTP:+--otp=${NPM_OTP}}"
-done
-rm -rf "${packages_dir}"
+if [ "${RELEASE_PUBLISH}" -gt 0 ]; then
+  echo "Publish to npm"
+  packages_dir=packages
+  rm -rf "${packages_dir}"
+  mkdir -p "${packages_dir}"
+  pushd "${packages_dir}"
+  gh release download "${rc_tag}" \
+    --dir "." \
+    --pattern "*.tgz" \
+    --repo "${repository}"
+  read -p "Please enter your npm 2FA one-time password (or leave empty if you don't have 2FA enabled): " NPM_OTP </dev/tty
+  for package in *.tgz; do
+    npm publish "${package}" "${NPM_OTP:+--otp=${NPM_OTP}}"
+  done
+  rm -rf "${packages_dir}"
+fi
 
 echo "Success! The release is available here:"
 echo "  https://dist.apache.org/repos/dist/release/arrow/${release_id}"
