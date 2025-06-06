@@ -17,6 +17,7 @@
     "inlineSourceMap": false,
     "downlevelIteration": false,
     "baseUrl": "../",
+    "typeRoots": ["../node_modules/@types", "./types"],
     "paths": {
       "apache-arrow": ["src/Arrow.node"],
       "apache-arrow/*": ["src/*"]
