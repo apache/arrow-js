@@ -91,8 +91,8 @@ function toEqualVector<
     TExpected extends Vector | [Vector | null, string?]
 >(this: jest.MatcherUtils, actual: TActual, expected: TExpected) {
 
-    let [v1, format1 = '', columnName = ''] = Array.isArray(actual) ? actual : [actual];
-    let [v2, format2 = ''] = Array.isArray(expected) ? expected : [expected];
+    const [v1, format1 = '', columnName = ''] = Array.isArray(actual) ? actual : [actual];
+    const [v2, format2 = ''] = Array.isArray(expected) ? expected : [expected];
 
     // if (v1 instanceof Column && columnName === '') { columnName = v1.name; }
 
@@ -131,7 +131,7 @@ function toEqualVector<
     }
 
     let i = -1;
-    for (let [x1, x2] of zip(v1, v2)) {
+    for (const [x1, x2] of zip(v1, v2)) {
         ++i;
         if (!util.createElementComparator(x2)(x1)) {
             iteratorFailures.push(`${i}: ${format(this, x1, x2, ' !== ')}`);

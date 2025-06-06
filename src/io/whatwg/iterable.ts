@@ -43,7 +43,7 @@ function iterableAsReadableDOMStream<T>(source: Iterable<T>, options?: ReadableD
         ...options as any,
         start(controller) { next(controller, it || (it = source[Symbol.iterator]() as SourceIterator<T>)); },
         pull(controller) { it ? (next(controller, it)) : controller.close(); },
-        cancel() { (it?.return && it.return() || true) && (it = null); }
+        cancel() { (it?.return && it.return()); it = null; }
     }, { highWaterMark: bm ? hwm : undefined, ...options });
 
     function next(controller: ReadableStreamDefaultController<T>, it: SourceIterator<T>) {
@@ -73,7 +73,7 @@ function asyncIterableAsReadableDOMStream<T>(source: AsyncIterable<T>, options?:
         ...options as any,
         async start(controller) { await next(controller, it || (it = source[Symbol.asyncIterator]() as AsyncSourceIterator<T>)); },
         async pull(controller) { it ? (await next(controller, it)) : controller.close(); },
-        async cancel() { (it?.return && await it.return() || true) && (it = null); },
+        async cancel() { (it?.return && await it.return()); it = null; },
     }, { highWaterMark: bm ? hwm : undefined, ...options });
 
     async function next(controller: ReadableStreamDefaultController<T>, it: AsyncSourceIterator<T>) {

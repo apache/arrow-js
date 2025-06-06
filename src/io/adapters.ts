@@ -96,7 +96,8 @@ function* fromIterable<T extends ArrayBufferViewInput>(source: Iterable<T> | T):
             }
         } while (!done);
     } catch (e) {
-        (threw = true) && (typeof it.throw === 'function') && (it.throw(e));
+        threw = true;
+        (typeof it.throw === 'function') && (it.throw(e));
     } finally {
         (threw === false) && (typeof it.return === 'function') && (it.return(null!));
     }
@@ -143,7 +144,8 @@ async function* fromAsyncIterable<T extends ArrayBufferViewInput>(source: AsyncI
             }
         } while (!done);
     } catch (e) {
-        (threw = true) && (typeof it.throw === 'function') && (await it.throw(e));
+        threw = true;
+        (typeof it.throw === 'function') && (await it.throw(e));
     } finally {
         (threw === false) && (typeof it.return === 'function') && (await it.return(new Uint8Array(0)));
     }
@@ -193,7 +195,8 @@ async function* fromDOMStream<T extends ArrayBufferViewInput>(source: ReadableSt
             }
         } while (!done);
     } catch (e) {
-        (threw = true) && (await it['cancel'](e));
+        threw = true;
+        await it['cancel'](e);
     } finally {
         (threw === false) ? (await it['cancel']())
             : source['locked'] && it.releaseLock();

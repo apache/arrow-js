@@ -15,8 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { Block as _Block } from '../../fb/block.js';
 import { Footer as _Footer } from '../../fb/footer.js';
 

@@ -147,7 +147,8 @@ export async function concatBuffersAsync(iterator: AsyncIterable<Uint8Array> | R
     if (iterator instanceof ReadableStream) {
         iterator = readableDOMStreamToAsyncIterator(iterator);
     }
-    let chunks = [], total = 0;
+    const chunks = [];
+    let total = 0;
     for await (const chunk of iterator) {
         chunks.push(chunk);
         total += chunk.byteLength;
