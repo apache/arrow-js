@@ -30,7 +30,7 @@
 
 ### Prepare release environment
 
-This step is needed only when you act as a release manager first time.
+This step is needed only when you act as a release manager the first time.
 
 We use the following variables in multiple steps:
 
