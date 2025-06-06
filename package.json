@@ -21,8 +21,7 @@
     "test:bundle": "gulp bundle",
     "doc": "del-cli ./doc && typedoc",
     "lint": "eslint src test --fix",
-    "lint:ci": "eslint src test",
-    "prepublishOnly": "echo \"Error: do 'yarn release' instead of 'npm publish'\" && exit 1"
+    "lint:ci": "eslint src test"
   },
   "repository": {
     "type": "git",
@@ -48,7 +47,6 @@
     "tsconfigs",
     "README.md",
     "gulpfile.js",
-    "npm-release.sh",
     "jest.config.js"
   ],
   "dependencies": {
@@ -119,5 +117,5 @@
   "engines": {
     "node": ">=12.0"
   },
-  "version": "21.0.0-SNAPSHOT"
+  "version": "20.0.0"
 }
