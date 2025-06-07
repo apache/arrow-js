@@ -25,6 +25,7 @@ import { validateRecordBatchIterator } from '../validate.js';
 import type { RecordBatchStreamWriterOptions } from 'apache-arrow/ipc/writer';
 import {
     builderThroughIterable,
+    CompressionType,
     Data,
     Dictionary,
     Field,
@@ -37,6 +38,41 @@ import {
     Uint32,
     Vector
 } from 'apache-arrow';
+import { Codec, compressionRegistry } from 'apache-arrow/ipc/compression/registry';
+import * as lz4js from 'lz4js';
+
+export async function registerCompressionCodecs(): Promise<void> {
+    if (compressionRegistry.get(CompressionType.LZ4_FRAME) === null) {
+        const lz4Codec: Codec = {
+            encode(data: Uint8Array): Uint8Array {
+                return lz4js.compress(data);
+            },
+            decode(data: Uint8Array): Uint8Array {
+                return lz4js.decompress(data);
+            }
+        };
+        compressionRegistry.set(CompressionType.LZ4_FRAME, lz4Codec);
+    }
+
+    if (compressionRegistry.get(CompressionType.ZSTD) === null) {
+        const { ZstdCodec } = await import('zstd-codec');
+        await new Promise<void>((resolve) => {
+            ZstdCodec.run((zstd: any) => {
+                const simple = new zstd.Simple();
+                const zstdCodec: Codec = {
+                    encode(data: Uint8Array): Uint8Array {
+                        return simple.compress(data);
+                    },
+                    decode(data: Uint8Array): Uint8Array {
+                        return simple.decompress(data);
+                    }
+                };
+                compressionRegistry.set(CompressionType.ZSTD, zstdCodec);
+                resolve();
+            });
+        });
+    }
+}
 
 describe('RecordBatchStreamWriter', () => {
 
@@ -46,6 +82,16 @@ describe('RecordBatchStreamWriter', () => {
     const testName = `[${table.schema.fields.join(', ')}]`;
     testStreamWriter(table, testName, { writeLegacyIpcFormat: true });
     testStreamWriter(table, testName, { writeLegacyIpcFormat: false });
+
+    const compressionTypes = [CompressionType.LZ4_FRAME, CompressionType.ZSTD];
+    beforeAll(async () => {
+        await registerCompressionCodecs();
+    });
+
+    for (const compressionType of compressionTypes) {
+        const testName = `[${table.schema.fields.join(', ')}] - ${CompressionType[compressionType]} compressed`;
+        testStreamWriter(table, testName, { compressionType });
+    }
 
     for (const table of generateRandomTables([10, 20, 30])) {
         const testName = `[${table.schema.fields.join(', ')}]`;
