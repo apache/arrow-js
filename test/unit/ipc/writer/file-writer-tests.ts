@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import { RecordBatchStreamWriterOptions } from 'apache-arrow/ipc/writer.js';
 import {
     generateDictionaryTables, generateRandomTables
 } from '../../../data/tables.js';
@@ -23,6 +24,7 @@ import { validateRecordBatchIterator } from '../validate.js';
 
 import {
     builderThroughIterable,
+    CompressionType,
     Dictionary,
     Int32,
     RecordBatch,
@@ -32,6 +34,41 @@ import {
     Uint32,
     Vector
 } from 'apache-arrow';
+import { Codec, compressionRegistry } from 'apache-arrow/ipc/compression/registry';
+import * as lz4js from 'lz4js';
+
+export async function registerCompressionCodecs(): Promise<void> {
+    if (compressionRegistry.get(CompressionType.LZ4_FRAME) === null) {
+        const lz4Codec: Codec = {
+            encode(data: Uint8Array): Uint8Array {
+                return lz4js.compress(data);
+            },
+            decode(data: Uint8Array): Uint8Array {
+                return lz4js.decompress(data);
+            }
+        };
+        compressionRegistry.set(CompressionType.LZ4_FRAME, lz4Codec);
+    }
+
+    if (compressionRegistry.get(CompressionType.ZSTD) === null) {
+        const { ZstdCodec } = await import('zstd-codec');
+        await new Promise<void>((resolve) => {
+            ZstdCodec.run((zstd: any) => {
+                const simple = new zstd.Simple();
+                const zstdCodec: Codec = {
+                    encode(data: Uint8Array): Uint8Array {
+                        return simple.compress(data);
+                    },
+                    decode(data: Uint8Array): Uint8Array {
+                        return simple.decompress(data);
+                    }
+                };
+                compressionRegistry.set(CompressionType.ZSTD, zstdCodec);
+                resolve();
+            });
+        });
+    }
+}
 
 describe('RecordBatchFileWriter', () => {
     for (const table of generateRandomTables([10, 20, 30])) {
@@ -39,6 +76,17 @@ describe('RecordBatchFileWriter', () => {
     }
     for (const table of generateDictionaryTables([10, 20, 30])) {
         testFileWriter(table, `${table.schema.fields[0]}`);
+    }
+
+    const compressionTypes = [CompressionType.LZ4_FRAME, CompressionType.ZSTD];
+    beforeAll(async () => {
+        await registerCompressionCodecs();
+    });
+
+    const table = generate.table([10, 20, 30]).table;
+    for (const compressionType of compressionTypes) {
+        const testName = `[${table.schema.fields.join(', ')}] - ${CompressionType[compressionType]} compressed`;
+        testFileWriter(table, testName, { compressionType });
     }
 
     it('should throw if attempting to write replacement dictionary batches', async () => {
@@ -91,14 +139,14 @@ describe('RecordBatchFileWriter', () => {
     });
 });
 
-function testFileWriter(table: Table, name: string) {
+function testFileWriter(table: Table, name: string, options?: RecordBatchStreamWriterOptions) {
     describe(`should write the Arrow IPC file format (${name})`, () => {
-        test(`Table`, validateTable.bind(0, table));
+        test(`Table`, validateTable.bind(0, table, options));
     });
 }
 
-async function validateTable(source: Table) {
-    const writer = RecordBatchFileWriter.writeAll(source);
+async function validateTable(source: Table, options?: RecordBatchStreamWriterOptions) {
+    const writer = RecordBatchFileWriter.writeAll(source, options);
     const result = new Table(RecordBatchReader.from(await writer.toUint8Array()));
     validateRecordBatchIterator(3, source.batches);
     expect(result).toEqualTable(source);
