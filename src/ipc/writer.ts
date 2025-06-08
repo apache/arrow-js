@@ -411,13 +411,13 @@ export class RecordBatchStreamWriter<T extends TypeMap = any> extends RecordBatc
 
 /** @ignore */
 export class RecordBatchFileWriter<T extends TypeMap = any> extends RecordBatchWriter<T> {
-    public static writeAll<T extends TypeMap = any>(input: Table<T> | Iterable<RecordBatch<T>>): RecordBatchFileWriter<T>;
-    public static writeAll<T extends TypeMap = any>(input: AsyncIterable<RecordBatch<T>>): Promise<RecordBatchFileWriter<T>>;
-    public static writeAll<T extends TypeMap = any>(input: PromiseLike<AsyncIterable<RecordBatch<T>>>): Promise<RecordBatchFileWriter<T>>;
-    public static writeAll<T extends TypeMap = any>(input: PromiseLike<Table<T> | Iterable<RecordBatch<T>>>): Promise<RecordBatchFileWriter<T>>;
+    public static writeAll<T extends TypeMap = any>(input: Table<T> | Iterable<RecordBatch<T>>, options?: RecordBatchStreamWriterOptions): RecordBatchFileWriter<T>;
+    public static writeAll<T extends TypeMap = any>(input: AsyncIterable<RecordBatch<T>>, options?: RecordBatchStreamWriterOptions): Promise<RecordBatchFileWriter<T>>;
+    public static writeAll<T extends TypeMap = any>(input: PromiseLike<AsyncIterable<RecordBatch<T>>>, options?: RecordBatchStreamWriterOptions): Promise<RecordBatchFileWriter<T>>;
+    public static writeAll<T extends TypeMap = any>(input: PromiseLike<Table<T> | Iterable<RecordBatch<T>>>, options?: RecordBatchStreamWriterOptions): Promise<RecordBatchFileWriter<T>>;
     /** @nocollapse */
-    public static writeAll<T extends TypeMap = any>(input: any) {
-        const writer = new RecordBatchFileWriter<T>();
+    public static writeAll<T extends TypeMap = any>(input: any, options?: RecordBatchStreamWriterOptions) {
+        const writer = new RecordBatchFileWriter<T>(options);
         if (isPromise<any>(input)) {
             return input.then((x) => writer.writeAll(x));
         } else if (isAsyncIterable<RecordBatch<T>>(input)) {
@@ -426,9 +426,10 @@ export class RecordBatchFileWriter<T extends TypeMap = any> extends RecordBatchW
         return writeAll(writer, input);
     }
 
-    constructor() {
-        super();
+    constructor(options?: RecordBatchStreamWriterOptions) {
+        super(options);
         this._autoDestroy = true;
+        this._writeLegacyIpcFormat = false;
     }
 
     // @ts-ignore
