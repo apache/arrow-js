@@ -24,7 +24,7 @@ import { mergeMap } from "rxjs/operators";
 import cleanTask from "./gulp/clean-task.js";
 import compileTask from "./gulp/compile-task.js";
 import packageTask from "./gulp/package-task.js";
-import { testTask, createTestData, cleanTestData } from "./gulp/test-task.js";
+import { testTask } from "./gulp/test-task.js";
 import { esbuildTask, rollupTask, webpackTask, execBundleTask } from "./gulp/bundle-task.js";
 import { taskName, combinations, targetDir, knownTargets, npmPkgName, tasksToSkipPerTargetOrFormat, targetAndModuleCombinations } from "./gulp/util.js";
 
@@ -76,8 +76,6 @@ gulp.task(`build:${npmPkgName}`,
 );
 
 // And finally the global composite tasks
-gulp.task(`clean:testdata`, cleanTestData);
-gulp.task(`create:testdata`, createTestData);
 gulp.task(`test`, gulpConcurrent(getTasks(`test`)));
 gulp.task(`clean`, gulp.parallel(getTasks(`clean`)));
 gulp.task(`build`, gulpConcurrent(getTasks(`build`)));
