@@ -6,7 +6,6 @@
   },
   "type": "module",
   "scripts": {
-    "lerna": "lerna",
     "test": "cross-env NODE_NO_WARNINGS=1 gulp test",
     "build": "cross-env NODE_NO_WARNINGS=1 gulp build",
     "clean": "cross-env NODE_NO_WARNINGS=1 gulp clean",
