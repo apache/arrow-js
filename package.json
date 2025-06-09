@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/apache/arrow.git"
+    "url": "git+https://github.com/apache/arrow-js.git"
   },
   "keywords": [
     "apache",
@@ -35,9 +35,9 @@
   "author": "Apache Software Foundation",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/apache/arrow/issues"
+    "url": "https://github.com/apache/arrow-js/issues"
   },
-  "homepage": "https://github.com/apache/arrow/blob/main/js/README.md",
+  "homepage": "https://arrow.apache.org/js/",
   "files": [
     "bin",
     "src",

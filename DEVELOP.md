@@ -29,7 +29,7 @@ integrations in other projects, we'd be happy to have you involved:
 * Contribute code to one of the reference implementations
 
 We prefer to receive contributions in the form of GitHub pull requests.
-Please send pull requests against the [github.com/apache/arrow][4] repository.
+Please send pull requests against the [github.com/apache/arrow-js][4] repository.
 
 If you are looking for some ideas on what to contribute, check out the [GitHub
 issues][3] for the Apache Arrow project. Comment on the issue and/or contact
@@ -112,5 +112,5 @@ Run `yarn gulp bundle:webpack:analyze` to open [Webpack Bundle Analyzer](https:/
 
 [1]: mailto:dev-subscribe@arrow.apache.org
 [2]: https://github.com/apache/arrow/tree/main/format
-[3]: https://github.com/apache/arrow/issues
-[4]: https://github.com/apache/arrow
+[3]: https://github.com/apache/arrow-js/issues
+[4]: https://github.com/apache/arrow-js

@@ -17,11 +17,11 @@
   under the License.
 -->
 
-# [Apache Arrow](https://github.com/apache/arrow) in JS
+# Apache Arrow JavaScript
 
 [![npm version](https://img.shields.io/npm/v/apache-arrow.svg)](https://www.npmjs.com/package/apache-arrow)
 
-Arrow is a set of technologies that enable big data systems to process and transfer data quickly.
+[Apache Arrow](https://arrow.apache.org/) is a set of technologies that enable big data systems to process and transfer data quickly.
 
 ## Install `apache-arrow` from NPM
 
@@ -29,17 +29,17 @@ Arrow is a set of technologies that enable big data systems to process and trans
 
 (read about how we [package apache-arrow](#packaging) below)
 
-# Powering Columnar In-Memory Analytics
+## Powering Columnar In-Memory Analytics
 
-[Apache Arrow](https://github.com/apache/arrow) is a columnar memory layout specification for encoding vectors and table-like containers of flat and nested data. The Arrow spec aligns columnar data in memory to minimize cache misses and take advantage of the latest SIMD (Single input multiple data) and GPU operations on modern processors.
+Apache Arrow is a columnar memory layout specification for encoding vectors and table-like containers of flat and nested data. The Arrow spec aligns columnar data in memory to minimize cache misses and take advantage of the latest SIMD (Single input multiple data) and GPU operations on modern processors.
 
 Apache Arrow is the emerging standard for large in-memory columnar data ([Spark](https://spark.apache.org/), [Pandas](https://wesmckinney.com/blog/pandas-and-apache-arrow/), [Drill](https://drill.apache.org/), [Graphistry](https://www.graphistry.com), ...). By standardizing on a common binary interchange format, big data systems can reduce the costs and friction associated with cross-system communication.
 
-# Get Started
+## Get Started
 
-Check out our [API documentation][5] to learn more about how to use Apache Arrow's JS implementation. You can also learn by example by checking out some of the following resources:
+Check out our [API documentation][5] to learn more about how to use Apache Arrow JavaScript. You can also learn by example by checking out some of the following resources:
 
-* [/js/test/unit](https://github.com/apache/arrow/tree/main/js/test/unit) - Unit tests for Table and Vector
+* [/test/unit](https://github.com/apache/arrow-js/tree/main/test/unit) - Unit tests for Table and Vector
 
 ## Cookbook
 
@@ -164,7 +164,7 @@ const dictionaryVector2 = makeVector({
 });
 ```
 
-# Getting involved
+## Getting involved
 
 See [DEVELOP.md](DEVELOP.md)
 
@@ -179,7 +179,7 @@ integrations in other projects, we'd be happy to have you involved:
 * Contribute code to one of the reference implementations
 
 We prefer to receive contributions in the form of GitHub pull requests.
-Please send pull requests against the [github.com/apache/arrow][4] repository.
+Please send pull requests against the [github.com/apache/arrow-js][4] repository.
 
 If you are looking for some ideas on what to contribute, check out the [GitHub
 issues][3] for the Apache Arrow project. Comment on the issue and/or contact
@@ -224,7 +224,7 @@ The bundles we compile support moderns browser released in the last 5 years. Thi
 Firefox, Chrome, Edge, and Safari. We do not actively support Internet Explorer.
 Apache Arrow also works on [maintained versions of Node](https://nodejs.org/en/about/releases/).
 
-# People
+## People
 
 Full list of broader Apache Arrow [committers](https://arrow.apache.org/committers/).
 
@@ -232,11 +232,11 @@ Full list of broader Apache Arrow [committers](https://arrow.apache.org/committe
 * Paul Taylor, _committer_
 * Dominik Moritz, _committer_
 
-# Powered By Apache Arrow in JS
+## Powered By Apache Arrow JavaScript
 
 Full list of broader Apache Arrow [projects & organizations](https://arrow.apache.org/powered_by/).
 
-## Open Source Projects
+### Open Source Projects
 
 * [Apache Arrow](https://arrow.apache.org) -- Parent project for Powering Columnar In-Memory Analytics, including affiliated open source projects
 * [Perspective](https://github.com/finos/perspective) -- Perspective is an interactive analytics and data visualization component well-suited for large and/or streaming datasets. Perspective leverages Arrow C++ compiled to WebAssembly.
@@ -245,12 +245,12 @@ Full list of broader Apache Arrow [projects & organizations](https://arrow.apach
 * [Arquero](https://github.com/uwdata/arquero) is a library for query processing and transformation of array-backed data tables.
 * [OmniSci](https://github.com/omnisci/mapd-connector) is a GPU database. Its JavaScript connector returns Arrow dataframes.
 
-# License
+## License
 
-[Apache 2.0](https://github.com/apache/arrow/blob/main/LICENSE)
+[Apache 2.0](https://github.com/apache/arrow-js/blob/main/LICENSE)
 
 [1]: mailto:dev-subscribe@arrow.apache.org
 [2]: https://github.com/apache/arrow/tree/main/format
-[3]: https://github.com/apache/arrow/issues
-[4]: https://github.com/apache/arrow
-[5]: https://arrow.apache.org/docs/js/
+[3]: https://github.com/apache/arrow-js/issues
+[4]: https://github.com/apache/arrow-js
+[5]: https://arrow.apache.org/js/
