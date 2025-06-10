@@ -21,7 +21,9 @@
 
 [![npm version](https://img.shields.io/npm/v/apache-arrow.svg)](https://www.npmjs.com/package/apache-arrow)
 
-[Apache Arrow](https://arrow.apache.org/) is a set of technologies that enable big data systems to process and transfer data quickly.
+[Apache Arrow](https://arrow.apache.org/) is a universal columnar format and multi-language toolbox for fast
+data interchange and in-memory analytics. It contains a set of technologies that
+enable data systems to efficiently store, process, and move data.
 
 ## Install `apache-arrow` from NPM
 
