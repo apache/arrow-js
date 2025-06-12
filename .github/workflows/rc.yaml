@@ -87,6 +87,75 @@ jobs:
         run: |
           dev/release/run_rat.sh "${TAR_GZ}"
 
+  docs:
+    name: Documentation
+    needs: target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      RC: ${{ needs.target.outputs.rc }}
+      VERSION: ${{ needs.target.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          cache: yarn
+          node-version: 20
+      - name: Install dependencies
+        run: |
+          yarn install
+      - name: Build
+        run: |
+          yarn doc
+      - name: Package
+        run: |
+          id="apache-arrow-js-docs-${VERSION}"
+          tar_gz="${id}.tar.gz"
+          mv doc "${id}"
+          tar czf "${tar_gz}" "${id}"
+          sha256sum "${tar_gz}" > "${tar_gz}.sha256"
+          sha512sum "${tar_gz}" > "${tar_gz}.sha512"
+      - name: Upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-docs
+          path: |
+            apache-arrow-js-docs-*.tar.gz*
+      - name: Prepare for publish
+        run: |
+          need_publish=no
+          branch=
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            if [ "${GITHUB_REPOSITORY}" = "apache/arrow-js" ]; then
+              branch=asf-site
+              if [ "${GITHUB_REF_NAME}" = "main" ]; then
+                need_publish=yes
+              fi
+            else
+              branch=gh-pages
+              need_publish=yes
+            fi
+          fi
+          if [ "${need_publish}" = "yes" ]; then
+            ci/scripts/update_docs.sh "${VERSION}" "${branch}"
+          fi
+          echo "NEED_PUBLISH=${need_publish}" >> "${GITHUB_ENV}"
+      - name: Publish
+        if: env.NEED_PUBLISH == 'yes'
+        run: |
+          cd site
+          cp -a ../.asf.yaml ./
+          git add .asf.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "$(git diff --cached)" != "" ]; then
+            git commit -m "Update ${GITHUB_SHA}"
+            git push origin "$(git branch --show-current)"
+          fi
+
   packages:
     name: Packages
     runs-on: ubuntu-latest
@@ -153,6 +222,7 @@ jobs:
   upload:
     name: Upload
     needs:
+      - docs
       - target
       - verify
     runs-on: ubuntu-latest

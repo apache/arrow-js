@@ -1,4 +1,4 @@
-<!---
+<!--
   Licensed to the Apache Software Foundation (ASF) under one
   or more contributor license agreements.  See the NOTICE file
   distributed with this work for additional information
@@ -28,7 +28,7 @@
 5. Announce the new release on the mailing list (detailed later)
 6. Announce the new release on social media (detailed later)
 
-### Prepare release environment
+## Prepare release environment
 
 This step is needed only when you act as a release manager the first time.
 
@@ -79,7 +79,7 @@ $ head KEYS
 $ svn ci KEYS
 ```
 
-### Bump version for new release
+## Bump version for new release
 
 Open a PR that bumps version for new release. We must follow [Semantic
 Versioning](https://semver.org/). For example, we must bump major
@@ -87,7 +87,7 @@ version when we have any incompatible changes.
 
 You can proceed to the next step once we merge the opened PR.
 
-### Prepare RC and vote
+## Prepare RC and vote
 
 You can use `dev/release/release_rc.sh`.
 
@@ -116,7 +116,7 @@ $ dev/release/release_rc.sh 1
 The argument of `release_rc.sh` is the RC number. If RC1 has a
 problem, we'll increment the RC number such as RC2, RC3 and so on.
 
-### Publish
+## Publish
 
 We need to do the followings to publish a new release:
 
@@ -140,7 +140,7 @@ $ dev/release/release.sh 1
 Add the release to ASF's report database via [Apache Committee Report
 Helper](https://reporter.apache.org/addrelease.html?arrow).
 
-### Announce the new release on the mailing list
+## Announce the new release on the mailing list
 
 Send an email to "announce@apache.org" from your Apache email, CC'ing
 dev@arrow.apache.org/user@arrow.apache.org.  See an [example
@@ -185,7 +185,7 @@ Regards,
 The Apache Arrow community.
 ```
 
-### Announce the new release on social media
+## Announce the new release on social media
 
 Make a post on our [BlueSky](https://bsky.app/profile/arrow.apache.org) and
 [LinkedIn](https://www.linkedin.com/company/apache-arrow/) accounts. (Ask

@@ -78,12 +78,11 @@ rc_hash="$(git rev-list --max-count=1 "${rc_tag}")"
 
 artifacts_dir="apache-arrow-js-${version}-rc${rc}"
 signed_artifacts_dir="${artifacts_dir}-signed"
+git_origin_url="$(git remote get-url origin)"
+repository="${git_origin_url#*github.com?}"
+repository="${repository%.git}"
 
 if [ "${RELEASE_SIGN}" -gt 0 ]; then
-  git_origin_url="$(git remote get-url origin)"
-  repository="${git_origin_url#*github.com?}"
-  repository="${repository%.git}"
-
   echo "Looking for GitHub Actions workflow on ${repository}:${rc_tag}"
   run_id=""
   while true; do
