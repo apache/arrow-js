@@ -28,8 +28,6 @@ const readFile = promisify(fs.readFile);
 import asyncDoneSync from 'async-done';
 const asyncDone = promisify(asyncDoneSync);
 const exec = promisify(child_process.exec);
-import xml2js from 'xml2js';
-const parseXML = promisify(xml2js.parseString);
 import { targetAndModuleCombinations, npmPkgName } from './util.js';
 import { createRequire } from 'node:module';
 
