@@ -27,8 +27,7 @@ import sourcemaps from 'gulp-sourcemaps';
 import { memoizeTask } from './memoize-task.js';
 import { compileBinFiles } from './typescript-task.js';
 
-import closureCompiler from 'google-closure-compiler';
-const compiler = closureCompiler.gulp();
+import { gulp as compiler } from 'google-closure-compiler';
 
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
