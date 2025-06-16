@@ -49,7 +49,7 @@
     "@swc/helpers": "^0.5.11",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
-    "@types/node": "^22.15.21",
+    "@types/node": "^24.0.3",
     "command-line-args": "^6.0.1",
     "command-line-usage": "^7.0.1",
     "flatbuffers": "^25.1.24",
