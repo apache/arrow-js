@@ -140,16 +140,16 @@ test_package_distributions() {
   rm -rf targets
   mkdir -p targets
   for target in apache-arrow \
-                  apache-arrow-es2015-cjs \
-                  apache-arrow-es2015-esm \
-                  apache-arrow-es2015-umd \
-                  apache-arrow-es5-cjs \
-                  apache-arrow-es5-esm \
-                  apache-arrow-es5-umd \
-                  apache-arrow-esnext-cjs \
-                  apache-arrow-esnext-esm \
-                  apache-arrow-esnext-umd \
-                  apache-arrow-ts; do
+    apache-arrow-es2015-cjs \
+    apache-arrow-es2015-esm \
+    apache-arrow-es2015-umd \
+    apache-arrow-es5-cjs \
+    apache-arrow-es5-esm \
+    apache-arrow-es5-umd \
+    apache-arrow-esnext-cjs \
+    apache-arrow-esnext-esm \
+    apache-arrow-esnext-umd \
+    apache-arrow-ts; do
     download_rc_file "${target}-${VERSION}.tgz"
     download_rc_file "${target}-${VERSION}.tgz.sha256"
     ${sha256_verify} "${target}-${VERSION}.tgz.sha256"

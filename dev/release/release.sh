@@ -119,7 +119,7 @@ if [ "${RELEASE_PUBLISH}" -gt 0 ]; then
     --dir "." \
     --pattern "*.tgz" \
     --repo "${repository}"
-  read -p "Please enter your npm 2FA one-time password (or leave empty if you don't have 2FA enabled): " NPM_OTP </dev/tty
+  read -r -p "Please enter your npm 2FA one-time password (or leave empty if you don't have 2FA enabled): " NPM_OTP </dev/tty
   for package in *.tgz; do
     npm publish "${package}" "${NPM_OTP:+--otp=${NPM_OTP}}"
   done

@@ -30,3 +30,20 @@ repos:
               rm -f apache-arrow-js.tar.gz"
         always_run: true
         pass_filenames: false
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        alias: shell
+  - repo: https://github.com/scop/pre-commit-shfmt
+    # v3.11.0-1 or later requires pre-commit 3.2.0 or later but Ubuntu
+    # 22.04 ships pre-commit 2.17.0. We can use update this rev after
+    # Ubuntu 22.04 reached EOL (June 2027).
+    rev: v3.10.0-1
+    hooks:
+      - id: shfmt
+        alias: shell
+        args:
+          # The default args is "--write --simplify" but we don't use
+          # "--simplify". Because it's conflicted will ShellCheck.
+          - "--write"
