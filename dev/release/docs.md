@@ -30,8 +30,8 @@ We publish our official docs to the following locations:
 We also publish docs for fork repositories for preview. It uses the
 following locations:
 
-* https://${GITHUB_ID}.github.io/ : List all available docs
-* https://${GITHUB_ID}.github.io/${BRANCH}/ : For the `${BRANCH}` branch
+* https://${GITHUB_ID}.github.io/arrow-js/ : List all available docs
+* https://${GITHUB_ID}.github.io/arrow-js/${BRANCH}/ : For the `${BRANCH}` branch
 
 All of them are automated. This documentation describes how it works.
 
