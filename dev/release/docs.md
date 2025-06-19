@@ -77,9 +77,10 @@ documentation. The `gh-pages` branch is used for it.
 
 Note that we don't need to touch the `gh-pages` branch manually. It's
 completely maintained automatically. If the `gh-pages` branch doesn't
-exist, it's created automatically. If your fork is bigger by the
-`gh-pages` branch, you can delete the `gh-pages` branch. Because it
-has only temporary data and can be generated automatically.
+exist, it's created automatically. If your fork repository's size
+becomes bigger by the `gh-pages` branch, you can delete the `gh-pages`
+branch. Because it has only temporary data and can be generated
+automatically.
 
 You need to enable GitHub Pages on your fork repository. See
 [DEVELOP.md](../../DEVELOP.md#how-to-preview-documentation-on-your-fork-repository) how to enable GitHub Pages on your fork repository.
