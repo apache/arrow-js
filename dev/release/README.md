@@ -128,10 +128,10 @@ Run `dev/release/release.sh` on a working copy of
 archive to apache.org:
 
 ```console
-$ dev/release/release.sh ${VERSION} ${RC}
+$ dev/release/release.sh ${RC}
 ```
 
-Here is an example to release 20.0.0 RC1:
+Here is an example to release RC1:
 
 ```console
 $ dev/release/release.sh 1
