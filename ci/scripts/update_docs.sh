@@ -34,7 +34,7 @@ html_escape() {
 if ! git fetch origin "${target_branch}"; then
   git worktree add --orphan -b "${target_branch}" site
 else
-  git worktree add site "origin/${target_branch}"
+  git worktree add site -B "${target_branch}" "origin/${target_branch}"
 fi
 
 tar_gz="${PWD}/apache-arrow-js-docs-${version}.tar.gz"
@@ -67,7 +67,7 @@ else
       continue
     fi
     if ! git fetch origin "${branch}"; then
-      git rm "${branch}"
+      git rm -r "${branch}"
     fi
   done
 
