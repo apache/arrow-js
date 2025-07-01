@@ -24,7 +24,7 @@ import { share } from 'rxjs/operators';
 import gulpJsonTransform from 'gulp-json-transform';
 
 export const packageTask = ((cache) => memoizeTask(cache, function bundle(target, format) {
-    if (target === `src`) return ObservableEmpty();
+    if (target === `src`) return ObservableEmpty;
     const out = targetDir(target, format);
     const jsonTransform = gulpJsonTransform(target === npmPkgName ? createMainPackageJson(target, format) :
                                             target === `ts`       ? createTypeScriptPackageJson(target, format)
