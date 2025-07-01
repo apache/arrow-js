@@ -36,7 +36,6 @@ import rollupAlias from '@rollup/plugin-alias';
 
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import webpack from 'webpack-stream';
-import named from 'vinyl-named';
 
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -98,7 +97,6 @@ export const rollupTask = (minify = true) => () => ObservableForkJoin(
 const webpackDir = join(bundleDir, 'webpack');
 export const webpackTask = (opts = { minify: true, analyze: false }) => () => observableFromStreams(
     gulp.src(bundlesGlob),
-    named(),
     webpack({
         mode: opts?.minify == false ? 'development' : 'production',
         optimization: {

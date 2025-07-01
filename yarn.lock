@@ -5890,7 +5890,7 @@ through2@^4.0.2:
   dependencies:
     readable-stream "3"
 
-through@^2.3.6, through@^2.3.8:
+through@^2.3.8:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
   integrity sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==
@@ -6215,13 +6215,6 @@ vinyl-fs@^4.0.2:
     value-or-function "^4.0.0"
     vinyl "^3.0.1"
     vinyl-sourcemap "^2.0.0"
-
-vinyl-named@1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/vinyl-named/-/vinyl-named-1.1.0.tgz#94e4fe741e38db0ec303e5b3d868b297a2deab66"
-  integrity sha512-ElYBnsSw8Y1Hz11WPw0DFmi+TBNTEBhZ9zXaHluDSIZZnkFIGCjGRBpsW5QmbMMLwv+lRpUD3VbKdJCbNpct7Q==
-  dependencies:
-    through "^2.3.6"
 
 vinyl-source-stream@2.0.0:
   version "2.0.0"
