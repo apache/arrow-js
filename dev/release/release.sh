@@ -126,6 +126,51 @@ if [ "${RELEASE_PUBLISH}" -gt 0 ]; then
   rm -rf "${packages_dir}"
 fi
 
+echo
+echo "Draft email for announce@apache.org, dev@arrow.apache.org"
+echo "and user@arrow.apache.org mailing lists"
+echo ""
+echo "---------------------------------------------------------"
+cat <<MAIL
+To: announce@apache.org
+Cc: dev@arrow.apache.org, user@arrow.apache.org
+Subject: [ANNOUNCE] Apache Arrow JS ${version} released
+
+The Apache Arrow community is pleased to announce the Apache Arrow JS
+${version} release.
+
+The release is available now.
+
+Source archive:
+  https://www.apache.org/dyn/closer.lua/arrow/apache-arrow-js-${version}/
+
+On www.npmjs.com:
+  https://www.npmjs.com/package/apache-arrow
+  https://www.npmjs.com/org/apache-arrow
+
+Read the full changelog:
+  https://github.com/apache/arrow-js/releases/tag/${tag}
+
+What is Apache Arrow?
+---------------------
+
+Apache Arrow is a universal columnar format and multi-language toolbox
+for fast data interchange and in-memory analytics. It houses a set of
+canonical in-memory representations of flat and hierarchical data
+along with multiple language-bindings for structure manipulation. It
+also provides low-overhead streaming and batch messaging, zero-copy
+interprocess communication (IPC), and vectorized in-memory analytics
+libraries.
+
+Please report any feedback to the GitHub repository:
+  https://github.com/apache/arrow-js/issues
+  https://github.com/apache/arrow-js/discussions
+
+Regards,
+The Apache Arrow community.
+MAIL
+echo "---------------------------------------------------------"
+echo
 echo "Success! The release is available here:"
 echo "  https://dist.apache.org/repos/dist/release/arrow/${release_id}"
 echo "  https://www.npmjs.com/package/apache-arrow"
