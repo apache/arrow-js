@@ -51,6 +51,7 @@ jobs:
         run: |
           version=${GITHUB_REF_NAME#v}
           gh release create ${GITHUB_REF_NAME} \
+            --discussion-category Announcements \
             --generate-notes \
             --repo ${GITHUB_REPOSITORY} \
             --title "Apache Arrow JS ${version}" \
