@@ -22,6 +22,7 @@ import { Time } from './time.js';
 import { Timestamp } from './timestamp.js';
 import { Union } from './union.js';
 import { Utf8 } from './utf8.js';
+import { Utf8View } from './utf8-view.js';
 
 
 /**
@@ -52,13 +53,14 @@ export enum Type {
   LargeBinary = 19,
   LargeUtf8 = 20,
   LargeList = 21,
-  RunEndEncoded = 22
+  RunEndEncoded = 22,
+  Utf8View = 24
 }
 
 export function unionToType(
   type: Type,
-  accessor: (obj:Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8) => Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|null
-): Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|null {
+  accessor: (obj:Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|Utf8View) => Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|Utf8View|null
+): Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|Utf8View|null {
   switch(Type[type]) {
     case 'NONE': return null;
     case 'Null': return accessor(new Null())! as Null;
@@ -83,15 +85,16 @@ export function unionToType(
     case 'LargeUtf8': return accessor(new LargeUtf8())! as LargeUtf8;
     case 'LargeList': return accessor(new LargeList())! as LargeList;
     case 'RunEndEncoded': return accessor(new RunEndEncoded())! as RunEndEncoded;
+    case 'Utf8View': return accessor(new Utf8View())! as Utf8View;
     default: return null;
   }
 }
 
 export function unionListToType(
   type: Type,
-  accessor: (index: number, obj:Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8) => Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|null,
+  accessor: (index: number, obj:Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|Utf8View) => Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|Utf8View|null,
   index: number
-): Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|null {
+): Binary|Bool|Date|Decimal|Duration|FixedSizeBinary|FixedSizeList|FloatingPoint|Int|Interval|LargeBinary|LargeList|LargeUtf8|List|Map|Null|RunEndEncoded|Struct_|Time|Timestamp|Union|Utf8|Utf8View|null {
   switch(Type[type]) {
     case 'NONE': return null;
     case 'Null': return accessor(index, new Null())! as Null;
@@ -116,6 +119,7 @@ export function unionListToType(
     case 'LargeUtf8': return accessor(index, new LargeUtf8())! as LargeUtf8;
     case 'LargeList': return accessor(index, new LargeList())! as LargeList;
     case 'RunEndEncoded': return accessor(index, new RunEndEncoded())! as RunEndEncoded;
+    case 'Utf8View': return accessor(index, new Utf8View())! as Utf8View;
     default: return null;
   }
 }
