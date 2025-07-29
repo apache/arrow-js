@@ -98,7 +98,7 @@
         "TS_NODE_CACHE": "false"
       },
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ],
       "args": [
         "--mode",
@@ -128,7 +128,7 @@
         "${workspaceFolder}/node_modules/**/*.js"
       ],
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ]
     },
     {
@@ -140,7 +140,7 @@
         "TS_NODE_CACHE": "false"
       },
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ],
       "console": "integratedTerminal",
       "skipFiles": [
@@ -162,7 +162,7 @@
         "TS_NODE_CACHE": "false"
       },
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ],
       "skipFiles": [
         "<node_internals>/**/*.js",
@@ -183,7 +183,7 @@
         "TS_NODE_CACHE": "false"
       },
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ],
       "skipFiles": [
         "<node_internals>/**/*.js",
@@ -204,7 +204,7 @@
         "TS_NODE_CACHE": "false"
       },
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ],
       "skipFiles": [
         "<node_internals>/**/*.js",
@@ -229,7 +229,7 @@
         "TS_NODE_CACHE": "false"
       },
       "runtimeArgs": [
-        "--loader", "ts-node/esm/transpile-only"
+        "--import", "@swc-node/register/esm-register"
       ],
       "skipFiles": [
         "<node_internals>/**/*.js",

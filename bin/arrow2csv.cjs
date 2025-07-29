@@ -23,9 +23,7 @@ const arrow2csv = Path.join(here, `src/bin/arrow2csv.ts`);
 const env = { ...process.env, TS_NODE_TRANSPILE_ONLY: `true` };
 
 require('child_process').spawn(`node`, [
-    `-r`,
-    `ts-node/register`,
-    `--loader`,
-    `ts-node/esm/transpile-only`,
+    `--import`,
+    `@swc-node/register/esm-register`
     arrow2csv, ...process.argv.slice(2)
 ], { cwd: here, env, stdio: `inherit` });
