@@ -247,7 +247,7 @@ Full list of broader Apache Arrow [projects & organizations](https://arrow.apach
 
 ## License
 
-[Apache 2.0](https://github.com/apache/arrow-js/blob/main/LICENSE)
+[Apache 2.0](https://github.com/apache/arrow-js/blob/main/LICENSE.txt)
 
 [1]: mailto:dev-subscribe@arrow.apache.org
 [2]: https://github.com/apache/arrow/tree/main/format
