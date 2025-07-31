@@ -22,7 +22,7 @@ import {
     DataType, strideForType,
     Float, Int, Decimal, FixedSizeBinary,
     Date_, Time, Timestamp, Interval, Duration,
-    Utf8, LargeUtf8, Binary, LargeBinary, List, Map_, Utf8View,
+    Utf8, Utf8View, LargeUtf8, Binary, LargeBinary, List, Map_,
 } from './type.js';
 import { createIsValidFunction } from './builder/valid.js';
 import { BufferBuilder, BitmapBufferBuilder, DataBufferBuilder, OffsetsBufferBuilder } from './builder/buffer.js';

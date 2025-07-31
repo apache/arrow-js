@@ -42,7 +42,7 @@ import { DictionaryEncoding } from '../fb/dictionary-encoding.js';
 import { FixedSizeBinary } from '../fb/fixed-size-binary.js';
 import { FixedSizeList } from '../fb/fixed-size-list.js';
 import { Map as Map_ } from '../fb/map.js';
-import { Utf8View } from "../fb/utf8-view.ts";
+import { Utf8View } from "../fb/utf8-view.js";
 
 /** @ignore */
 export interface TypeAssembler extends Visitor {

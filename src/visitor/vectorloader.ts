@@ -180,7 +180,7 @@ export class JSONVectorLoader extends VectorLoader {
             return binaryDataFromJSON(sources[offset] as string[]);
         } else if (DataType.isBool(type)) {
             return packBools(sources[offset] as number[]);
-        } else if (DataType.isUtf8(type) || DataType.isLargeUtf8(type)) {
+        } else if (DataType.isUtf8(type) || DataType.isUtf8View(type) ||  DataType.isLargeUtf8(type)) {
             return encodeUtf8((sources[offset] as string[]).join(''));
         } else if (DataType.isInterval(type)) {
             switch (type.unit) {
