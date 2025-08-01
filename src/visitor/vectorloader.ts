@@ -72,6 +72,9 @@ export class VectorLoader extends Visitor {
     public visitUtf8<T extends type.Utf8>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
     }
+    public visitUtf8View<T extends type.Utf8View>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
+    }
     public visitLargeUtf8<T extends type.LargeUtf8>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
     }
@@ -177,7 +180,7 @@ export class JSONVectorLoader extends VectorLoader {
             return binaryDataFromJSON(sources[offset] as string[]);
         } else if (DataType.isBool(type)) {
             return packBools(sources[offset] as number[]);
-        } else if (DataType.isUtf8(type) || DataType.isLargeUtf8(type)) {
+        } else if (DataType.isUtf8(type) || DataType.isUtf8View(type) ||  DataType.isLargeUtf8(type)) {
             return encodeUtf8((sources[offset] as string[]).join(''));
         } else if (DataType.isInterval(type)) {
             switch (type.unit) {

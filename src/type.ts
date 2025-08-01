@@ -60,6 +60,7 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
     /** @nocollapse */ static isBinary(x: any): x is Binary { return x?.typeId === Type.Binary; }
     /** @nocollapse */ static isLargeBinary(x: any): x is LargeBinary { return x?.typeId === Type.LargeBinary; }
     /** @nocollapse */ static isUtf8(x: any): x is Utf8 { return x?.typeId === Type.Utf8; }
+    /** @nocollapse */ static isUtf8View(x: any): x is Utf8View { return x?.typeId === Type.Utf8View; }
     /** @nocollapse */ static isLargeUtf8(x: any): x is LargeUtf8 { return x?.typeId === Type.LargeUtf8; }
     /** @nocollapse */ static isBool(x: any): x is Bool { return x?.typeId === Type.Bool; }
     /** @nocollapse */ static isDecimal(x: any): x is Decimal { return x?.typeId === Type.Decimal; }
@@ -281,6 +282,20 @@ export class Utf8 extends DataType<Type.Utf8> {
         (<any>proto).ArrayType = Uint8Array;
         return proto[Symbol.toStringTag] = 'Utf8';
     })(Utf8.prototype);
+}
+
+/** @ignore */
+export interface Utf8View extends DataType<Type.Utf8View> { TArray: Uint8Array; TOffsetArray: Int32Array; TValue: string; ArrayType: TypedArrayConstructor<Uint8Array>; OffsetArrayType: TypedArrayConstructor<Int32Array> }
+/** @ignore */
+export class Utf8View extends DataType<Type.Utf8View> {
+    constructor() {
+        super(Type.Utf8View);
+    }
+    public toString() { return `Utf8View`; }
+    protected static [Symbol.toStringTag] = ((proto: Utf8View) => {
+        (<any>proto).ArrayType = Uint8Array;
+        return proto[Symbol.toStringTag] = 'Utf8View';
+    })(Utf8View.prototype);
 }
 
 /** @ignore */
