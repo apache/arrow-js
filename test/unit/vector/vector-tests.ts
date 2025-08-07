@@ -16,7 +16,7 @@
 // under the License.
 
 import {
-    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
+    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, util, Vector, vectorFromArray, makeData, FixedSizeList, Field, Utf8View,
 } from 'apache-arrow';
 
 describe(`makeVectorFromArray`, () => {
@@ -218,6 +218,28 @@ describe(`Utf8Vector`, () => {
 
     test(`has utf8 type`, () => {
         expect(vector.type).toBeInstanceOf(Utf8);
+    });
+
+    test(`is not memoized`, () => {
+        expect(vector.isMemoized).toBe(false);
+        const memoizedVector = vector.memoize();
+        expect(memoizedVector.isMemoized).toBe(true);
+        const unMemoizedVector = vector.unmemoize();
+        expect(unMemoizedVector.isMemoized).toBe(false);
+    });
+
+    basicVectorTests(vector, values, ['abc', '123']);
+    describe(`sliced`, () => {
+        basicVectorTests(vector.slice(1, 3), values.slice(1, 3), ['foo', 'abc']);
+    });
+});
+
+describe(`Utf8ViewVector`, () => {
+    const values = ['foo', 'bar', 'baz', 'foo bar', 'bar'];
+    const vector = vectorFromArray(values, new Utf8View);
+
+    test(`has utf8view type`, () => {
+        expect(vector.type).toBeInstanceOf(Utf8View);
     });
 
     test(`is not memoized`, () => {

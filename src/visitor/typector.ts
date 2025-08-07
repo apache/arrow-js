@@ -49,6 +49,7 @@ export class GetDataTypeConstructor extends Visitor {
     public visitFloat32() { return type.Float32; }
     public visitFloat64() { return type.Float64; }
     public visitUtf8() { return type.Utf8; }
+    public visitUtf8View() { return type.Utf8View; }
     public visitLargeUtf8() { return type.LargeUtf8; }
     public visitBinary() { return type.Binary; }
     public visitLargeBinary() { return type.LargeBinary; }
