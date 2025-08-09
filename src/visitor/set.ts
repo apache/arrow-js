@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Data } from '../data.js';
+import { Data, Utf8ViewData } from '../data.js';
 import { Field } from '../schema.js';
 import { Vector } from '../vector.js';
 import { Visitor } from '../visitor.js';
@@ -60,7 +60,7 @@ export interface SetVisitor extends Visitor {
     visitFloat32<T extends Float32>(data: Data<T>, index: number, value: T['TValue']): void;
     visitFloat64<T extends Float64>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number, value: T['TValue']): void;
-    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitUtf8View<T extends Utf8View>(data: Utf8ViewData<T>, index: number, value: T['TValue']): void;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number, value: T['TValue']): void;
     visitBinary<T extends Binary>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -110,6 +110,16 @@ function wrapSet<T extends DataType>(fn: (data: Data<T>, _1: any, _2: any) => vo
     };
 }
 
+
+/** @ignore */
+function wrapSetView<T extends DataType>(fn: (data: Utf8ViewData<T>, _1: any, _2: any) => void) {
+    return (data: Utf8ViewData<T>, _1: any, _2: any) => {
+        if (data.setValid(_1, _2 != null)) {
+            return fn(data, _1, _2);
+        }
+    };
+}
+
 /** @ignore */
 export const setEpochMsToDays = (data: Int32Array, index: number, epochMs: number) => { data[index] = Math.floor(epochMs / 86400000); };
 
@@ -120,6 +130,16 @@ export const setVariableWidthBytes = <T extends Int32Array | BigInt64Array>(valu
         const y = bigIntToNumber(valueOffsets[index + 1]);
         values.set(value.subarray(0, y - x), x);
     }
+};
+
+/** @ignore */
+export const setVariableWidthBytesView = (values: Uint8Array, vardic: Uint8Array[], index: number, value: Uint8Array) => {
+    // if (index + 1 < valueOffsets.length) {
+    //     const x = bigIntToNumber(valueOffsets[index]);
+    //     const y = bigIntToNumber(valueOffsets[index + 1]);
+    //     values.set(value.subarray(0, y - x), x);
+    // }
+    console.log(values, vardic, index, value);
 };
 
 /** @ignore */
@@ -157,6 +177,7 @@ export const setFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }
 const setBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, value);
 /** @ignore */
 const setUtf8 = <T extends Utf8 | Utf8View | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
+const setUtf8View = <T extends Utf8View>({ values, vardic }: Utf8ViewData<T>, index: number, value: T['TValue']) => setVariableWidthBytesView(values, vardic, index, encodeUtf8(value));
 
 /* istanbul ignore next */
 export const setDate = <T extends Date_>(data: Data<T>, index: number, value: T['TValue']): void => {
@@ -359,7 +380,7 @@ SetVisitor.prototype.visitFloat16 = wrapSet(setFloat16);
 SetVisitor.prototype.visitFloat32 = wrapSet(setFloat);
 SetVisitor.prototype.visitFloat64 = wrapSet(setFloat);
 SetVisitor.prototype.visitUtf8 = wrapSet(setUtf8);
-SetVisitor.prototype.visitUtf8View = wrapSet(setUtf8);
+SetVisitor.prototype.visitUtf8View = wrapSetView(setUtf8View);
 SetVisitor.prototype.visitLargeUtf8 = wrapSet(setUtf8);
 SetVisitor.prototype.visitBinary = wrapSet(setBinary);
 SetVisitor.prototype.visitLargeBinary = wrapSet(setBinary);

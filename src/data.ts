@@ -15,10 +15,40 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Vector } from './vector.js';
-import { BufferType, Type, UnionMode } from './enum.js';
-import { DataType, strideForType } from './type.js';
-import { popcnt_bit_range, truncateBitmap } from './util/bit.js';
+import {Vector} from './vector.js';
+import {BufferType, Type, UnionMode} from './enum.js';
+import {
+    Binary,
+    Bool,
+    DataType,
+    Date_,
+    Decimal,
+    DenseUnion,
+    Dictionary,
+    Duration,
+    FixedSizeBinary,
+    FixedSizeList,
+    Float,
+    Int,
+    Interval,
+    LargeBinary,
+    LargeUtf8,
+    List,
+    Map_,
+    Null,
+    SparseUnion,
+    strideForType,
+    Struct,
+    Time,
+    Timestamp,
+    Union,
+    Utf8,
+    Utf8View
+} from './type.js';
+import {popcnt_bit_range, truncateBitmap} from './util/bit.js';
+
+import {Visitor} from './visitor.js';
+import {toArrayBufferView, toBigInt64Array, toInt32Array, toUint8Array} from './util/buffer.js';
 
 // When slicing, we do not know the null count of the sliced range without
 // doing some computation. To avoid doing this eagerly, we set the null count
@@ -42,12 +72,22 @@ export interface Buffers<T extends DataType> {
 }
 
 /** @ignore */
+// Layout
+export interface ViewBuffers<T extends DataType> {
+    0: undefined;
+    [BufferType.DATA]: T['TArray'][];
+    [BufferType.VALIDITY]: Uint8Array;
+    [BufferType.TYPE]: T['TArray'];
+    [BufferType.VIEW]: T['TArray'];
+}
+
+
+/** @ignore */
 export interface Data<T extends DataType = DataType> {
     readonly TType: T['TType'];
     readonly TArray: T['TArray'];
     readonly TValue: T['TValue'];
 }
-
 /**
  * Data structure underlying {@link Vector}s. Use the convenience method {@link makeData}.
  */
@@ -252,26 +292,216 @@ export class Data<T extends DataType = DataType> {
     }
 }
 
+export class Utf8ViewData<T extends DataType = DataType> {
+
+    declare public readonly type: T;
+    declare public readonly length: number;
+    declare public readonly offset: number;
+    declare public readonly stride: number;
+    declare public readonly children: Data[];
+
+    /**
+     * The dictionary for this Vector, if any. Only used for Dictionary type.
+     */
+    declare public dictionary?: Vector;
+
+    declare public readonly values: ViewBuffers<T>[BufferType.VIEW];
+    declare public readonly typeIds: ViewBuffers<T>[BufferType.TYPE];
+    declare public readonly nullBitmap: ViewBuffers<T>[BufferType.VALIDITY];
+    declare public readonly vardic: ViewBuffers<T>[BufferType.DATA];
+
+    public get typeId(): T['TType'] { return this.type.typeId; }
+
+    public get ArrayType(): T['ArrayType'] { return this.type.ArrayType; }
+
+    public get buffers() {
+        return [this.vardic, this.nullBitmap, this.typeIds, this.values] as Buffers<T>;
+    }
+
+    public get nullable(): boolean {
+        if (this._nullCount !== 0) {
+            const { type } = this;
+            if (DataType.isSparseUnion(type)) {
+                return this.children.some((child) => child.nullable);
+            } else if (DataType.isDenseUnion(type)) {
+                return this.children.some((child) => child.nullable);
+            }
+            return this.nullBitmap && this.nullBitmap.byteLength > 0;
+        }
+        return true;
+    }
+
+    public get byteLength(): number {
+        let byteLength = 0;
+        const { vardic, values, nullBitmap, typeIds } = this;
+        vardic && (byteLength += 0); //fixme:
+        values && (byteLength += values.byteLength);
+        nullBitmap && (byteLength += nullBitmap.byteLength);
+        typeIds && (byteLength += typeIds.byteLength);
+        return this.children.reduce((byteLength, child) => byteLength + child.byteLength, byteLength);
+    }
+
+    protected _nullCount: number | kUnknownNullCount;
+
+    // public get nullCount(): number {
+    //     if (DataType.isUnion(this.type)) {
+    //         return this.children.reduce((nullCount, child) => nullCount + child.nullCount, 0);
+    //     }
+    //     let nullCount = this._nullCount;
+    //     let nullBitmap: Uint8Array | undefined;
+    //     if (nullCount <= kUnknownNullCount && (nullBitmap = this.nullBitmap)) {
+    //         this._nullCount = nullCount = nullBitmap.length === 0 ?
+    //             // no null bitmap, so all values are valid
+    //             0 :
+    //             this.length - popcnt_bit_range(nullBitmap, this.offset, this.offset + this.length);
+    //     }
+    //     return nullCount;
+    // }
+
+    constructor(type: T, offset: number, length: number, nullCount?: number | undefined, buffers?: Partial<ViewBuffers<T>> | Utf8ViewData<T>, children: Data[] = [], dictionary?: Vector) {
+        this.type = type;
+        this.children = children;
+        this.dictionary = dictionary;
+        this.offset = Math.floor(Math.max(offset || 0, 0));
+        this.length = Math.floor(Math.max(length || 0, 0));
+        this._nullCount = Math.floor(Math.max(nullCount || 0, -1));
+        let buffer: ViewBuffers<T>[keyof ViewBuffers<T>];
+        if (buffers instanceof Utf8ViewData) {
+            this.stride = buffers.stride;
+            this.values = buffers.values;
+            this.typeIds = buffers.typeIds;
+            this.nullBitmap = buffers.nullBitmap;
+            this.vardic = buffers.vardic;
+        } else {
+            this.stride = strideForType(type);
+            if (buffers) {
+                (buffer = (buffers as ViewBuffers<T>)[1]) && (this.vardic = buffer);
+                (buffer = (buffers as ViewBuffers<T>)[4]) && (this.values = buffer);
+                (buffer = (buffers as ViewBuffers<T>)[3]) && (this.typeIds = buffer);
+                (buffer = (buffers as ViewBuffers<T>)[2]) && (this.nullBitmap = buffer);
+            }
+        }
+    }
+
+    public getValid(_: number): boolean {
+    //     const { type } = this;
+    //     if (DataType.isUnion(type)) {
+    //         const union = (<unknown>type as Union);
+    //         const child = this.children[union.typeIdToChildIndex[this.typeIds[index]]];
+    //         const indexInChild = union.mode === UnionMode.Dense ? this.valueOffsets[index] : index;
+    //         return child.getValid(indexInChild);
+    //     }
+    //     if (this.nullable && this.nullCount > 0) {
+    //         const pos = this.offset + index;
+    //         const val = this.nullBitmap[pos >> 3];
+    //         return (val & (1 << (pos % 8))) !== 0;
+    //     }
+        return true;
+    }
+
+    public setValid(index: number, value: boolean): boolean {
+        console.log(index, value);
+        return true
+        // let prev: boolean;
+        // const { type } = this;
+        // if (DataType.isUnion(type)) {
+        //     const union = (<unknown>type as Union);
+        //     const child = this.children[union.typeIdToChildIndex[this.typeIds[index]]];
+        //     const indexInChild = union.mode === UnionMode.Dense ? this.valueOffsets[index] : index;
+        //     prev = child.getValid(indexInChild);
+        //     child.setValid(indexInChild, value);
+        // } else {
+        //     let { nullBitmap } = this;
+        //     const { offset, length } = this;
+        //     const idx = offset + index;
+        //     const mask = 1 << (idx % 8);
+        //     const byteOffset = idx >> 3;
+        //
+        //     // If no null bitmap, initialize one on the fly
+        //     if (!nullBitmap || nullBitmap.byteLength <= byteOffset) {
+        //         nullBitmap = new Uint8Array((((offset + length) + 63) & ~63) >> 3).fill(255);
+        //         // if we have a nullBitmap, truncate + slice and set it over the pre-filled 1s
+        //         if (this.nullCount > 0) {
+        //             nullBitmap.set(truncateBitmap(offset, length, this.nullBitmap), 0);
+        //             Object.assign(this, { nullBitmap });
+        //         } else {
+        //             Object.assign(this, { nullBitmap, _nullCount: 0 });
+        //         }
+        //     }
+        //
+        //     const byte = nullBitmap[byteOffset];
+        //
+        //     prev = (byte & mask) !== 0;
+        //     nullBitmap[byteOffset] = value ? (byte | mask) : (byte & ~mask);
+        // }
+        //
+        // if (prev !== !!value) {
+        //     // Update `_nullCount` if the new value is different from the old value.
+        //     this._nullCount = this.nullCount + (value ? -1 : 1);
+        // }
+        //
+        // return value;
+    }
+
+    // public clone<R extends DataType = T>(type: R = this.type as any, offset = this.offset, length = this.length, nullCount = this._nullCount, buffers: Buffers<R> = <any>this, children: Data[] = this.children) {
+    //     return new Data(type, offset, length, nullCount, buffers, children, this.dictionary);
+    // }
+
+    // public slice(offset: number, length: number): Data<T> {
+    //     const { stride, typeId, children } = this;
+    //     // +true === 1, +false === 0, so this means
+    //     // we keep nullCount at 0 if it's already 0,
+    //     // otherwise set to the invalidated flag -1
+    //     const nullCount = +(this._nullCount === 0) - 1;
+    //     const childStride = typeId === 16 /* FixedSizeList */ ? stride : 1;
+    //     const buffers = this._sliceBuffers(offset, length, stride, typeId);
+    //     return this.clone<T>(this.type, this.offset + offset, length, nullCount, buffers,
+    //         // Don't slice children if we have value offsets (the variable-width types)
+    //         (children.length === 0 || this.valueOffsets) ? children : this._sliceChildren(children, childStride * offset, childStride * length));
+    // }
+
+    // public _changeLengthAndBackfillNullBitmap(newLength: number): Data<T> {
+    //     if (this.typeId === Type.Null) {
+    //         return this.clone(this.type, 0, newLength, 0);
+    //     }
+    //     const { length, nullCount } = this;
+    //     // start initialized with 0s (nulls), then fill from 0 to length with 1s (not null)
+    //     const bitmap = new Uint8Array(((newLength + 63) & ~63) >> 3).fill(255, 0, length >> 3);
+    //     // set all the bits in the last byte (up to bit `length - length % 8`) to 1 (not null)
+    //     bitmap[length >> 3] = (1 << (length - (length & ~7))) - 1;
+    //     // if we have a nullBitmap, truncate + slice and set it over the pre-filled 1s
+    //     if (nullCount > 0) {
+    //         bitmap.set(truncateBitmap(this.offset, length, this.nullBitmap), 0);
+    //     }
+    //     const buffers = this.buffers;
+    //     buffers[BufferType.VALIDITY] = bitmap;
+    //     return this.clone(this.type, 0, newLength, nullCount + (newLength - length), buffers);
+    // }
+
+    // protected _sliceBuffers(offset: number, length: number, stride: number, typeId: T['TType']): Buffers<T> {
+    //     let arr: any;
+    //     const { buffers } = this;
+    //     // If typeIds exist, slice the typeIds buffer
+    //     (arr = buffers[BufferType.TYPE]) && (buffers[BufferType.TYPE] = arr.subarray(offset, offset + length));
+    //     // If offsets exist, only slice the offsets buffer
+    //     (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length + 1)) ||
+    //     // Otherwise if no offsets, slice the data buffer. Don't slice the data vector for Booleans, since the offset goes by bits not bytes
+    //     (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = typeId === 6 ? arr : arr.subarray(stride * offset, stride * (offset + length)));
+    //     return buffers;
+    // }
+
+    protected _sliceChildren(children: Data[], offset: number, length: number): Data[] {
+        return children.map((child) => child.slice(offset, length));
+    }
+}
+
 (Data.prototype as any).children = Object.freeze([]);
-
-import {
-    Dictionary,
-    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
-    Float,
-    Int,
-    Date_,
-    Interval,
-    Duration,
-    Time,
-    Timestamp,
-    Union, DenseUnion, SparseUnion,
-} from './type.js';
-
-import { Visitor } from './visitor.js';
-import { toArrayBufferView, toBigInt64Array, toInt32Array, toUint8Array } from './util/buffer.js';
 
 class MakeDataVisitor extends Visitor {
     public visit<T extends DataType>(props: any): Data<T> {
+        return this.getVisitFn(props['type']).call(this, props);
+    }
+    public visitView<T extends DataType>(props: any): Utf8ViewData<T> {
         return this.getVisitFn(props['type']).call(this, props);
     }
     public visitNull<T extends Null>(props: NullDataProps<T>) {
@@ -313,11 +543,17 @@ class MakeDataVisitor extends Visitor {
     }
     public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
-        const data = toUint8Array(props['data']);
+
+        const data = toUint8Array(props['data']); // just a view
+        const vardic = props['vardic']?.map(value => {
+            return toUint8Array(value);
+        })
+
         const nullBitmap = toUint8Array(props['nullBitmap']);
-        const valueOffsets = toInt32Array(props['valueOffsets']);
-        const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
-        return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
+        const nullCount = props.nullCount;
+        const length = props.length || 0;
+        // const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Utf8ViewData(type, offset, length, nullCount, [undefined, vardic, nullBitmap, undefined, data]);
     }
     public visitLargeUtf8<T extends LargeUtf8>(props: LargeUtf8DataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
@@ -465,7 +701,7 @@ interface FixedSizeBinaryDataProps<T extends FixedSizeBinary> extends DataProps_
 interface BinaryDataProps<T extends Binary> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface LargeBinaryDataProps<T extends LargeBinary> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
-interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
+interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { data?: DataBuffer<T>, vardic?: DataBuffer<T>[] }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
@@ -503,6 +739,11 @@ export type DataProps<T extends DataType> = (
  /*                                */ DataProps_<T>
 );
 
+export function makeDataView<T extends Utf8View>(props: Utf8ViewDataProps<T>): Utf8ViewData<T>;
+export function makeDataView(props: any) {
+    return makeDataVisitor.visitView(props);
+}
+
 const makeDataVisitor = new MakeDataVisitor();
 
 export function makeData<T extends Null>(props: NullDataProps<T>): Data<T>;
@@ -520,7 +761,6 @@ export function makeData<T extends FixedSizeBinary>(props: FixedSizeBinaryDataPr
 export function makeData<T extends Binary>(props: BinaryDataProps<T>): Data<T>;
 export function makeData<T extends LargeBinary>(props: LargeBinaryDataProps<T>): Data<T>;
 export function makeData<T extends Utf8>(props: Utf8DataProps<T>): Data<T>;
-export function makeData<T extends Utf8View>(props: Utf8ViewDataProps<T>): Data<T>;
 export function makeData<T extends LargeUtf8>(props: LargeUtf8DataProps<T>): Data<T>;
 export function makeData<T extends List>(props: ListDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeList>(props: FixedSizeListDataProps<T>): Data<T>;

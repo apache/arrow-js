@@ -15,29 +15,71 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Data } from '../data.js';
-import { BN } from '../util/bn.js';
-import { Vector } from '../vector.js';
-import { Visitor } from '../visitor.js';
-import { MapRow } from '../row/map.js';
-import { StructRow, StructRowProxy } from '../row/struct.js';
-import { bigIntToNumber, divideBigInts } from '../util/bigint.js';
-import { decodeUtf8 } from '../util/utf8.js';
-import { TypeToDataType } from '../interfaces.js';
-import { uint16ToFloat64 } from '../util/math.js';
-import { Type, UnionMode, Precision, DateUnit, TimeUnit, IntervalUnit } from '../enum.js';
+import {Data, Utf8ViewData} from '../data.js';
+import {BN} from '../util/bn.js';
+import {Vector} from '../vector.js';
+import {Visitor} from '../visitor.js';
+import {MapRow} from '../row/map.js';
+import {StructRow, StructRowProxy} from '../row/struct.js';
+import {bigIntToNumber, divideBigInts} from '../util/bigint.js';
+import {decodeUtf8} from '../util/utf8.js';
+import {TypeToDataType} from '../interfaces.js';
+import {uint16ToFloat64} from '../util/math.js';
+import {DateUnit, IntervalUnit, Precision, TimeUnit, Type, UnionMode} from '../enum.js';
 import {
-    DataType, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
-    Float, Float16, Float32, Float64,
-    Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
-    Date_, DateDay, DateMillisecond,
-    Interval, IntervalDayTime, IntervalYearMonth,
-    Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
-    Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
-    Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
-    Union, DenseUnion, SparseUnion,
-    IntervalMonthDayNano, Utf8View,
+    Binary,
+    Bool,
+    DataType,
+    Date_,
+    DateDay,
+    DateMillisecond,
+    Decimal,
+    DenseUnion,
+    Dictionary,
+    Duration,
+    DurationMicrosecond,
+    DurationMillisecond,
+    DurationNanosecond,
+    DurationSecond,
+    FixedSizeBinary,
+    FixedSizeList,
+    Float,
+    Float16,
+    Float32,
+    Float64,
+    Int,
+    Int16,
+    Int32,
+    Int64,
+    Int8,
+    Interval,
+    IntervalDayTime,
+    IntervalMonthDayNano,
+    IntervalYearMonth,
+    LargeBinary,
+    LargeUtf8,
+    List,
+    Map_,
+    Null,
+    SparseUnion,
+    Struct,
+    Time,
+    TimeMicrosecond,
+    TimeMillisecond,
+    TimeNanosecond,
+    TimeSecond,
+    Timestamp,
+    TimestampMicrosecond,
+    TimestampMillisecond,
+    TimestampNanosecond,
+    TimestampSecond,
+    Uint16,
+    Uint32,
+    Uint64,
+    Uint8,
+    Union,
+    Utf8,
+    Utf8View,
 } from '../type.js';
 
 /** @ignore */
@@ -62,7 +104,7 @@ export interface GetVisitor extends Visitor {
     visitFloat32<T extends Float32>(data: Data<T>, index: number): T['TValue'] | null;
     visitFloat64<T extends Float64>(data: Data<T>, index: number): T['TValue'] | null;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number): T['TValue'] | null;
-    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number): T['TValue'] | null;
+    visitUtf8View<T extends Utf8View>(data: Utf8ViewData<T>, index: number): T['TValue'] | null;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number): T['TValue'] | null;
     visitBinary<T extends Binary>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number): T['TValue'] | null;
@@ -106,6 +148,9 @@ export class GetVisitor extends Visitor { }
 /** @ignore */
 function wrapGet<T extends DataType>(fn: (data: Data<T>, _1: any) => any) {
     return (data: Data<T>, _1: any) => data.getValid(_1) ? fn(data, _1) : null;
+}
+function wrapGetView<T extends DataType>(fn: (data: Utf8ViewData<T>, _1: any) => any) {
+    return (data: Utf8ViewData<T>, _1: any) => data.getValid(_1) ? fn(data, _1) : null;
 }
 
 /** @ignore */const epochDaysToMs = (data: Int32Array, index: number) => 86400000 * data[index];
@@ -153,6 +198,49 @@ const getBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Dat
 const getUtf8 = <T extends Utf8 | Utf8View | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => {
     const bytes = getVariableWidthBytes(values, valueOffsets, index);
     return bytes !== null ? decodeUtf8(bytes) : null as any;
+};
+
+//fixme: refactor
+const getNumber = (buffers: Uint8Array): number => {
+    const arrayBuffer = new ArrayBuffer(4);
+    const dataView = new DataView(arrayBuffer);
+    for (const [i, buffer] of buffers.entries()) {
+        dataView.setUint8(i, buffer);
+    }
+
+    return dataView.getInt32(0, true);
+}
+
+//fixme: refactor
+/** @ignore */
+const getUtf8View = <T extends Utf8View>({ values, vardic }: Utf8ViewData<T>, index: number): T['TValue'] => {
+    const ELEMENT_SIZE = 16;
+    const INLINE_SIZE = 12;
+    const LENGTH_WIDTH = 4;
+    // The second 4 bytes of view are allocated for prefix width
+    const PREFIX_WIDTH = 4;
+    // The third 4 bytes of view are allocated for buffer index
+    const BUF_INDEX_WIDTH = 4;
+    const OFFSET_WIDTH = 4;
+
+    let result: Uint8Array | null = null;
+    const valueLength = getNumber(values.slice(index * ELEMENT_SIZE, index * ELEMENT_SIZE + LENGTH_WIDTH))
+    if (valueLength > INLINE_SIZE) {
+        const bufferIndex = index * ELEMENT_SIZE + LENGTH_WIDTH + PREFIX_WIDTH;
+
+
+        // get data offset
+        const start1 = index * ELEMENT_SIZE + LENGTH_WIDTH + PREFIX_WIDTH + BUF_INDEX_WIDTH;
+        const dataOffset = getNumber(values.slice(start1, start1 + OFFSET_WIDTH));
+
+        const i = getNumber(values.slice(bufferIndex, bufferIndex + BUF_INDEX_WIDTH))
+        result = vardic[i].slice(dataOffset, dataOffset + valueLength);
+    } else {
+        const start = (index * ELEMENT_SIZE) + BUF_INDEX_WIDTH;
+        result = values.slice(start, start + valueLength);
+    }
+
+    return result !== null ? decodeUtf8(result) : null as any;
 };
 
 /* istanbul ignore next */
@@ -332,7 +420,7 @@ GetVisitor.prototype.visitFloat16 = wrapGet(getFloat16);
 GetVisitor.prototype.visitFloat32 = wrapGet(getNumeric);
 GetVisitor.prototype.visitFloat64 = wrapGet(getNumeric);
 GetVisitor.prototype.visitUtf8 = wrapGet(getUtf8);
-GetVisitor.prototype.visitUtf8View = wrapGet(getUtf8);
+GetVisitor.prototype.visitUtf8View = wrapGetView(getUtf8View);
 GetVisitor.prototype.visitLargeUtf8 = wrapGet(getUtf8);
 GetVisitor.prototype.visitBinary = wrapGet(getBinary);
 GetVisitor.prototype.visitLargeBinary = wrapGet(getBinary);

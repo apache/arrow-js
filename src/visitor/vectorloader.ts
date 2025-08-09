@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Data, makeData } from '../data.js';
+import {Data, makeData, makeDataView} from '../data.js';
 import * as type from '../type.js';
 import { Field } from '../schema.js';
 import { Vector } from '../vector.js';
@@ -73,7 +73,18 @@ export class VectorLoader extends Visitor {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
     }
     public visitUtf8View<T extends type.Utf8View>(type: T, { length, nullCount } = this.nextFieldNode()) {
-        return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
+        const nullBitmap = this.readNullBitmap(type, nullCount);
+        const data = this.readData(type);
+        // const vardic = this.readData(type);
+        const vardicBuffers = this.buffers.slice(2);
+
+        const vd = vardicBuffers.map((bufferRegion) => {
+            return this.bytes.subarray(bufferRegion.offset, bufferRegion.offset + bufferRegion.length);
+        })
+
+        // how to read vardicBuffers to Uint8Array[]
+        //
+        return makeDataView({ type, length, nullCount, nullBitmap: nullBitmap, data: data, vardic: vd });
     }
     public visitLargeUtf8<T extends type.LargeUtf8>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });

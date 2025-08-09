@@ -149,13 +149,29 @@ export class RecordBatch {
     protected _length: number;
     protected _nodes: FieldNode[];
     protected _buffers: BufferRegion[];
-    public get nodes() { return this._nodes; }
-    public get length() { return this._length; }
-    public get buffers() { return this._buffers; }
-    constructor(length: bigint | number, nodes: FieldNode[], buffers: BufferRegion[]) {
+    protected _variadicBufferCounts: number[];
+
+    public get nodes() {
+        return this._nodes;
+    }
+
+    public get length() {
+        return this._length;
+    }
+
+    public get buffers() {
+        return this._buffers;
+    }
+
+    public get variadicBufferCounts() {
+        return this._variadicBufferCounts;
+    }
+
+    constructor(length: bigint | number, nodes: FieldNode[], buffers: BufferRegion[], variadicBufferCounts: number[] = []) {
         this._nodes = nodes;
         this._buffers = buffers;
         this._length = bigIntToNumber(length);
+        this._variadicBufferCounts = variadicBufferCounts;
     }
 }
 
