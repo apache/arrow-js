@@ -26,7 +26,7 @@ export class Schema<T extends TypeMap = any> {
     public readonly metadataVersion: MetadataVersion;
 
     constructor(
-        fields: Field<T[keyof T]>[] | FieldDictionary<T> = [],
+        fields: Field<T[keyof T]>[] | FieldDictionary<T> = {} as FieldDictionary<T>,
         metadata?: Map<string, string> | null,
         dictionaries?: Map<number, DataType> | null,
         metadataVersion = MetadataVersion.V5) {
