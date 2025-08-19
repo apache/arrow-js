@@ -35,7 +35,7 @@ import {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
-    IntervalMonthDayNano,
+    IntervalMonthDayNano, Utf8View,
 } from '../type.js';
 
 /** @ignore */
@@ -60,6 +60,7 @@ export interface SetVisitor extends Visitor {
     visitFloat32<T extends Float32>(data: Data<T>, index: number, value: T['TValue']): void;
     visitFloat64<T extends Float64>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number, value: T['TValue']): void;
     visitBinary<T extends Binary>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -155,7 +156,7 @@ export const setFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }
 /** @ignore */
 const setBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, value);
 /** @ignore */
-const setUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
+const setUtf8 = <T extends Utf8 | Utf8View | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
 
 /* istanbul ignore next */
 export const setDate = <T extends Date_>(data: Data<T>, index: number, value: T['TValue']): void => {
@@ -358,6 +359,7 @@ SetVisitor.prototype.visitFloat16 = wrapSet(setFloat16);
 SetVisitor.prototype.visitFloat32 = wrapSet(setFloat);
 SetVisitor.prototype.visitFloat64 = wrapSet(setFloat);
 SetVisitor.prototype.visitUtf8 = wrapSet(setUtf8);
+SetVisitor.prototype.visitUtf8View = wrapSet(setUtf8);
 SetVisitor.prototype.visitLargeUtf8 = wrapSet(setUtf8);
 SetVisitor.prototype.visitBinary = wrapSet(setBinary);
 SetVisitor.prototype.visitLargeBinary = wrapSet(setBinary);
