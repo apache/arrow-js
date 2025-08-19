@@ -62,7 +62,7 @@
     "@rollup/plugin-node-resolve": "16.0.1",
     "@rollup/stream": "3.0.1",
     "@swc-node/register": "1.11.1",
-    "@swc/core": "1.13.2",
+    "@swc/core": "1.13.3",
     "@types/benchmark": "2.1.5",
     "@types/glob": "8.1.0",
     "@types/jest": "29.5.14",
