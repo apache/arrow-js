@@ -19,6 +19,7 @@ import streamAdapters from './adapters.js';
 
 export type { FileHandle } from 'node:fs/promises';
 import type { ReadableOptions, Readable as StreamReadable } from 'node:stream';
+import type { StreamPipeOptions } from 'node:stream/web';
 
 /** @ignore */
 export const ITERATOR_DONE: any = Object.freeze({ done: true, value: void (0) });
