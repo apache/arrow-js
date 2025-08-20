@@ -26,6 +26,7 @@ import {
 import { ReadableDOMStreamOptions } from './interfaces.js';
 
 import type { ReadableOptions, Readable } from 'node:stream';
+import type { ReadableStreamReadValueResult } from 'node:stream/web';
 
 type Uint8ArrayGenerator = Generator<Uint8Array, null, { cmd: 'peek' | 'read'; size: number }>;
 type AsyncUint8ArrayGenerator = AsyncGenerator<Uint8Array, null, { cmd: 'peek' | 'read'; size: number }>;

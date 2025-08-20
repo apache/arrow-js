@@ -20,6 +20,7 @@ import { ReadableInterop, ArrowJSONLike } from '../io/interfaces.js';
 import type { ByteBuffer } from 'flatbuffers';
 import type { ReadStream } from 'node:fs';
 import type { FileHandle as FileHandle_ } from 'node:fs/promises';
+import type { UnderlyingSink } from 'node:stream/web';
 
 /** @ignore */
 type FSReadStream = ReadStream;
