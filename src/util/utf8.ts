@@ -17,7 +17,7 @@
 
 const decoder = new TextDecoder('utf-8');
 /** @ignore */
-export const decodeUtf8 = (buffer?: BufferSource) => decoder.decode(buffer);
+export const decodeUtf8 = (buffer?: Parameters<InstanceType<typeof TextDecoder>['decode']>[0]) => decoder.decode(buffer);
 
 const encoder = new TextEncoder();
 /** @ignore */
