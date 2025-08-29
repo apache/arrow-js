@@ -30,7 +30,7 @@ import {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
-    IntervalMonthDayNano,
+    IntervalMonthDayNano, Utf8View,
 } from '../type.js';
 import { ChunkedIterator } from '../util/chunk.js';
 
@@ -56,6 +56,7 @@ export interface IteratorVisitor extends Visitor {
     visitFloat32<T extends Float32>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitFloat64<T extends Float64>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitUtf8<T extends Utf8>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
+    visitUtf8View<T extends Utf8View>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitLargeUtf8<T extends LargeUtf8>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitBinary<T extends Binary>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitLargeBinary<T extends LargeBinary>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
@@ -163,6 +164,7 @@ IteratorVisitor.prototype.visitFloat16 = vectorIterator;
 IteratorVisitor.prototype.visitFloat32 = vectorIterator;
 IteratorVisitor.prototype.visitFloat64 = vectorIterator;
 IteratorVisitor.prototype.visitUtf8 = vectorIterator;
+IteratorVisitor.prototype.visitUtf8View = vectorIterator;
 IteratorVisitor.prototype.visitLargeUtf8 = vectorIterator;
 IteratorVisitor.prototype.visitBinary = vectorIterator;
 IteratorVisitor.prototype.visitLargeBinary = vectorIterator;
