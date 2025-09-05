@@ -387,7 +387,25 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
         const { dictionaries, schema } = this;
         const dictionary = dictionaries.get(id);
         const type = schema.dictionaries.get(id)!;
-        const data = this._loadVectors(header.data, body, [type]);
+        let data: Data<any>[];
+        if (header.data.compression != null) {
+            const codec = compressionRegistry.get(header.data.compression.type);
+            if (codec?.decode && typeof codec.decode === 'function') {
+                const { decommpressedBody, buffers } = this._decompressBuffers(header.data, body, codec);
+                data = this._loadCompressedVectors(header.data, decommpressedBody, [type]);
+                header = new metadata.DictionaryBatch(new metadata.RecordBatch(
+                    header.data.length,
+                    header.data.nodes,
+                    buffers,
+                    null
+                ), id, isDelta)
+            } else {
+                throw new Error('Dictionary batch is compressed but codec not found');
+            }
+        } else {
+            data = this._loadVectors(header.data, body, [type]);
+        }
+        // const data = this._loadVectors(header.data, body, [type]);
         return (dictionary && isDelta ? dictionary.concat(
             new Vector(data)) :
             new Vector(data)).memoize() as Vector;

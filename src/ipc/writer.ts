@@ -283,7 +283,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
             ._writeBodyBuffers(buffers);
     }
 
-    protected _assembleRecordBatch(batch: RecordBatch<T>) {
+    protected _assembleRecordBatch(batch: RecordBatch<T> | Vector) {
         let { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(batch);
         if (this._compression != null) {
             ({ byteLength, bufferRegions, buffers } = this._compressBodyBuffers(buffers));
@@ -337,19 +337,17 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeDictionaryBatch(dictionary: Data, id: number, isDelta = false) {
-        const { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(new Vector([dictionary]));
-        const recordBatch = new metadata.RecordBatch(dictionary.length, nodes, bufferRegions, null);
+        const { byteLength, nodes, bufferRegions, buffers } = this._assembleRecordBatch(new Vector([dictionary]));
+        const recordBatch = new metadata.RecordBatch(dictionary.length, nodes, bufferRegions, this._compression);
         const dictionaryBatch = new metadata.DictionaryBatch(recordBatch, id, isDelta);
         const message = Message.from(dictionaryBatch, byteLength);
         return this
             ._writeMessage(message)
-            ._writeBodyBuffers(buffers, "dictionary");
+            ._writeBodyBuffers(buffers);
     }
 
-    protected _writeBodyBuffers(buffers: ArrayBufferView[], batchType: "record" | "dictionary" = "record") {
-        const bufGroupSize = batchType === "dictionary"
-            ? 1
-            : this._compression != null ? 2 : 1;
+    protected _writeBodyBuffers(buffers: ArrayBufferView[]) {
+        const bufGroupSize = this._compression != null ? 2 : 1;
         const bufs = new Array(bufGroupSize);
 
         for (let i = 0; i < buffers.length; i += bufGroupSize) {
