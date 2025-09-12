@@ -38,6 +38,7 @@ export type {
     ReadableSource, WritableSink,
     ArrowJSONLike, FileHandle, Readable, Writable, ReadableWritable, ReadableDOMStreamOptions,
     IntervalDayTimeObject, IntervalMonthDayNanoObject,
+    Codec
 } from './Arrow.js';
 
 export {
@@ -76,7 +77,7 @@ export {
     RecordBatch,
     util,
     Builder, makeBuilder, builderThroughIterable, builderThroughAsyncIterable,
-    compressionRegistry, CompressionType,
+    compressionRegistry, CompressionType
 } from './Arrow.js';
 
 export {

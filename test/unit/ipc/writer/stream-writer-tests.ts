@@ -25,6 +25,8 @@ import { validateRecordBatchIterator } from '../validate.js';
 import type { RecordBatchStreamWriterOptions } from 'apache-arrow/ipc/writer';
 import {
     builderThroughIterable,
+    Codec,
+    compressionRegistry,
     CompressionType,
     Data,
     Dictionary,
@@ -38,7 +40,6 @@ import {
     Uint32,
     Vector
 } from 'apache-arrow';
-import { Codec, compressionRegistry } from 'apache-arrow/ipc/compression/registry';
 import * as lz4js from 'lz4js';
 
 export async function registerCompressionCodecs(): Promise<void> {

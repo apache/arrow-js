@@ -94,6 +94,7 @@ export { RecordBatchReader, RecordBatchFileReader, RecordBatchStreamReader, Asyn
 export { RecordBatchWriter, RecordBatchFileWriter, RecordBatchStreamWriter, RecordBatchJSONWriter } from './ipc/writer.js';
 export { tableToIPC, tableFromIPC } from './ipc/serialization.js';
 export { compressionRegistry } from './ipc/compression/registry.js';
+export type { Codec } from './ipc/compression/registry.js';
 export { MessageReader, AsyncMessageReader, JSONMessageReader } from './ipc/message.js';
 export { Message } from './ipc/metadata/message.js';
 export { RecordBatch } from './recordbatch.js';
