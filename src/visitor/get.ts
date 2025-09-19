@@ -37,8 +37,9 @@ import {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
-    IntervalMonthDayNano,
+    IntervalMonthDayNano, Utf8View,
 } from '../type.js';
+import { extractViewForLongElement } from "../util/buffer.js";
 
 /** @ignore */
 export interface GetVisitor extends Visitor {
@@ -62,6 +63,7 @@ export interface GetVisitor extends Visitor {
     visitFloat32<T extends Float32>(data: Data<T>, index: number): T['TValue'] | null;
     visitFloat64<T extends Float64>(data: Data<T>, index: number): T['TValue'] | null;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number): T['TValue'] | null;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number): T['TValue'] | null;
     visitBinary<T extends Binary>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number): T['TValue'] | null;
@@ -152,6 +154,33 @@ const getBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Dat
 const getUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => {
     const bytes = getVariableWidthBytes(values, valueOffsets, index);
     return bytes !== null ? decodeUtf8(bytes) : null as any;
+};
+
+//fixme: refactor
+const getNumber = (buffers: Uint8Array): number => {
+    const arrayBuffer = new ArrayBuffer(4);
+    const dataView = new DataView(arrayBuffer);
+    for (const [i, buffer] of buffers.entries()) {
+        dataView.setUint8(i, buffer);
+    }
+
+    return dataView.getInt32(0, true);
+}
+
+//fixme: refactor
+/** @ignore */
+const getUtf8View = <T extends Utf8View>({ values, views }: Data<T>, index: number): T['TValue'] => {
+    let result: Uint8Array;
+    const uint8Array = views.subarray(index * Utf8View.ELEMENT_WIDTH, index * Utf8View.ELEMENT_WIDTH + Utf8View.ELEMENT_WIDTH)
+    const valueLength = getNumber(uint8Array.subarray(0, Utf8View.LENGTH_WIDTH));
+    if (valueLength > Utf8View.INLINE_SIZE) {
+        const { offset } = extractViewForLongElement(uint8Array);
+        result = values.subarray(offset, offset + valueLength);
+    } else {
+        result = uint8Array.subarray(Utf8View.LENGTH_WIDTH);
+    }
+
+    return valueLength ? decodeUtf8(result, true) : null as any;
 };
 
 /* istanbul ignore next */
@@ -331,6 +360,7 @@ GetVisitor.prototype.visitFloat16 = wrapGet(getFloat16);
 GetVisitor.prototype.visitFloat32 = wrapGet(getNumeric);
 GetVisitor.prototype.visitFloat64 = wrapGet(getNumeric);
 GetVisitor.prototype.visitUtf8 = wrapGet(getUtf8);
+GetVisitor.prototype.visitUtf8View = wrapGet(getUtf8View);
 GetVisitor.prototype.visitLargeUtf8 = wrapGet(getUtf8);
 GetVisitor.prototype.visitBinary = wrapGet(getBinary);
 GetVisitor.prototype.visitLargeBinary = wrapGet(getBinary);

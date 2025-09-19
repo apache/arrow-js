@@ -17,7 +17,7 @@
 
 import { Vector } from './vector.js';
 import { BufferType, Type, UnionMode } from './enum.js';
-import { DataType, strideForType } from './type.js';
+import { DataType, strideForType, Utf8View } from './type.js';
 import { popcnt_bit_range, truncateBitmap } from './util/bit.js';
 
 // When slicing, we do not know the null count of the sliced range without
@@ -39,6 +39,7 @@ export interface Buffers<T extends DataType> {
     [BufferType.DATA]: T['TArray'];
     [BufferType.VALIDITY]: Uint8Array;
     [BufferType.TYPE]: T['TArray'];
+    [BufferType.VIEW]: T['TArray'];
 }
 
 /** @ignore */
@@ -51,13 +52,14 @@ export interface Data<T extends DataType = DataType> {
 /**
  * Data structure underlying {@link Vector}s. Use the convenience method {@link makeData}.
  */
+//fixme refactor this
 export class Data<T extends DataType = DataType> {
-
     declare public readonly type: T;
     declare public readonly length: number;
     declare public readonly offset: number;
     declare public readonly stride: number;
     declare public readonly children: Data[];
+    declare public readonly longStrLength: number; // Total bytes of strings that are longer than 12 bytes. Only for Utf8View type.
 
     /**
      * The dictionary for this Vector, if any. Only used for Dictionary type.
@@ -68,13 +70,14 @@ export class Data<T extends DataType = DataType> {
     declare public readonly typeIds: Buffers<T>[BufferType.TYPE];
     declare public readonly nullBitmap: Buffers<T>[BufferType.VALIDITY];
     declare public readonly valueOffsets: Buffers<T>[BufferType.OFFSET];
+    declare public readonly views: Buffers<T>[BufferType.VIEW];
 
     public get typeId(): T['TType'] { return this.type.typeId; }
 
     public get ArrayType(): T['ArrayType'] { return this.type.ArrayType; }
 
     public get buffers() {
-        return [this.valueOffsets, this.values, this.nullBitmap, this.typeIds] as Buffers<T>;
+        return [this.valueOffsets, this.values, this.nullBitmap, this.typeIds, this.views] as Buffers<T>;
     }
 
     public get nullable(): boolean {
@@ -92,11 +95,17 @@ export class Data<T extends DataType = DataType> {
 
     public get byteLength(): number {
         let byteLength = 0;
-        const { valueOffsets, values, nullBitmap, typeIds } = this;
+        const { valueOffsets, values, nullBitmap, typeIds, views } = this;
+        if (this.typeId === Type.Utf8View) {
+            values && (byteLength += (values as T['TArray'][]).reduce((previousValue, currentValue) => {return previousValue + currentValue.byteLength}, 0));
+        } else {
+            values && (byteLength += (values as T['TArray']).byteLength);
+        }
+
         valueOffsets && (byteLength += valueOffsets.byteLength);
-        values && (byteLength += values.byteLength);
         nullBitmap && (byteLength += nullBitmap.byteLength);
         typeIds && (byteLength += typeIds.byteLength);
+        views && (byteLength += views.byteLength);
         return this.children.reduce((byteLength, child) => byteLength + child.byteLength, byteLength);
     }
 
@@ -117,10 +126,11 @@ export class Data<T extends DataType = DataType> {
         return nullCount;
     }
 
-    constructor(type: T, offset: number, length: number, nullCount?: number, buffers?: Partial<Buffers<T>> | Data<T>, children: Data[] = [], dictionary?: Vector) {
+    constructor(type: T, offset: number, length: number, nullCount?: number, buffers?: Partial<Buffers<T>> | Data<T>, children: Data[] = [], dictionary?: Vector, longStrLength?: number) {
         this.type = type;
         this.children = children;
         this.dictionary = dictionary;
+        this.longStrLength = longStrLength || 0;
         this.offset = Math.floor(Math.max(offset || 0, 0));
         this.length = Math.floor(Math.max(length || 0, 0));
         this._nullCount = Math.floor(Math.max(nullCount || 0, -1));
@@ -131,6 +141,7 @@ export class Data<T extends DataType = DataType> {
             this.typeIds = buffers.typeIds;
             this.nullBitmap = buffers.nullBitmap;
             this.valueOffsets = buffers.valueOffsets;
+            this.views = buffers.views;
         } else {
             this.stride = strideForType(type);
             if (buffers) {
@@ -138,6 +149,7 @@ export class Data<T extends DataType = DataType> {
                 (buffer = (buffers as Buffers<T>)[1]) && (this.values = buffer);
                 (buffer = (buffers as Buffers<T>)[2]) && (this.nullBitmap = buffer);
                 (buffer = (buffers as Buffers<T>)[3]) && (this.typeIds = buffer);
+                (buffer = (buffers as Buffers<T>)[4]) && (this.views = buffer);
             }
         }
     }
@@ -240,10 +252,18 @@ export class Data<T extends DataType = DataType> {
         const { buffers } = this;
         // If typeIds exist, slice the typeIds buffer
         (arr = buffers[BufferType.TYPE]) && (buffers[BufferType.TYPE] = arr.subarray(offset, offset + length));
-        // If offsets exist, only slice the offsets buffer
-        (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length + 1)) ||
+
+        if (DataType.isUtf8View(this.type)) {
+            const start = offset * Utf8View.ELEMENT_WIDTH;
+            const end = start + length * Utf8View.ELEMENT_WIDTH;
+            (arr = buffers[BufferType.VIEW]) && (buffers[BufferType.VIEW] = arr.subarray(start, end));
+        } else {
+            // If offsets exist, only slice the offsets buffer
+            (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length + 1)) ||
             // Otherwise if no offsets, slice the data buffer. Don't slice the data vector for Booleans, since the offset goes by bits not bytes
             (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = typeId === 6 ? arr : arr.subarray(stride * offset, stride * (offset + length)));
+        }
+
         return buffers;
     }
 
@@ -310,6 +330,22 @@ class MakeDataVisitor extends Visitor {
         const valueOffsets = toInt32Array(props['valueOffsets']);
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
+    }
+    public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const view = toArrayBufferView(type.ArrayType, props['view']);
+        const data = props['data'] ? toUint8Array(props['data']) : new Uint8Array(0);
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const length = props['length'] || 0;
+        const nullCount = props['nullBitmap'] ? -1 : 0
+        const buffers = {
+            [BufferType.DATA]: data,
+            [BufferType.VIEW]: view,
+            [BufferType.VALIDITY]: nullBitmap,
+            [BufferType.OFFSET]: undefined,
+            [BufferType.TYPE]: undefined,
+        }
+        return new Data(type, offset, length, nullCount, buffers, undefined, undefined, props['longStrLength']);
     }
     public visitLargeUtf8<T extends LargeUtf8>(props: LargeUtf8DataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
@@ -457,6 +493,7 @@ interface FixedSizeBinaryDataProps<T extends FixedSizeBinary> extends DataProps_
 interface BinaryDataProps<T extends Binary> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface LargeBinaryDataProps<T extends LargeBinary> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
+interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { view: DataBuffer<T>; data?: DataBuffer<T>; longStrLength?: number; }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
@@ -482,6 +519,7 @@ export type DataProps<T extends DataType> = (
     T extends Binary /*          */ ? BinaryDataProps<T> :
     T extends LargeBinary /*     */ ? LargeBinaryDataProps<T> :
     T extends Utf8 /*            */ ? Utf8DataProps<T> :
+    T extends Utf8View /*        */ ? Utf8ViewDataProps<T> :
     T extends LargeUtf8 /*       */ ? LargeUtf8DataProps<T> :
     T extends List /*            */ ? ListDataProps<T> :
     T extends FixedSizeList /*   */ ? FixedSizeListDataProps<T> :
@@ -510,6 +548,7 @@ export function makeData<T extends FixedSizeBinary>(props: FixedSizeBinaryDataPr
 export function makeData<T extends Binary>(props: BinaryDataProps<T>): Data<T>;
 export function makeData<T extends LargeBinary>(props: LargeBinaryDataProps<T>): Data<T>;
 export function makeData<T extends Utf8>(props: Utf8DataProps<T>): Data<T>;
+export function makeData<T extends Utf8View>(props: Utf8ViewDataProps<T>): Data<T>;
 export function makeData<T extends LargeUtf8>(props: LargeUtf8DataProps<T>): Data<T>;
 export function makeData<T extends List>(props: ListDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeList>(props: FixedSizeListDataProps<T>): Data<T>;

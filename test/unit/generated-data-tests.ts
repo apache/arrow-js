@@ -37,7 +37,12 @@ describe('Generated Test Data', () => {
     describe('Float16', () => { validateVector(generate.float16()); });
     describe('Float32', () => { validateVector(generate.float32()); });
     describe('Float64', () => { validateVector(generate.float64()); });
-    describe('Utf8', () => { validateVector(generate.utf8()); });
+    describe('Utf8', () => {
+        validateVector(generate.utf8());
+    });
+    describe('Utf8View', () => {
+        validateVector(generate.utf8View());
+    });
     describe('LargeUtf8', () => { validateVector(generate.largeUtf8()); });
     describe('Binary', () => { validateVector(generate.binary()); });
     describe('LargeBinary', () => { validateVector(generate.largeBinary()); });

@@ -15,40 +15,30 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Binary } from '../type.js';
-import { BufferBuilder } from './buffer.js';
-import { VariableWidthBuilder, BuilderOptions } from '../builder.js';
-import { toUint8Array } from '../util/buffer.js';
+import {Utf8View} from '../type.js';
+import {encodeUtf8} from '../util/utf8.js';
+import {BufferBuilder} from './buffer.js';
+import {BuilderOptions, ViewVarCharBuilder} from '../builder.js';
 
 /** @ignore */
-export class BinaryBuilder<TNull = any> extends VariableWidthBuilder<Binary, TNull> {
-    constructor(opts: BuilderOptions<Binary, TNull>) {
+export class Utf8ViewBuilder<TNull = any> extends ViewVarCharBuilder<Utf8View, TNull> {
+    constructor(opts: BuilderOptions<Utf8View, TNull>) {
         super(opts);
         this._values = new BufferBuilder(Uint8Array);
+        this._views = new BufferBuilder(Uint8Array);
     }
     public get byteLength(): number {
         let size = this._pendingLength + (this.length * 4);
-        this._offsets && (size += this._offsets.byteLength);
         this._values && (size += this._values.byteLength);
+        this._views && (size += this._views.byteLength);
         this._nulls && (size += this._nulls.byteLength);
         return size;
     }
-    public setValue(index: number, value: Uint8Array) {
-        return super.setValue(index, toUint8Array(value));
+    public setValue(index: number, value: string) {
+        return super.setValue(index, encodeUtf8(value) as any);
     }
-    protected _flushPending(pending: Map<number, Uint8Array | undefined>, pendingLength: number) {
-        const offsets = this._offsets;
-        const data = this._values.reserve(pendingLength).buffer;
-        let offset = 0;
-        for (const [index, value] of pending) {
-            if (value === undefined) {
-                offsets?.set(index, 0);
-            } else {
-                const length = value.length;
-                data.set(value, offset);
-                offsets?.set(index, length);
-                offset += length;
-            }
-        }
-    }
+    // @ts-ignore
+    protected _flushPending(pending: Map<number, Uint8Array | undefined>, pendingLength: number): void { }
 }
+
+(Utf8ViewBuilder.prototype as any)._flushPending = (ViewVarCharBuilder.prototype as any)._flushPending;

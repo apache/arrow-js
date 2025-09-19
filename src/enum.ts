@@ -15,13 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
-export { MetadataVersion } from './fb/metadata-version.js';
-export { UnionMode } from './fb/union-mode.js';
-export { Precision } from './fb/precision.js';
-export { DateUnit } from './fb/date-unit.js';
-export { TimeUnit } from './fb/time-unit.js';
-export { IntervalUnit } from './fb/interval-unit.js';
-export { MessageHeader } from './fb/message-header.js';
+export {MetadataVersion} from './fb/metadata-version.js';
+export {UnionMode} from './fb/union-mode.js';
+export {Precision} from './fb/precision.js';
+export {DateUnit} from './fb/date-unit.js';
+export {TimeUnit} from './fb/time-unit.js';
+export {IntervalUnit} from './fb/interval-unit.js';
+export {MessageHeader} from './fb/message-header.js';
 
 /**
  * Main data type enumeration.
@@ -70,6 +70,7 @@ export enum Type {
     Duration = 18, /** Measure of elapsed time in either seconds, milliseconds, microseconds or nanoseconds */
     LargeBinary = 19, /** Large variable-length bytes (no guarantee of UTF8-ness) */
     LargeUtf8 = 20, /** Large variable-length string as List<Char> */
+    Utf8View = 24, /** Like Utf8 but may point to one of potentially several data buffers or may contain the characters inline */
 
     Dictionary = -1, /** Dictionary aka Category type */
     Int8 = -2,
@@ -123,5 +124,8 @@ export enum BufferType {
     /**
      * Type vector used in Union type
      */
-    TYPE = 3
+    TYPE = 3,
+
+    // todo comment
+    VIEW = 4
 }

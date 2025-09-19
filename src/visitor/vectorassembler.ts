@@ -27,7 +27,7 @@ import { BufferRegion, FieldNode } from '../ipc/metadata/message.js';
 import {
     DataType, Dictionary,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, Utf8View
 } from '../type.js';
 import { bigIntToNumber } from '../util/bigint.js';
 
@@ -42,6 +42,7 @@ export interface VectorAssembler extends Visitor {
     visitInt<T extends Int>(data: Data<T>): this;
     visitFloat<T extends Float>(data: Data<T>): this;
     visitUtf8<T extends Utf8>(data: Data<T>): this;
+    visitUtf8View<T extends Utf8View>(data: Data<T>): this;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>): this;
     visitBinary<T extends Binary>(data: Data<T>): this;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>): this;
@@ -204,8 +205,18 @@ function assembleFlatVector<T extends Int | Float | FixedSizeBinary | Date_ | Ti
 }
 
 /** @ignore */
-function assembleFlatListVector<T extends Utf8 | LargeUtf8 | Binary | LargeBinary>(this: VectorAssembler, data: Data<T>) {
-    const { length, values, valueOffsets } = data;
+//todo refactor this
+function assembleFlatListVector<T extends Utf8 | Utf8View | LargeUtf8 | Binary | LargeBinary>(this: VectorAssembler, data: Data<T>) {
+    const { type, length, values, views, valueOffsets, longStrLength } = data;
+    if (Utf8View.isUtf8View(type)) {
+        const begin = 0;
+        const end = length * Utf8View.ELEMENT_WIDTH;
+
+        addBuffer.call(this, views.subarray(begin, end));
+        addBuffer.call(this, values.subarray(begin, longStrLength));
+        return this;
+    }
+
     const begin = bigIntToNumber(valueOffsets[0]);
     const end = bigIntToNumber(valueOffsets[length]);
     const byteLength = Math.min(end - begin, values.byteLength - begin);
@@ -238,6 +249,7 @@ VectorAssembler.prototype.visitBool = assembleBoolVector;
 VectorAssembler.prototype.visitInt = assembleFlatVector;
 VectorAssembler.prototype.visitFloat = assembleFlatVector;
 VectorAssembler.prototype.visitUtf8 = assembleFlatListVector;
+VectorAssembler.prototype.visitUtf8View = assembleFlatListVector;
 VectorAssembler.prototype.visitLargeUtf8 = assembleFlatListVector;
 VectorAssembler.prototype.visitBinary = assembleFlatListVector;
 VectorAssembler.prototype.visitLargeBinary = assembleFlatListVector;

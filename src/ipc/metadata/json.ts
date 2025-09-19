@@ -18,7 +18,7 @@
 import { Schema, Field } from '../../schema.js';
 import {
     DataType, Dictionary, TimeBitWidth,
-    Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary,
+    Utf8, Utf8View, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary,
     List, FixedSizeList, Map_, Struct, Union,
     Bool, Null, Int, Float, Date_, Time, Interval, Timestamp, IntBitWidth, Int32, TKeys, Duration,
 } from '../../type.js';
@@ -80,7 +80,9 @@ function buffersFromJSON(xs: any[], buffers: BufferRegion[] = []): BufferRegion[
         const column = xs[i];
         column['VALIDITY'] && buffers.push(new BufferRegion(buffers.length, column['VALIDITY'].length));
         column['TYPE_ID'] && buffers.push(new BufferRegion(buffers.length, column['TYPE_ID'].length));
+        column['VIEW'] && buffers.push(new BufferRegion(buffers.length, (column['VIEW'].length)));
         column['OFFSET'] && buffers.push(new BufferRegion(buffers.length, column['OFFSET'].length));
+        column['VALUE'] && buffers.push(new BufferRegion(buffers.length, column['VALUE'].length));
         column['DATA'] && buffers.push(new BufferRegion(buffers.length, column['DATA'].length));
         buffers = buffersFromJSON(column['children'], buffers);
     }
@@ -149,6 +151,7 @@ function typeFromJSON(f: any, children?: Field[]): DataType<any> {
         case 'binary': return new Binary();
         case 'largebinary': return new LargeBinary();
         case 'utf8': return new Utf8();
+        case 'utf8view': return new Utf8View();
         case 'largeutf8': return new LargeUtf8();
         case 'bool': return new Bool();
         case 'list': return new List((children || [])[0]);

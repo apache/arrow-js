@@ -15,10 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { encodeUtf8 } from '../util/utf8.js';
-import { TypedArray, TypedArrayConstructor, BigIntArrayConstructor } from '../interfaces.js';
-import { isPromise, isIterable, isAsyncIterable, isIteratorResult, isFlatbuffersByteBuffer } from './compat.js';
-import { ByteBuffer } from 'flatbuffers';
+import {decodeUtf8, encodeUtf8} from '../util/utf8.js';
+import {BigIntArrayConstructor, TypedArray, TypedArrayConstructor} from '../interfaces.js';
+import {isAsyncIterable, isFlatbuffersByteBuffer, isIterable, isIteratorResult, isPromise} from './compat.js';
+import {ByteBuffer} from 'flatbuffers';
 
 /** @ignore */
 const SharedArrayBuf = (typeof SharedArrayBuffer !== 'undefined' ? SharedArrayBuffer : ArrayBuffer);
@@ -233,4 +233,34 @@ export function compareArrayLike<T extends ArrayLike<any>>(a: T, b: T) {
         do { if (a[i] !== b[i]) { return false; } } while (++i < n);
     }
     return true;
+}
+
+// //todo refactor, merge with extractViewForLongElement
+export function extractViewForShortElement(buffer: ArrayBufferLike) {
+    const littleEndian = true;
+    const dataView = new DataView(new Uint8Array(buffer).buffer);
+    const strLength = dataView.getInt32(0, littleEndian);
+    const str = decodeUtf8(dataView.buffer.slice(4, 16), true);
+
+    return {
+        strLength,
+        str
+    }
+}
+
+// //todo refactor, merge with extractViewForLongElement
+export function extractViewForLongElement(buffer: ArrayBufferLike) {
+    const littleEndian = true;
+    const dataView = new DataView(new Uint8Array(buffer).buffer);
+    const strLength = dataView.getInt32(0, littleEndian);
+    const strPrefix = decodeUtf8(dataView.buffer.slice(4, 8), true);
+    const index = dataView.getInt32(8, littleEndian);
+    const offset = dataView.getInt32(12, littleEndian);
+
+    return {
+        strLength,
+        strPrefix,
+        index,
+        offset
+    }
 }

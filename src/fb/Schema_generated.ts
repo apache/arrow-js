@@ -34,3 +34,4 @@ export { Type, unionToType, unionListToType } from './type.js';
 export { Union } from './union.js';
 export { UnionMode } from './union-mode.js';
 export { Utf8 } from './utf8.js';
+export { Utf8View } from './utf8-view.js';

@@ -28,7 +28,7 @@ import { toIntervalDayTimeObjects, toIntervalMonthDayNanoObjects } from '../util
 import {
     DataType,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray,
+    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray, Utf8View
 } from '../type.js';
 
 /** @ignore */
@@ -36,13 +36,14 @@ export interface JSONVectorAssembler extends Visitor {
 
     visit<T extends DataType>(field: Field, node: Data<T>): Record<string, unknown>;
     visitMany<T extends DataType>(fields: Field[], nodes: readonly Data<T>[]): Record<string, unknown>[];
-    getVisitFn<T extends DataType>(node: Vector<T> | Data<T>): (data: Data<T>) => { name: string; count: number; VALIDITY: (0 | 1)[]; DATA?: any[]; OFFSET?: number[]; TYPE_ID?: number[]; children?: any[] };
+    getVisitFn<T extends DataType>(node: Vector<T> | Data<T>): (data: Data<T>) => { name: string; count: number; VALIDITY: (0 | 1)[]; VIEW?: number[]; VALUE?: number[]; OFFSET?: number[]; TYPE_ID?: number[]; children?: any[] };
 
     visitNull<T extends Null>(data: Data<T>): Record<string, never>;
     visitBool<T extends Bool>(data: Data<T>): { DATA: boolean[] };
     visitInt<T extends Int>(data: Data<T>): { DATA: number[] | string[] };
     visitFloat<T extends Float>(data: Data<T>): { DATA: number[] };
     visitUtf8<T extends Utf8>(data: Data<T>): { DATA: string[]; OFFSET: number[] };
+    visitUtf8View<T extends Utf8View>(data: Data<T>): { VIEW: number[]; VALUE: number[] };
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>): { DATA: string[]; OFFSET: string[] };
     visitBinary<T extends Binary>(data: Data<T>): { DATA: string[]; OFFSET: number[] };
     visitLargeBinary<T extends LargeBinary>(data: Data<T>): { DATA: string[]; OFFSET: string[] };
@@ -102,6 +103,9 @@ export class JSONVectorAssembler extends Visitor {
     }
     public visitUtf8<T extends Utf8>(data: Data<T>) {
         return { 'DATA': [...new Vector([data])], 'OFFSET': [...data.valueOffsets] };
+    }
+    public visitUtf8View<T extends Utf8View>(data: Data<T>) {
+        return { 'VIEW': [...data.views], 'VALUE': [...data.values] };
     }
     public visitLargeUtf8<T extends LargeUtf8>(data: Data<T>) {
         return { 'DATA': [...new Vector([data])], 'OFFSET': [...bigNumsToStrings(data.valueOffsets, 2)] };
