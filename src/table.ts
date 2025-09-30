@@ -401,7 +401,7 @@ export class Table<T extends TypeMap = any> {
      * Render the table as HTML table element.
      */
     public toHTML(): string {
-        let htmlTable = "<table>";
+        let htmlTable = `<table class="dataframe">`;
 
         // Add table headers
         htmlTable += "<thead><tr>";
