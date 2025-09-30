@@ -2309,10 +2309,10 @@ chalk-template@^0.4.0:
   dependencies:
     chalk "^4.1.2"
 
-chalk@5.x:
-  version "5.4.1"
-  resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.4.1.tgz#1b48bf0963ec158dce2aacf69c093ae2dd2092d8"
-  integrity sha512-zgVZuo2WcZgfUEmsn6eO3kINexW8RAE4maiQ8QNs8CtpPCSyMiYsULR3HQYkm3w8FIA3SberyMJMSldGsW+U3w==
+"chalk@^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 <5.6.1 || ^5.6.2 >5.6.1":
+  version "5.6.2"
+  resolved "https://registry.yarnpkg.com/chalk/-/chalk-5.6.2.tgz#b1238b6e23ea337af71c7f8a295db5af0c158aea"
+  integrity sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==
 
 chalk@^2.4.2:
   version "2.4.2"
@@ -3550,46 +3550,46 @@ glogg@^2.2.0:
   dependencies:
     sparkles "^2.1.0"
 
-google-closure-compiler-java@^20250903.0.0:
-  version "20250903.0.0"
-  resolved "https://registry.yarnpkg.com/google-closure-compiler-java/-/google-closure-compiler-java-20250903.0.0.tgz#392d03cb6a13a3fc0d494ff6c371d5ca41b0b763"
-  integrity sha512-hA3vFNwBbTFrCejGyRyMoXy1KWQNiQdxYEQqdaF3rN2WAARZkMzIcfetKMktkgCS5SDS/JDs59B05YLYlV9JjA==
+google-closure-compiler-java@^20250924.0.0:
+  version "20250924.0.0"
+  resolved "https://registry.yarnpkg.com/google-closure-compiler-java/-/google-closure-compiler-java-20250924.0.0.tgz#5ea0f22d8d936be062945a9eea2ccf77eb78eb8a"
+  integrity sha512-/5uxcwjxCpHGOseQIB8Ot/gTjFUQhEOdbV0kF1KlQswHrrKKQSJVtcRWg5kEw3VJFDHF3qtgB72BcjH847BH1Q==
 
-google-closure-compiler-linux-arm64@^20250903.0.0:
-  version "20250903.0.0"
-  resolved "https://registry.yarnpkg.com/google-closure-compiler-linux-arm64/-/google-closure-compiler-linux-arm64-20250903.0.0.tgz#66dbf633ff544441feb30f3f29a27be800834362"
-  integrity sha512-lyzQFgRRJxUJZN7YgHZIJHEIXakxWSnQ8ib4zRVfAGKXO34FHv2C08b1sZiQ+XkABtTNQypT/u6bkMRdZIEPmA==
+google-closure-compiler-linux-arm64@^20250924.0.0:
+  version "20250924.0.0"
+  resolved "https://registry.yarnpkg.com/google-closure-compiler-linux-arm64/-/google-closure-compiler-linux-arm64-20250924.0.0.tgz#be036c8ecc7b98a1ba5c95c04849c888ac811398"
+  integrity sha512-66esUYXDkvTPFSRyYEaK1D2hZKIIKdpux5NBmSDd5NRpkhcxhYbSgnZ565ONCOLTQV/kTrsMzVw2NA1FrQdhrQ==
 
-google-closure-compiler-linux@^20250903.0.0:
-  version "20250903.0.0"
-  resolved "https://registry.yarnpkg.com/google-closure-compiler-linux/-/google-closure-compiler-linux-20250903.0.0.tgz#e96cddc183bc633c8d0615b364fdf1c36b71b344"
-  integrity sha512-aryNIReNulYdH1hC0ATttNtp75Umr+MWDHkjiEPlGEMGO/OoXSoBtBJU+gqaGMGkh78GtEhQpXL+gPj6G5k9eA==
+google-closure-compiler-linux@^20250924.0.0:
+  version "20250924.0.0"
+  resolved "https://registry.yarnpkg.com/google-closure-compiler-linux/-/google-closure-compiler-linux-20250924.0.0.tgz#54a86928208cc56b34a2a1130e7db3ff7b4fd62d"
+  integrity sha512-GLH0BJ77GfZOicat6k4AD5PNwfBTcHnvWRXEU68Lm6VOsupTUKWPq3AfMKHp5epq0C22to29ABQQ2h7aHp1QSA==
 
-google-closure-compiler-macos@^20250903.0.0:
-  version "20250903.0.0"
-  resolved "https://registry.yarnpkg.com/google-closure-compiler-macos/-/google-closure-compiler-macos-20250903.0.0.tgz#723a4d7cfa217ec0a618ce9c8e6a79b1199f8c49"
-  integrity sha512-jrERk9Apdy+Yky2RonqQQR9dAaHipzwM4oNCn9UzLWaRo/58FvzFIbPknVagN/Fo0n4odJZ2tgYkPzvrQAHCPA==
+google-closure-compiler-macos@^20250924.0.0:
+  version "20250924.0.0"
+  resolved "https://registry.yarnpkg.com/google-closure-compiler-macos/-/google-closure-compiler-macos-20250924.0.0.tgz#4298f1adab2a7ced5754baf078d35f0eb8fab122"
+  integrity sha512-M6kAzr0o0PfA0FCVtE9N1cN1xXdhdNevrvwppkdR97Q47jMAtBgah+/t56DVS9mrxV/toMHmLax4qgyJnc1ilQ==
 
-google-closure-compiler-windows@^20250903.0.0:
-  version "20250903.0.0"
-  resolved "https://registry.yarnpkg.com/google-closure-compiler-windows/-/google-closure-compiler-windows-20250903.0.0.tgz#d02455a5f631fdbe70dd864f86a3ccee0762857d"
-  integrity sha512-0/TvA1ukxQTNgMFu2yvo0AuNlxdlhG2WWdHk2+dTB9HdIPdK5v4WLPjJPbfU19zB03Qbgs/aa5qJ+AM6YF+sNw==
+google-closure-compiler-windows@^20250924.0.0:
+  version "20250924.0.0"
+  resolved "https://registry.yarnpkg.com/google-closure-compiler-windows/-/google-closure-compiler-windows-20250924.0.0.tgz#e32be9004c65bddc82d1887a86a13c77eb486b83"
+  integrity sha512-7xDXoPV9QA6vl2VtmaYbOaFwYOQgKxsdqS4IEDPVyk6jFoC52ruR8pYCpjsG4U4NKBsBOZ0HnkY1q695SKyTqg==
 
-google-closure-compiler@20250903.0.0:
-  version "20250903.0.0"
-  resolved "https://registry.yarnpkg.com/google-closure-compiler/-/google-closure-compiler-20250903.0.0.tgz#04de735eae6b6df31f15f8d9eb597fc80470333b"
-  integrity sha512-+oXBmv/9X5XKT5x4pesMlX+yIxmmklMhkLzduxyV9IiEEIbh8v/xxoYKYcYM2vGzXCIjq7o6uh9wHhtiZCxPdQ==
+google-closure-compiler@20250924.0.0:
+  version "20250924.0.0"
+  resolved "https://registry.yarnpkg.com/google-closure-compiler/-/google-closure-compiler-20250924.0.0.tgz#64cfdc4c1d0aaae7ab9a722311c0682a193d43ca"
+  integrity sha512-hJWYCMK1AtAadBMaDgIEwNGXK8Y2Hc9AqnTdRzLkXXlwZv5vO8RysWF3Qokg8MGghFkkal50+OpscF5XzWaFZg==
   dependencies:
-    chalk "5.x"
-    google-closure-compiler-java "^20250903.0.0"
-    minimist "1.x"
-    vinyl "3.x"
+    chalk "^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 <5.6.1 || ^5.6.2 >5.6.1"
+    google-closure-compiler-java "^20250924.0.0"
+    minimist "^1.0.0"
+    vinyl "^3.0.1"
     vinyl-sourcemaps-apply "^0.2.0"
   optionalDependencies:
-    google-closure-compiler-linux "^20250903.0.0"
-    google-closure-compiler-linux-arm64 "^20250903.0.0"
-    google-closure-compiler-macos "^20250903.0.0"
-    google-closure-compiler-windows "^20250903.0.0"
+    google-closure-compiler-linux "^20250924.0.0"
+    google-closure-compiler-linux-arm64 "^20250924.0.0"
+    google-closure-compiler-macos "^20250924.0.0"
+    google-closure-compiler-windows "^20250924.0.0"
 
 gopd@^1.0.1:
   version "1.0.1"
@@ -4902,7 +4902,7 @@ minimatch@^9.0.4, minimatch@^9.0.5:
   dependencies:
     brace-expansion "^2.0.1"
 
-minimist@1.x:
+minimist@^1.0.0:
   version "1.2.8"
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.8.tgz#c1a464e7693302e082a075cee0c057741ac4772c"
   integrity sha512-2yyAR8qBkN3YuheJanUpWC5U3bb5osDywNB8RzDVlDwDHbocAJveqqj1u8+SVD7jkWT4yvsHCpWqqWqAxb0zCA==
@@ -6388,16 +6388,6 @@ vinyl-sourcemaps-apply@^0.2.0, vinyl-sourcemaps-apply@^0.2.1:
   dependencies:
     source-map "^0.5.1"
 
-vinyl@3.x, vinyl@^3.0.0, vinyl@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/vinyl/-/vinyl-3.0.1.tgz#5f5ff85255bda2b5da25e4b3bd80b3fc077fb5a9"
-  integrity sha512-0QwqXteBNXgnLCdWdvPQBX6FXRHtIH3VhJPTd5Lwn28tJXc34YqSCWUmkOvtJHBmB3gGoPtrOKk3Ts8/kEZ9aA==
-  dependencies:
-    clone "^2.1.2"
-    remove-trailing-separator "^1.1.0"
-    replace-ext "^2.0.0"
-    teex "^1.0.1"
-
 vinyl@^2.0.0, vinyl@^2.1.0, vinyl@^2.2.1:
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/vinyl/-/vinyl-2.2.1.tgz#23cfb8bbab5ece3803aa2c0a1eb28af7cbba1974"
@@ -6409,6 +6399,16 @@ vinyl@^2.0.0, vinyl@^2.1.0, vinyl@^2.2.1:
     cloneable-readable "^1.0.0"
     remove-trailing-separator "^1.0.1"
     replace-ext "^1.0.0"
+
+vinyl@^3.0.0, vinyl@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/vinyl/-/vinyl-3.0.1.tgz#5f5ff85255bda2b5da25e4b3bd80b3fc077fb5a9"
+  integrity sha512-0QwqXteBNXgnLCdWdvPQBX6FXRHtIH3VhJPTd5Lwn28tJXc34YqSCWUmkOvtJHBmB3gGoPtrOKk3Ts8/kEZ9aA==
+  dependencies:
+    clone "^2.1.2"
+    remove-trailing-separator "^1.1.0"
+    replace-ext "^2.0.0"
+    teex "^1.0.1"
 
 walker@^1.0.8:
   version "1.0.8"
