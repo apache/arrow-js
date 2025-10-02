@@ -51,6 +51,9 @@ export class JSONTypeAssembler extends Visitor {
     public visitUtf8<T extends type.Utf8>({ typeId }: T) {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
+    public visitUtf8View<T extends type.Utf8View>({ typeId }: T) {
+        return { 'name': ArrowType[typeId].toLowerCase() };
+    }
     public visitLargeUtf8<T extends type.LargeUtf8>({ typeId }: T) {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
