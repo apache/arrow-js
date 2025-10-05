@@ -43,9 +43,7 @@ import { DataProps } from './data.js';
 import { clampRange, wrapIndex } from './util/vector.js';
 import { ArrayDataType, BigIntArray, TypedArray, TypedArrayDataType } from './interfaces.js';
 import { RecordBatch, _InternalEmptyPlaceholderRecordBatch } from './recordbatch.js';
-import { escapeHTML } from './util/html.js';
 
-const jupyterDisplay = Symbol.for("Jupyter.display");
 
 /** @ignore */
 export interface Table<T extends TypeMap = any> {
@@ -396,46 +394,6 @@ export class Table<T extends TypeMap = any> {
         (proto as any)['indexOf'] = wrapChunkedIndexOf(indexOfVisitor.getVisitFn(Type.Struct));
         return 'Table';
     })(Table.prototype);
-
-    /**
-     * Render the table as HTML table element.
-     */
-    public toHTML(): string {
-        let htmlTable = `<table class="dataframe">`;
-
-        // Add table headers
-        htmlTable += "<thead><tr>";
-        for (const field of this.schema.fields) {
-          htmlTable += `<th>${escapeHTML(field.name)}</th>`;
-        }
-        htmlTable += "</tr></thead>";
-        // Add table data
-        htmlTable += "<tbody>";
-        for (const row of this) {
-            htmlTable += "<tr>";
-            for (const field of row.toArray()) {
-                htmlTable += `<td>${escapeHTML(String(field))}</td>`;
-            }
-            htmlTable += "</tr>";
-        }
-        htmlTable += "</tbody></table>";
-
-        return htmlTable;
-    }
-
-    /**
-     * Jupyter rich content output.
-     * @see https://docs.deno.com/runtime/reference/cli/jupyter/#rich-content-output
-     */
-    public [jupyterDisplay]() {
-        // TODO: from env or options
-        const rows = 50
-        const limited = this.slice(0, rows);
-        return {
-            // TODO: application/vnd.dataresource+json
-            "text/html": limited.toHTML()
-        }
-    }
 }
 
 
