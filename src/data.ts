@@ -256,7 +256,7 @@ export class Data<T extends DataType = DataType> {
 
 import {
     Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
     Float,
     Int,
     Date_,
@@ -304,6 +304,14 @@ class MakeDataVisitor extends Visitor {
         return new Data(type, offset, length, nullCount, [undefined, data, nullBitmap]);
     }
     public visitUtf8<T extends Utf8>(props: Utf8DataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const data = toUint8Array(props['data']);
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const valueOffsets = toInt32Array(props['valueOffsets']);
+        const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
+    }
+    public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
         const data = toUint8Array(props['data']);
         const nullBitmap = toUint8Array(props['nullBitmap']);
@@ -457,6 +465,7 @@ interface FixedSizeBinaryDataProps<T extends FixedSizeBinary> extends DataProps_
 interface BinaryDataProps<T extends Binary> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface LargeBinaryDataProps<T extends LargeBinary> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
+interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
@@ -482,6 +491,7 @@ export type DataProps<T extends DataType> = (
     T extends Binary /*          */ ? BinaryDataProps<T> :
     T extends LargeBinary /*     */ ? LargeBinaryDataProps<T> :
     T extends Utf8 /*            */ ? Utf8DataProps<T> :
+    T extends Utf8View /*        */ ? Utf8ViewDataProps<T> :
     T extends LargeUtf8 /*       */ ? LargeUtf8DataProps<T> :
     T extends List /*            */ ? ListDataProps<T> :
     T extends FixedSizeList /*   */ ? FixedSizeListDataProps<T> :
@@ -510,6 +520,7 @@ export function makeData<T extends FixedSizeBinary>(props: FixedSizeBinaryDataPr
 export function makeData<T extends Binary>(props: BinaryDataProps<T>): Data<T>;
 export function makeData<T extends LargeBinary>(props: LargeBinaryDataProps<T>): Data<T>;
 export function makeData<T extends Utf8>(props: Utf8DataProps<T>): Data<T>;
+export function makeData<T extends Utf8View>(props: Utf8ViewDataProps<T>): Data<T>;
 export function makeData<T extends LargeUtf8>(props: LargeUtf8DataProps<T>): Data<T>;
 export function makeData<T extends List>(props: ListDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeList>(props: FixedSizeListDataProps<T>): Data<T>;
