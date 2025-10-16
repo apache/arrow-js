@@ -17,7 +17,7 @@
 
 import { LargeBinary } from '../type.js';
 import { toUint8Array } from '../util/buffer.js';
-import { BufferBuilder } from './buffer.js';
+import { BufferBuilder, OffsetsBufferBuilder } from './buffer.js';
 import { VariableWidthBuilder, BuilderOptions } from '../builder.js';
 
 /** @ignore */
@@ -37,7 +37,7 @@ export class LargeBinaryBuilder<TNull = any> extends VariableWidthBuilder<LargeB
         return super.setValue(index, toUint8Array(value));
     }
     protected _flushPending(pending: Map<number, Uint8Array | undefined>, pendingLength: number) {
-        const offsets = this._offsets;
+        const offsets = this._offsets ?? new OffsetsBufferBuilder(this.type);
         const data = this._values.reserve(pendingLength).buffer;
         let offset = 0;
         for (const [index, value] of pending) {

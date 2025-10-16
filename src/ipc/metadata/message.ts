@@ -56,7 +56,7 @@ import {
     DataType, Dictionary, TimeBitWidth,
     Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary,
     List, FixedSizeList, Map_, Struct, Union,
-    Bool, Null, Int, Float, Date_, Time, Interval, Timestamp, IntBitWidth, Int32, TKeys, Duration,
+    Bool, Null, Int, Float, Date_, Time, Interval, Timestamp, IntBitWidth, Int32, TKeys, Duration, Utf8View,
 } from '../../type.js';
 
 /**
@@ -149,13 +149,16 @@ export class RecordBatch {
     protected _length: number;
     protected _nodes: FieldNode[];
     protected _buffers: BufferRegion[];
+    protected _variadicBufferCounts: number[];
     public get nodes() { return this._nodes; }
     public get length() { return this._length; }
     public get buffers() { return this._buffers; }
-    constructor(length: bigint | number, nodes: FieldNode[], buffers: BufferRegion[]) {
+    public get variadicBufferCounts() { return this._variadicBufferCounts; }
+    constructor(length: bigint | number, nodes: FieldNode[], buffers: BufferRegion[], variadicBufferCounts: number[] = []) {
         this._nodes = nodes;
         this._buffers = buffers;
         this._length = bigIntToNumber(length);
+        this._variadicBufferCounts = variadicBufferCounts;
     }
 }
 
@@ -432,6 +435,7 @@ function decodeFieldType(f: _Field, children?: Field[]): DataType<any> {
         case Type['Binary']: return new Binary();
         case Type['LargeBinary']: return new LargeBinary();
         case Type['Utf8']: return new Utf8();
+        case Type['Utf8View']: return new Utf8View();
         case Type['LargeUtf8']: return new LargeUtf8();
         case Type['Bool']: return new Bool();
         case Type['List']: return new List((children || [])[0]);

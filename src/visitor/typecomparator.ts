@@ -30,7 +30,7 @@ import {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
-    IntervalMonthDayNano,
+    IntervalMonthDayNano, Utf8View,
 } from '../type.js';
 
 /** @ignore */
@@ -54,6 +54,7 @@ export interface TypeComparator extends Visitor {
     visitFloat32<T extends Float32>(type: T, other?: DataType | null): other is T;
     visitFloat64<T extends Float64>(type: T, other?: DataType | null): other is T;
     visitUtf8<T extends Utf8>(type: T, other?: DataType | null): other is T;
+    visitUtf8View<T extends Utf8View>(type: T, other?: DataType | null): other is T;
     visitLargeUtf8<T extends LargeUtf8>(type: T, other?: DataType | null): other is T;
     visitBinary<T extends Binary>(type: T, other?: DataType | null): other is T;
     visitLargeBinary<T extends LargeBinary>(type: T, other?: DataType | null): other is T;
@@ -253,6 +254,7 @@ TypeComparator.prototype.visitFloat16 = compareFloat;
 TypeComparator.prototype.visitFloat32 = compareFloat;
 TypeComparator.prototype.visitFloat64 = compareFloat;
 TypeComparator.prototype.visitUtf8 = compareAny;
+TypeComparator.prototype.visitUtf8View = compareAny;
 TypeComparator.prototype.visitLargeUtf8 = compareAny;
 TypeComparator.prototype.visitBinary = compareAny;
 TypeComparator.prototype.visitLargeBinary = compareAny;

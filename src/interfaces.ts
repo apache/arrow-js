@@ -41,6 +41,7 @@ import type { FixedSizeListBuilder } from './builder/fixedsizelist.js';
 import type { MapBuilder } from './builder/map.js';
 import type { StructBuilder } from './builder/struct.js';
 import type { UnionBuilder, SparseUnionBuilder, DenseUnionBuilder } from './builder/union.js';
+import type { Utf8ViewBuilder } from "./builder/utf8view.js";
 
 /** @ignore */ type FloatArray = Float32Array | Float64Array;
 /** @ignore */ type IntArray = Int8Array | Int16Array | Int32Array;
@@ -209,6 +210,7 @@ export type TypeToDataType<T extends Type> = {
     [Type.Float64]: type.Float64;
     [Type.Float]: type.Float;
     [Type.Utf8]: type.Utf8;
+    [Type.Utf8View]: type.Utf8View;
     [Type.LargeUtf8]: type.LargeUtf8;
     [Type.Binary]: type.Binary;
     [Type.LargeBinary]: type.LargeBinary;
@@ -265,6 +267,7 @@ type TypeToBuilder<T extends Type = any, TNull = any> = {
     [Type.Float64]: Float64Builder<TNull>;
     [Type.Float]: FloatBuilder<any, TNull>;
     [Type.Utf8]: Utf8Builder<TNull>;
+    [Type.Utf8View]: Utf8ViewBuilder<TNull>;
     [Type.LargeUtf8]: LargeUtf8Builder<TNull>;
     [Type.Binary]: BinaryBuilder<TNull>;
     [Type.LargeBinary]: LargeBinaryBuilder<TNull>;
@@ -321,6 +324,7 @@ type DataTypeToBuilder<T extends DataType = any, TNull = any> = {
     [Type.Float64]: T extends type.Float64 ? Float64Builder<TNull> : never;
     [Type.Float]: T extends type.Float ? FloatBuilder<T, TNull> : never;
     [Type.Utf8]: T extends type.Utf8 ? Utf8Builder<TNull> : never;
+    [Type.Utf8View]: T extends type.Utf8View ? Utf8ViewBuilder<TNull> : never;
     [Type.LargeUtf8]: T extends type.LargeUtf8 ? LargeUtf8Builder<TNull> : never;
     [Type.Binary]: T extends type.Binary ? BinaryBuilder<TNull> : never;
     [Type.LargeBinary]: T extends type.LargeBinary ? LargeBinaryBuilder<TNull> : never;

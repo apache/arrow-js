@@ -65,6 +65,7 @@ export function makeBuilder<T extends dtypes.DataType = any, TNull = any>(option
 export function vectorFromArray(values: readonly (null | undefined)[], type?: dtypes.Null): Vector<dtypes.Null>;
 export function vectorFromArray(values: readonly (null | undefined | boolean)[], type?: dtypes.Bool): Vector<dtypes.Bool>;
 export function vectorFromArray<T extends dtypes.Utf8 | dtypes.Dictionary<dtypes.Utf8> = dtypes.Dictionary<dtypes.Utf8, dtypes.Int32>>(values: readonly (null | undefined | string)[], type?: T): Vector<T>;
+export function vectorFromArray<T extends dtypes.Utf8View | dtypes.Dictionary<dtypes.Utf8View> = dtypes.Dictionary<dtypes.Utf8View, dtypes.Int32>>(values: readonly (null | undefined | string)[], type?: T): Vector<T>;
 export function vectorFromArray<T extends dtypes.TimestampMillisecond>(values: readonly (null | undefined | Date)[], type?: T): Vector<T>;
 export function vectorFromArray<T extends dtypes.Int>(values: readonly (null | undefined | number)[], type: T): Vector<T>;
 export function vectorFromArray<T extends dtypes.Int64 | dtypes.Uint64 = dtypes.Int64>(values: readonly (null | undefined | bigint)[], type?: T): Vector<T>;

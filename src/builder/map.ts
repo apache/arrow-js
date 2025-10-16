@@ -18,6 +18,7 @@
 import { Field } from '../schema.js';
 import { DataType, Map_, Struct } from '../type.js';
 import { Builder, VariableWidthBuilder } from '../builder.js';
+import { OffsetsBufferBuilder } from "../builder/buffer.js";
 
 /** @ignore */ type MapValue<K extends DataType = any, V extends DataType = any> = Map_<K, V>['TValue'];
 /** @ignore */ type MapValues<K extends DataType = any, V extends DataType = any> = Map<number, MapValue<K, V> | undefined>;
@@ -50,7 +51,7 @@ export class MapBuilder<K extends DataType = any, V extends DataType = any, TNul
     }
 
     protected _flushPending(pending: MapValues<K, V>) {
-        const offsets = this._offsets;
+        const offsets = this._offsets ?? new OffsetsBufferBuilder(this.type) as any;
         const [child] = this.children;
         for (const [index, value] of pending) {
             if (value === undefined) {

@@ -22,7 +22,7 @@ import {
     DataType, strideForType,
     Float, Int, Decimal, FixedSizeBinary,
     Date_, Time, Timestamp, Interval, Duration,
-    Utf8, LargeUtf8, Binary, LargeBinary, List, Map_,
+    Utf8, LargeUtf8, Binary, LargeBinary, List, Map_, Utf8View
 } from './type.js';
 import { createIsValidFunction } from './builder/valid.js';
 import { BufferBuilder, BitmapBufferBuilder, DataBufferBuilder, OffsetsBufferBuilder } from './builder/buffer.js';
@@ -203,17 +203,24 @@ export abstract class Builder<T extends DataType = any, TNull = any> {
         return this.children.reduce((size, child) => size + child.reservedByteLength, size);
     }
 
-    declare protected _offsets: DataBufferBuilder<T['TOffsetArray']>;
+    declare protected _offsets?: DataBufferBuilder<T['TOffsetArray']>;
     public get valueOffsets() { return this._offsets ? this._offsets.buffer : null; }
 
     declare protected _values: BufferBuilder<T['TArray']>;
     public get values() { return this._values ? this._values.buffer : null; }
+
+    declare protected _views: BufferBuilder<T['TArray']>;
+    public get views() { return this._views ? this._views.buffer : null; }
 
     declare protected _nulls: BitmapBufferBuilder;
     public get nullBitmap() { return this._nulls ? this._nulls.buffer : null; }
 
     declare protected _typeIds: DataBufferBuilder<Int8Array>;
     public get typeIds() { return this._typeIds ? this._typeIds.buffer : null; }
+
+    // Total bytes of strings that are longer than 12 bytes. Only for Utf8View type.
+    declare protected _longStrLength: number;
+    public get longStrLength() { return this._longStrLength; }
 
     declare protected _isValid: (value: T['TValue'] | TNull) => boolean;
     declare protected _setValue: (inst: Builder<T>, index: number, value: T['TValue']) => void;
@@ -283,16 +290,21 @@ export abstract class Builder<T extends DataType = any, TNull = any> {
      */
     public flush(): Data<T> {
         let data: BufferBuilder<T['TArray']> | undefined;
+        let view: BufferBuilder<T['TArray']> | undefined;
         let typeIds: Int8Array;
         let nullBitmap: Uint8Array | undefined;
         let valueOffsets: T['TOffsetArray'];
-        const { type, length, nullCount, _typeIds, _offsets, _values, _nulls } = this;
+        const { type, length, nullCount, _typeIds, _offsets, _values, _views, _nulls, longStrLength } = this;
 
         if (typeIds = _typeIds?.flush(length)) { // Unions, DenseUnions
             valueOffsets = _offsets?.flush(length);
         } else if (valueOffsets = _offsets?.flush(length)) { // Variable-width primitives (Binary, LargeBinary, Utf8, LargeUtf8), and Lists
-            data = _values?.flush(_offsets.last());
-        } else { // Fixed-width primitives (Int, Float, Decimal, Time, Timestamp, Duration and Interval)
+            data = _values?.flush(_offsets?.last());
+        } else if (Utf8View.isUtf8View(type)) {
+            data = _values?.flush();
+            view = _views?.flush();
+        }
+        else { // Fixed-width primitives (Int, Float, Decimal, Time, Timestamp, Duration and Interval)
             data = _values?.flush(length);
         }
 
@@ -306,8 +318,8 @@ export abstract class Builder<T extends DataType = any, TNull = any> {
 
         return makeData(<any>{
             type, length, nullCount,
-            children, 'child': children[0],
-            data, typeIds, nullBitmap, valueOffsets,
+            children, 'child': children[0], longStrLength,
+            data, view, typeIds, nullBitmap, valueOffsets,
         }) as Data<T>;
     }
 
@@ -327,8 +339,10 @@ export abstract class Builder<T extends DataType = any, TNull = any> {
      */
     public clear() {
         this.length = 0;
+        this._longStrLength = 0;
         this._nulls?.clear();
         this._values?.clear();
+        this._views?.clear();
         this._offsets?.clear();
         this._typeIds?.clear();
         for (const child of this.children) child.clear();
@@ -357,9 +371,9 @@ export abstract class FixedWidthBuilder<T extends Int | Float | FixedSizeBinary 
 }
 
 /** @ignore */
-export abstract class VariableWidthBuilder<T extends Binary | LargeBinary | Utf8 | LargeUtf8 | List | Map_, TNull = any> extends Builder<T, TNull> {
+export abstract class VariableWidthBuilder<T extends Binary | LargeBinary | Utf8 | Utf8View | LargeUtf8 | List | Map_, TNull = any> extends Builder<T, TNull> {
     protected _pendingLength = 0;
-    protected _offsets: OffsetsBufferBuilder<T>;
+    protected _offsets?: OffsetsBufferBuilder<T>;
     protected _pending: Map<number, any> | undefined;
     constructor(opts: BuilderOptions<T, TNull>) {
         super(opts);
@@ -403,4 +417,81 @@ export abstract class VariableWidthBuilder<T extends Binary | LargeBinary | Utf8
         return this;
     }
     protected abstract _flushPending(pending: Map<number, any>, pendingLength: number): void;
+}
+
+// /** @ignore */
+export abstract class ViewVarCharBuilder<T extends Utf8View, TNull = any> extends VariableWidthBuilder<Utf8View, TNull> {
+    private _valuesBufferOffset = 0;
+    private _viewsBufferOffset = 0;
+
+    protected constructor(opts: BuilderOptions<T, TNull>) {
+        super(opts);
+        this._offsets = undefined;
+        this._longStrLength = 0;
+    }
+
+    protected _flushPending(pending: Map<number, Uint8Array | undefined>, _: number) {
+        if (this.length === 0) {
+            return;
+        }
+
+        const viewsBuffer = this._views.reserve(pending.size * Utf8View.ELEMENT_WIDTH).buffer;
+        let valuesBufferOffset = this._valuesBufferOffset;
+        let viewsBufferOffset = this._viewsBufferOffset;
+        for (const [_, value] of pending) {
+            let viewArr: Uint8Array;
+            if (value?.length && this._isLongString(value)) {
+                viewArr = ViewVarCharBuilder.createVarcharViewLongElement(value, 0, valuesBufferOffset) as Uint8Array;
+                this._values.reserve(value.length).buffer.set(value, valuesBufferOffset);
+                valuesBufferOffset += value.length;
+                this._longStrLength += value.length;
+            } else {
+                viewArr = ViewVarCharBuilder.createVarcharViewShortElement(value) as Uint8Array;
+            }
+
+            viewsBuffer.set(new Uint8Array(viewArr), viewsBufferOffset);
+            viewsBufferOffset += Utf8View.ELEMENT_WIDTH;
+        }
+
+        this._valuesBufferOffset = valuesBufferOffset;
+        this._viewsBufferOffset = viewsBufferOffset;
+    };
+
+    private _isLongString(value: Uint8Array | string) {
+        return value.length > Utf8View.INLINE_SIZE;
+    }
+
+    public clear() {
+        this._valuesBufferOffset = 0;
+        this._viewsBufferOffset = 0;
+        return super.clear();
+    }
+
+    /** @ignore */
+    //todo refactor this
+    public static createVarcharViewLongElement(strBytes: Uint8Array, dataBufferIndex: number, dataBufferOffset: number) {
+        const dataView = new DataView(new ArrayBuffer(16));
+        dataView.setInt32(0, strBytes.length, true);
+        for (const [index, byte] of strBytes.slice(0, Utf8View.PREFIX_WIDTH).entries()) {
+            dataView.setUint8(Utf8View.LENGTH_WIDTH + index, byte);
+        }
+        dataView.setInt32(Utf8View.LENGTH_WIDTH + Utf8View.PREFIX_WIDTH, dataBufferIndex, true);
+        dataView.setInt32(Utf8View.LENGTH_WIDTH + Utf8View.PREFIX_WIDTH + Utf8View.BUF_INDEX_WIDTH, dataBufferOffset, true);
+
+        return dataView.buffer
+    }
+
+    /** @ignore */
+    //todo refactor this
+    public static createVarcharViewShortElement(strBytes?: Uint8Array) {
+        const dataView = new DataView(new ArrayBuffer(16));
+        dataView.setInt32(0, strBytes?.length ?? 0, true);
+        if (strBytes?.length) {
+            for (const [index, byte] of strBytes.entries()) {
+                dataView.setUint8(Utf8View.LENGTH_WIDTH + index, byte);
+            }
+        }
+
+        return dataView.buffer
+    }
 }

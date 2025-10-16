@@ -42,6 +42,7 @@ import { TimeBuilder, TimeSecondBuilder, TimeMillisecondBuilder, TimeMicrosecond
 import { UnionBuilder, DenseUnionBuilder, SparseUnionBuilder } from '../builder/union.js';
 import { Utf8Builder } from '../builder/utf8.js';
 import { LargeUtf8Builder } from '../builder/largeutf8.js';
+import { Utf8ViewBuilder } from '../builder/utf8view.js';
 
 /** @ignore */
 export interface GetBuilderCtor extends Visitor {
@@ -69,6 +70,7 @@ export class GetBuilderCtor extends Visitor {
     public visitFloat32() { return Float32Builder; }
     public visitFloat64() { return Float64Builder; }
     public visitUtf8() { return Utf8Builder; }
+    public visitUtf8View() { return Utf8ViewBuilder; }
     public visitLargeUtf8() { return LargeUtf8Builder; }
     public visitBinary() { return BinaryBuilder; }
     public visitLargeBinary() { return LargeBinaryBuilder; }

@@ -26,7 +26,7 @@ import {
     Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
-    Union, DenseUnion, SparseUnion,
+    Union, DenseUnion, SparseUnion, Utf8View,
 } from 'apache-arrow';
 
 class BasicVisitor extends Visitor {
@@ -36,6 +36,7 @@ class BasicVisitor extends Visitor {
     public visitInt<T extends Int>(type: T) { return (this.type = type); }
     public visitFloat<T extends Float>(type: T) { return (this.type = type); }
     public visitUtf8<T extends Utf8>(type: T) { return (this.type = type); }
+    public visitUtf8View<T extends Utf8View>(type: T) { return (this.type = type); }
     public visitLargeUtf8<T extends LargeUtf8>(type: T) { return (this.type = type); }
     public visitBinary<T extends Binary>(type: T) { return (this.type = type); }
     public visitLargeBinary<T extends LargeBinary>(type: T) { return (this.type = type); }
@@ -70,6 +71,7 @@ class FeatureVisitor extends Visitor {
     public visitFloat32<T extends Float32>(type: T) { return (this.type = type); }
     public visitFloat64<T extends Float64>(type: T) { return (this.type = type); }
     public visitUtf8<T extends Utf8>(type: T) { return (this.type = type); }
+    public visitUtf8View<T extends Utf8View>(type: T) { return (this.type = type); }
     public visitLargeUtf8<T extends LargeUtf8>(type: T) { return (this.type = type); }
     public visitBinary<T extends Binary>(type: T) { return (this.type = type); }
     public visitLargeBinary<T extends LargeBinary>(type: T) { return (this.type = type); }
@@ -108,6 +110,7 @@ describe('Visitor', () => {
         test(`visits Int types`, () => validateBasicVisitor(new Int(true, 32)));
         test(`visits Float types`, () => validateBasicVisitor(new Float(0)));
         test(`visits Utf8 types`, () => validateBasicVisitor(new Utf8()));
+        test(`visits Utf8View types`, () => validateBasicVisitor(new Utf8View()));
         test(`visits LargeUtf8 types`, () => validateBasicVisitor(new LargeUtf8()));
         test(`visits Binary types`, () => validateBasicVisitor(new Binary()));
         test(`visits LargeBinary types`, () => validateBasicVisitor(new LargeBinary()));
@@ -150,6 +153,7 @@ describe('Visitor', () => {
         test(`visits Float32 types`, () => validateFeatureVisitor(new Float32()));
         test(`visits Float64 types`, () => validateFeatureVisitor(new Float64()));
         test(`visits Utf8 types`, () => validateFeatureVisitor(new Utf8()));
+        test(`visits Utf8View types`, () => validateFeatureVisitor(new Utf8View()));
         test(`visits LargeUtf8 types`, () => validateFeatureVisitor(new LargeUtf8()));
         test(`visits Binary types`, () => validateFeatureVisitor(new Binary()));
         test(`visits LargeBinary types`, () => validateFeatureVisitor(new LargeBinary()));

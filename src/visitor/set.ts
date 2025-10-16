@@ -35,8 +35,10 @@ import {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
-    IntervalMonthDayNano,
+    IntervalMonthDayNano, Utf8View,
 } from '../type.js';
+import {ViewVarCharBuilder} from "../builder.js";
+import {joinUint8Arrays} from "../util/buffer.js";
 
 /** @ignore */
 export interface SetVisitor extends Visitor {
@@ -60,6 +62,7 @@ export interface SetVisitor extends Visitor {
     visitFloat32<T extends Float32>(data: Data<T>, index: number, value: T['TValue']): void;
     visitFloat64<T extends Float64>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number, value: T['TValue']): void;
     visitBinary<T extends Binary>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -122,6 +125,20 @@ export const setVariableWidthBytes = <T extends Int32Array | BigInt64Array>(valu
 };
 
 /** @ignore */
+//fixme refactor
+export const setUtf8ViewBytes = (values: Uint8Array, view: Uint8Array, index: number, value: Uint8Array) => {
+    let buffer: ArrayBuffer;
+    if (value?.length && value.length > 12) {
+        buffer = ViewVarCharBuilder.createVarcharViewLongElement(value, 0, values.length);
+        values = joinUint8Arrays([values, value])[0];
+    } else {
+        buffer = ViewVarCharBuilder.createVarcharViewShortElement(value);
+    }
+
+    view.set(buffer as Uint8Array, index * Utf8View.ELEMENT_WIDTH);
+};
+
+/** @ignore */
 const setBool = <T extends Bool>({ offset, values }: Data<T>, index: number, val: boolean) => {
     const idx = offset + index;
     val ? (values[idx >> 3] |= (1 << (idx % 8)))  // true
@@ -156,6 +173,9 @@ export const setFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }
 const setBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, value);
 /** @ignore */
 const setUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
+/** @ignore */
+//fixme fix
+const setUtf8View = <T extends Utf8View>({ views, values }: Data<T>, index: number, value: T['TValue']) => setUtf8ViewBytes(values, views, index, encodeUtf8(value));
 
 /* istanbul ignore next */
 export const setDate = <T extends Date_>(data: Data<T>, index: number, value: T['TValue']): void => {
@@ -358,6 +378,7 @@ SetVisitor.prototype.visitFloat16 = wrapSet(setFloat16);
 SetVisitor.prototype.visitFloat32 = wrapSet(setFloat);
 SetVisitor.prototype.visitFloat64 = wrapSet(setFloat);
 SetVisitor.prototype.visitUtf8 = wrapSet(setUtf8);
+SetVisitor.prototype.visitUtf8View = wrapSet(setUtf8View);
 SetVisitor.prototype.visitLargeUtf8 = wrapSet(setUtf8);
 SetVisitor.prototype.visitBinary = wrapSet(setBinary);
 SetVisitor.prototype.visitLargeBinary = wrapSet(setBinary);
