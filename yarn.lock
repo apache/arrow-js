@@ -1011,10 +1011,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@openpgp/web-stream-tools@0.0.13":
-  version "0.0.13"
-  resolved "https://registry.yarnpkg.com/@openpgp/web-stream-tools/-/web-stream-tools-0.0.13.tgz#f0be50120c152efb11b65df29ab482dc192dbbd7"
-  integrity sha512-VQ0O0lUcD9ilLcMLQMJMgPhp8fDgMd4copd+UhSBGjud0vbI1ONQ3ffAhixEMml/AApLJtqCpd7PJcccPliFSA==
+"@openpgp/web-stream-tools@0.2.0":
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/@openpgp/web-stream-tools/-/web-stream-tools-0.2.0.tgz#49ff6b0a946be66564d7fa506d744f597932f95e"
+  integrity sha512-vX5a0oZKyqcBuS4BSGCufJVHhhIgZKj5Tc0lA7fzivj6iszedbIua6yKCe5ZujVCD7sZlOaYhxSZnLO8FH8rbQ==
 
 "@oxc-resolver/binding-android-arm-eabi@11.6.1":
   version "11.6.1"
