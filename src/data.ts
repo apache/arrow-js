@@ -68,6 +68,7 @@ export class Data<T extends DataType = DataType> {
     declare public readonly typeIds: Buffers<T>[BufferType.TYPE];
     declare public readonly nullBitmap: Buffers<T>[BufferType.VALIDITY];
     declare public readonly valueOffsets: Buffers<T>[BufferType.OFFSET];
+    declare public readonly variadicBuffers: ReadonlyArray<Uint8Array>;
 
     public get typeId(): T['TType'] { return this.type.typeId; }
 
@@ -97,6 +98,11 @@ export class Data<T extends DataType = DataType> {
         values && (byteLength += values.byteLength);
         nullBitmap && (byteLength += nullBitmap.byteLength);
         typeIds && (byteLength += typeIds.byteLength);
+        if (this.variadicBuffers.length > 0) {
+            for (const buffer of this.variadicBuffers) {
+                buffer && (byteLength += buffer.byteLength);
+            }
+        }
         return this.children.reduce((byteLength, child) => byteLength + child.byteLength, byteLength);
     }
 
@@ -117,7 +123,16 @@ export class Data<T extends DataType = DataType> {
         return nullCount;
     }
 
-    constructor(type: T, offset: number, length: number, nullCount?: number, buffers?: Partial<Buffers<T>> | Data<T>, children: Data[] = [], dictionary?: Vector) {
+    constructor(
+        type: T,
+        offset: number,
+        length: number,
+        nullCount?: number,
+        buffers?: Partial<Buffers<T>> | Data<T>,
+        children: Data[] = [],
+        dictionary?: Vector,
+        variadicBuffers: ReadonlyArray<Uint8Array> = []
+    ) {
         this.type = type;
         this.children = children;
         this.dictionary = dictionary;
@@ -131,6 +146,7 @@ export class Data<T extends DataType = DataType> {
             this.typeIds = buffers.typeIds;
             this.nullBitmap = buffers.nullBitmap;
             this.valueOffsets = buffers.valueOffsets;
+            this.variadicBuffers = buffers.variadicBuffers;
         } else {
             this.stride = strideForType(type);
             if (buffers) {
@@ -139,15 +155,22 @@ export class Data<T extends DataType = DataType> {
                 (buffer = (buffers as Buffers<T>)[2]) && (this.nullBitmap = buffer);
                 (buffer = (buffers as Buffers<T>)[3]) && (this.typeIds = buffer);
             }
+            this.variadicBuffers = variadicBuffers;
         }
+        this.variadicBuffers ??= [];
     }
 
     public getValid(index: number): boolean {
         const { type } = this;
         if (DataType.isUnion(type)) {
             const union = (<unknown>type as Union);
-            const child = this.children[union.typeIdToChildIndex[this.typeIds[index]]];
-            const indexInChild = union.mode === UnionMode.Dense ? this.valueOffsets[index] : index;
+            const typeId = this.typeIds[index];
+            const childIndex = union.typeIdToChildIndex[typeId];
+            const child = this.children[childIndex];
+            const valueOffsets = this.valueOffsets as Int32Array | BigInt64Array | undefined;
+            const indexInChild = union.mode === UnionMode.Dense && valueOffsets
+                ? Number(valueOffsets[index])
+                : index;
             return child.getValid(indexInChild);
         }
         if (this.nullable && this.nullCount > 0) {
@@ -163,8 +186,13 @@ export class Data<T extends DataType = DataType> {
         const { type } = this;
         if (DataType.isUnion(type)) {
             const union = (<unknown>type as Union);
-            const child = this.children[union.typeIdToChildIndex[this.typeIds[index]]];
-            const indexInChild = union.mode === UnionMode.Dense ? this.valueOffsets[index] : index;
+            const typeId = this.typeIds[index];
+            const childIndex = union.typeIdToChildIndex[typeId];
+            const child = this.children[childIndex];
+            const valueOffsets = this.valueOffsets as Int32Array | BigInt64Array | undefined;
+            const indexInChild = union.mode === UnionMode.Dense && valueOffsets
+                ? Number(valueOffsets[index])
+                : index;
             prev = child.getValid(indexInChild);
             child.setValid(indexInChild, value);
         } else {
@@ -256,7 +284,7 @@ export class Data<T extends DataType = DataType> {
 
 import {
     Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
     Float,
     Int,
     Date_,
@@ -319,6 +347,14 @@ class MakeDataVisitor extends Visitor {
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
     }
+    public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const views = toUint8Array(props['views']);
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
+        const { ['length']: length = views.byteLength / 16, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
+    }
     public visitBinary<T extends Binary>(props: BinaryDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
         const data = toUint8Array(props['data']);
@@ -334,6 +370,14 @@ class MakeDataVisitor extends Visitor {
         const valueOffsets = toBigInt64Array(props['valueOffsets']);
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
+    }
+    public visitBinaryView<T extends BinaryView>(props: BinaryViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const views = toUint8Array(props['views']);
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
+        const { ['length']: length = views.byteLength / 16, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
     }
     public visitFixedSizeBinary<T extends FixedSizeBinary>(props: FixedSizeBinaryDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
@@ -458,6 +502,8 @@ interface BinaryDataProps<T extends Binary> extends DataProps_<T> { valueOffsets
 interface LargeBinaryDataProps<T extends LargeBinary> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
+interface BinaryViewDataProps<T extends BinaryView> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array> }
+interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
 interface StructDataProps<T extends Struct> extends DataProps_<T> { children: Data[] }
@@ -481,8 +527,10 @@ export type DataProps<T extends DataType> = (
     T extends FixedSizeBinary /* */ ? FixedSizeBinaryDataProps<T> :
     T extends Binary /*          */ ? BinaryDataProps<T> :
     T extends LargeBinary /*     */ ? LargeBinaryDataProps<T> :
+    T extends BinaryView /*      */ ? BinaryViewDataProps<T> :
     T extends Utf8 /*            */ ? Utf8DataProps<T> :
     T extends LargeUtf8 /*       */ ? LargeUtf8DataProps<T> :
+    T extends Utf8View /*        */ ? Utf8ViewDataProps<T> :
     T extends List /*            */ ? ListDataProps<T> :
     T extends FixedSizeList /*   */ ? FixedSizeListDataProps<T> :
     T extends Struct /*          */ ? StructDataProps<T> :
@@ -507,10 +555,12 @@ export function makeData<T extends Timestamp>(props: TimestampDataProps<T>): Dat
 export function makeData<T extends Interval>(props: IntervalDataProps<T>): Data<T>;
 export function makeData<T extends Duration>(props: DurationDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeBinary>(props: FixedSizeBinaryDataProps<T>): Data<T>;
+export function makeData<T extends BinaryView>(props: BinaryViewDataProps<T>): Data<T>;
 export function makeData<T extends Binary>(props: BinaryDataProps<T>): Data<T>;
 export function makeData<T extends LargeBinary>(props: LargeBinaryDataProps<T>): Data<T>;
 export function makeData<T extends Utf8>(props: Utf8DataProps<T>): Data<T>;
 export function makeData<T extends LargeUtf8>(props: LargeUtf8DataProps<T>): Data<T>;
+export function makeData<T extends Utf8View>(props: Utf8ViewDataProps<T>): Data<T>;
 export function makeData<T extends List>(props: ListDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeList>(props: FixedSizeListDataProps<T>): Data<T>;
 export function makeData<T extends Struct>(props: StructDataProps<T>): Data<T>;

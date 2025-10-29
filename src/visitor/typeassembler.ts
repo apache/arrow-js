@@ -25,9 +25,11 @@ import { Null } from '../fb/null.js';
 import { Int } from '../fb/int.js';
 import { FloatingPoint } from '../fb/floating-point.js';
 import { Binary } from '../fb/binary.js';
+import { BinaryView } from '../fb/binary-view.js';
 import { LargeBinary } from '../fb/large-binary.js';
 import { Bool } from '../fb/bool.js';
 import { Utf8 } from '../fb/utf8.js';
+import { Utf8View } from '../fb/utf8-view.js';
 import { LargeUtf8 } from '../fb/large-utf8.js';
 import { Decimal } from '../fb/decimal.js';
 import { Date } from '../fb/date.js';
@@ -72,6 +74,10 @@ export class TypeAssembler extends Visitor {
         Binary.startBinary(b);
         return Binary.endBinary(b);
     }
+    public visitBinaryView<T extends type.BinaryView>(_node: T, b: Builder) {
+        BinaryView.startBinaryView(b);
+        return BinaryView.endBinaryView(b);
+    }
     public visitLargeBinary<T extends type.LargeBinary>(_node: T, b: Builder) {
         LargeBinary.startLargeBinary(b);
         return LargeBinary.endLargeBinary(b);
@@ -83,6 +89,10 @@ export class TypeAssembler extends Visitor {
     public visitUtf8<T extends type.Utf8>(_node: T, b: Builder) {
         Utf8.startUtf8(b);
         return Utf8.endUtf8(b);
+    }
+    public visitUtf8View<T extends type.Utf8View>(_node: T, b: Builder) {
+        Utf8View.startUtf8View(b);
+        return Utf8View.endUtf8View(b);
     }
     public visitLargeUtf8<T extends type.LargeUtf8>(_node: T, b: Builder) {
         LargeUtf8.startLargeUtf8(b);

@@ -78,8 +78,24 @@ compression(obj?:BodyCompression):BodyCompression|null {
   return offset ? (obj || new BodyCompression()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
+/**
+ * Some types such as Utf8View are represented using a variable number of buffers.
+ * For each such Field in the pre-ordered flattened logical schema, there will be
+ * an entry in variadicBufferCounts to indicate the number of variadic buffers which
+ * belong to that Field in the current RecordBatch.
+ */
+variadicBufferCounts(index: number):bigint|null {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.readInt64(this.bb!.__vector(this.bb_pos + offset) + index * 8) : BigInt('0');
+}
+
+variadicBufferCountsLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
 static startRecordBatch(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(5);
 }
 
 static addLength(builder:flatbuffers.Builder, length:bigint) {
@@ -104,6 +120,22 @@ static startBuffersVector(builder:flatbuffers.Builder, numElems:number) {
 
 static addCompression(builder:flatbuffers.Builder, compressionOffset:flatbuffers.Offset) {
   builder.addFieldOffset(3, compressionOffset, 0);
+}
+
+static addVariadicBufferCounts(builder:flatbuffers.Builder, variadicBufferCountsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, variadicBufferCountsOffset, 0);
+}
+
+static createVariadicBufferCountsVector(builder:flatbuffers.Builder, data:bigint[]):flatbuffers.Offset {
+  builder.startVector(8, data.length, 8);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt64(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startVariadicBufferCountsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(8, numElems, 8);
 }
 
 static endRecordBatch(builder:flatbuffers.Builder):flatbuffers.Offset {

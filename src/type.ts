@@ -61,6 +61,8 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
     /** @nocollapse */ static isLargeBinary(x: any): x is LargeBinary { return x?.typeId === Type.LargeBinary; }
     /** @nocollapse */ static isUtf8(x: any): x is Utf8 { return x?.typeId === Type.Utf8; }
     /** @nocollapse */ static isLargeUtf8(x: any): x is LargeUtf8 { return x?.typeId === Type.LargeUtf8; }
+    /** @nocollapse */ static isBinaryView(x: any): x is BinaryView { return x?.typeId === Type.BinaryView; }
+    /** @nocollapse */ static isUtf8View(x: any): x is Utf8View { return x?.typeId === Type.Utf8View; }
     /** @nocollapse */ static isBool(x: any): x is Bool { return x?.typeId === Type.Bool; }
     /** @nocollapse */ static isDecimal(x: any): x is Decimal { return x?.typeId === Type.Decimal; }
     /** @nocollapse */ static isDate(x: any): x is Date_ { return x?.typeId === Type.Date; }
@@ -270,6 +272,24 @@ export class LargeBinary extends DataType<Type.LargeBinary> {
 }
 
 /** @ignore */
+export interface BinaryView extends DataType<Type.BinaryView> {
+    TArray: Uint8Array;
+    TValue: Uint8Array;
+    ArrayType: TypedArrayConstructor<Uint8Array>;
+}
+/** @ignore */
+export class BinaryView extends DataType<Type.BinaryView> {
+    constructor() {
+        super(Type.BinaryView);
+    }
+    public toString() { return `BinaryView`; }
+    protected static [Symbol.toStringTag] = ((proto: BinaryView) => {
+        (<any>proto).ArrayType = Uint8Array;
+        return proto[Symbol.toStringTag] = 'BinaryView';
+    })(BinaryView.prototype);
+}
+
+/** @ignore */
 export interface Utf8 extends DataType<Type.Utf8> { TArray: Uint8Array; TOffsetArray: Int32Array; TValue: string; ArrayType: TypedArrayConstructor<Uint8Array>; OffsetArrayType: TypedArrayConstructor<Int32Array> }
 /** @ignore */
 export class Utf8 extends DataType<Type.Utf8> {
@@ -296,6 +316,24 @@ export class LargeUtf8 extends DataType<Type.LargeUtf8> {
         (<any>proto).OffsetArrayType = BigInt64Array;
         return proto[Symbol.toStringTag] = 'LargeUtf8';
     })(LargeUtf8.prototype);
+}
+
+/** @ignore */
+export interface Utf8View extends DataType<Type.Utf8View> {
+    TArray: Uint8Array;
+    TValue: string;
+    ArrayType: TypedArrayConstructor<Uint8Array>;
+}
+/** @ignore */
+export class Utf8View extends DataType<Type.Utf8View> {
+    constructor() {
+        super(Type.Utf8View);
+    }
+    public toString() { return `Utf8View`; }
+    protected static [Symbol.toStringTag] = ((proto: Utf8View) => {
+        (<any>proto).ArrayType = Uint8Array;
+        return proto[Symbol.toStringTag] = 'Utf8View';
+    })(Utf8View.prototype);
 }
 
 /** @ignore */
@@ -759,6 +797,8 @@ export function strideForType(type: DataType) {
         }
         // case Type.Int: return 1 + +((t as Int_).bitWidth > 32);
         // case Type.Time: return 1 + +((t as Time_).bitWidth > 32);
+        case Type.BinaryView:
+        case Type.Utf8View: return 16;
         case Type.FixedSizeList: return (t as FixedSizeList).listSize;
         case Type.FixedSizeBinary: return (t as FixedSizeBinary).byteWidth;
         default: return 1;
