@@ -228,8 +228,16 @@ export class Data<T extends DataType = DataType> {
         return value;
     }
 
-    public clone<R extends DataType = T>(type: R = this.type as any, offset = this.offset, length = this.length, nullCount = this._nullCount, buffers: Buffers<R> = <any>this, children: Data[] = this.children) {
-        return new Data(type, offset, length, nullCount, buffers, children, this.dictionary);
+    public clone<R extends DataType = T>(
+        type: R = this.type as any,
+        offset = this.offset,
+        length = this.length,
+        nullCount = this._nullCount,
+        buffers: Buffers<R> = <any>this,
+        children: Data[] = this.children,
+        variadicBuffers: ReadonlyArray<Uint8Array> = this.variadicBuffers
+    ) {
+        return new Data(type, offset, length, nullCount, buffers, children, this.dictionary, variadicBuffers);
     }
 
     public slice(offset: number, length: number): Data<T> {
@@ -242,12 +250,13 @@ export class Data<T extends DataType = DataType> {
         const buffers = this._sliceBuffers(offset, length, stride, typeId);
         return this.clone<T>(this.type, this.offset + offset, length, nullCount, buffers,
             // Don't slice children if we have value offsets (the variable-width types)
-            (children.length === 0 || this.valueOffsets) ? children : this._sliceChildren(children, childStride * offset, childStride * length));
+            (children.length === 0 || this.valueOffsets) ? children : this._sliceChildren(children, childStride * offset, childStride * length),
+            this.variadicBuffers);
     }
 
     public _changeLengthAndBackfillNullBitmap(newLength: number): Data<T> {
         if (this.typeId === Type.Null) {
-            return this.clone(this.type, 0, newLength, 0);
+            return this.clone(this.type, 0, newLength, 0, <any>this.buffers, this.children, this.variadicBuffers);
         }
         const { length, nullCount } = this;
         // start initialized with 0s (nulls), then fill from 0 to length with 1s (not null)
@@ -260,7 +269,7 @@ export class Data<T extends DataType = DataType> {
         }
         const buffers = this.buffers;
         buffers[BufferType.VALIDITY] = bitmap;
-        return this.clone(this.type, 0, newLength, nullCount + (newLength - length), buffers);
+        return this.clone(this.type, 0, newLength, nullCount + (newLength - length), buffers, this.children, this.variadicBuffers);
     }
 
     protected _sliceBuffers(offset: number, length: number, stride: number, typeId: T['TType']): Buffers<T> {
@@ -268,10 +277,15 @@ export class Data<T extends DataType = DataType> {
         const { buffers } = this;
         // If typeIds exist, slice the typeIds buffer
         (arr = buffers[BufferType.TYPE]) && (buffers[BufferType.TYPE] = arr.subarray(offset, offset + length));
-        // If offsets exist, only slice the offsets buffer
-        (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length + 1)) ||
-            // Otherwise if no offsets, slice the data buffer. Don't slice the data vector for Booleans, since the offset goes by bits not bytes
-            (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = typeId === 6 ? arr : arr.subarray(stride * offset, stride * (offset + length)));
+        if (DataType.isBinaryView(this.type) || DataType.isUtf8View(this.type)) {
+            const width = BinaryView.ELEMENT_WIDTH;
+            (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = arr.subarray(offset * width, (offset + length) * width));
+        } else {
+            // If offsets exist, only slice the offsets buffer
+            (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length + 1)) ||
+                // Otherwise if no offsets, slice the data buffer. Don't slice the data vector for Booleans, since the offset goes by bits not bytes
+                (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = typeId === 6 ? arr : arr.subarray(stride * offset, stride * (offset + length)));
+        }
         return buffers;
     }
 
@@ -339,6 +353,15 @@ class MakeDataVisitor extends Visitor {
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
     }
+    public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const views = toArrayBufferView(type.ArrayType, props['views']);
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
+        const length = props['length'] ?? Math.trunc(views.length / Utf8View.ELEMENT_WIDTH);
+        const nullCount = props['nullBitmap'] ? -1 : 0;
+        return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
+    }
     public visitLargeUtf8<T extends LargeUtf8>(props: LargeUtf8DataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
         const data = toUint8Array(props['data']);
@@ -346,14 +369,6 @@ class MakeDataVisitor extends Visitor {
         const valueOffsets = toBigInt64Array(props['valueOffsets']);
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
-    }
-    public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
-        const { ['type']: type, ['offset']: offset = 0 } = props;
-        const views = toUint8Array(props['views']);
-        const nullBitmap = toUint8Array(props['nullBitmap']);
-        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
-        const { ['length']: length = views.byteLength / 16, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
-        return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
     }
     public visitBinary<T extends Binary>(props: BinaryDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
@@ -363,6 +378,15 @@ class MakeDataVisitor extends Visitor {
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
     }
+    public visitBinaryView<T extends BinaryView>(props: BinaryViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const views = toArrayBufferView(type.ArrayType, props['views']);
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
+        const length = props['length'] ?? Math.trunc(views.length / BinaryView.ELEMENT_WIDTH);
+        const nullCount = props['nullBitmap'] ? -1 : 0;
+        return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
+    }
     public visitLargeBinary<T extends LargeBinary>(props: LargeBinaryDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
         const data = toUint8Array(props['data']);
@@ -370,14 +394,6 @@ class MakeDataVisitor extends Visitor {
         const valueOffsets = toBigInt64Array(props['valueOffsets']);
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
-    }
-    public visitBinaryView<T extends BinaryView>(props: BinaryViewDataProps<T>) {
-        const { ['type']: type, ['offset']: offset = 0 } = props;
-        const views = toUint8Array(props['views']);
-        const nullBitmap = toUint8Array(props['nullBitmap']);
-        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
-        const { ['length']: length = views.byteLength / 16, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
-        return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
     }
     public visitFixedSizeBinary<T extends FixedSizeBinary>(props: FixedSizeBinaryDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
@@ -499,11 +515,11 @@ interface IntervalDataProps<T extends Interval> extends DataProps_<T> { data?: D
 interface DurationDataProps<T extends Duration> extends DataProps_<T> { data?: DataBuffer<T> }
 interface FixedSizeBinaryDataProps<T extends FixedSizeBinary> extends DataProps_<T> { data?: DataBuffer<T> }
 interface BinaryDataProps<T extends Binary> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
+interface BinaryViewDataProps<T extends BinaryView> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array>; data?: DataBuffer<T> }
 interface LargeBinaryDataProps<T extends LargeBinary> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; data?: DataBuffer<T> }
+interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array>; data?: DataBuffer<T> }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
-interface BinaryViewDataProps<T extends BinaryView> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array> }
-interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
 interface StructDataProps<T extends Struct> extends DataProps_<T> { children: Data[] }
