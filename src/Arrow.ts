@@ -44,7 +44,7 @@ export {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
     Decimal,
-    List,
+    List, ListView, LargeListView,
     Struct,
     Union, DenseUnion, SparseUnion,
     Dictionary,
