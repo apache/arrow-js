@@ -32,7 +32,7 @@ describe('BinaryViewBuilder', () => {
         }
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)).toEqual(values[0]);
         expect(vector.get(1)).toEqual(values[1]);
         expect(vector.get(2)).toEqual(values[2]);
@@ -48,7 +48,7 @@ describe('BinaryViewBuilder', () => {
         builder.append(value);
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(1);
+        expect(vector).toHaveLength(1);
         expect(vector.get(0)).toEqual(value);
     });
 
@@ -65,7 +65,7 @@ describe('BinaryViewBuilder', () => {
         builder.append(small);
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)).toEqual(small);
         expect(vector.get(1)).toEqual(large);
         expect(vector.get(2)).toEqual(small);
@@ -79,7 +79,7 @@ describe('BinaryViewBuilder', () => {
         builder.append(new Uint8Array([4, 5, 6]));
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)).toEqual(new Uint8Array([1, 2, 3]));
         expect(vector.get(1)).toBeNull();
         expect(vector.get(2)).toEqual(new Uint8Array([4, 5, 6]));
@@ -92,7 +92,7 @@ describe('BinaryViewBuilder', () => {
         builder.append(new Uint8Array([1]));
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(2);
+        expect(vector).toHaveLength(2);
         expect(vector.get(0)).toEqual(new Uint8Array([]));
         expect(vector.get(1)).toEqual(new Uint8Array([1]));
     });
@@ -106,7 +106,7 @@ describe('BinaryViewBuilder', () => {
         builder.append(exactly13);
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(2);
+        expect(vector).toHaveLength(2);
         expect(vector.get(0)).toEqual(exactly12);
         expect(vector.get(1)).toEqual(exactly13);
     });
@@ -116,12 +116,12 @@ describe('BinaryViewBuilder', () => {
 
         builder.append(new Uint8Array([1, 2]));
         const data1 = builder.flush();
-        expect(data1.length).toBe(1);
+        expect(data1).toHaveLength(1);
 
         builder.append(new Uint8Array([3, 4]));
         builder.append(new Uint8Array([5, 6]));
         const data2 = builder.flush();
-        expect(data2.length).toBe(2);
+        expect(data2).toHaveLength(2);
     });
 });
 
@@ -135,7 +135,7 @@ describe('Utf8ViewBuilder', () => {
         }
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)).toBe('hello');
         expect(vector.get(1)).toBe('world');
         expect(vector.get(2)).toBe('foo');
@@ -148,7 +148,7 @@ describe('Utf8ViewBuilder', () => {
         builder.append(longString);
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(1);
+        expect(vector).toHaveLength(1);
         expect(vector.get(0)).toBe(longString);
     });
 
@@ -162,7 +162,7 @@ describe('Utf8ViewBuilder', () => {
         builder.append(short);
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)).toBe(short);
         expect(vector.get(1)).toBe(long);
         expect(vector.get(2)).toBe(short);
@@ -176,7 +176,7 @@ describe('Utf8ViewBuilder', () => {
         builder.append('world');
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)).toBe('hello');
         expect(vector.get(1)).toBeNull();
         expect(vector.get(2)).toBe('world');
@@ -189,7 +189,7 @@ describe('Utf8ViewBuilder', () => {
         builder.append('a');
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(2);
+        expect(vector).toHaveLength(2);
         expect(vector.get(0)).toBe('');
         expect(vector.get(1)).toBe('a');
     });
@@ -203,7 +203,7 @@ describe('Utf8ViewBuilder', () => {
         }
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(4);
+        expect(vector).toHaveLength(4);
         expect(vector.get(0)).toBe('🚀');
         expect(vector.get(1)).toBe('你好');
         expect(vector.get(2)).toBe('Ñoño');
@@ -219,7 +219,7 @@ describe('Utf8ViewBuilder', () => {
         builder.append(exactly13);
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(2);
+        expect(vector).toHaveLength(2);
         expect(vector.get(0)).toBe(exactly12);
         expect(vector.get(1)).toBe(exactly13);
     });
@@ -228,7 +228,7 @@ describe('Utf8ViewBuilder', () => {
         const values = ['hello', 'world', null, 'foo'];
         const vector = vectorFromArray(values, new Utf8View());
 
-        expect(vector.length).toBe(4);
+        expect(vector).toHaveLength(4);
         expect(vector.get(0)).toBe('hello');
         expect(vector.get(1)).toBe('world');
         expect(vector.get(2)).toBeNull();
@@ -249,7 +249,7 @@ describe('Utf8ViewBuilder', () => {
         }
 
         const vector = builder.finish().toVector();
-        expect(vector.length).toBe(count);
+        expect(vector).toHaveLength(count);
 
         for (let i = 0; i < count; i++) {
             expect(vector.get(i)).toBe(values[i]);
