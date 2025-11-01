@@ -16,7 +16,5 @@
 # under the License.
 
 .github/pull_request_template.md
-scripts/update_flatbuffers.sh
 src/fb/*.ts
-test/unit/ipc/view-types-tests.ts
 yarn.lock
