@@ -34,6 +34,7 @@ import { IntervalBuilder, IntervalDayTimeBuilder, IntervalMonthDayNanoBuilder, I
 import { DurationBuilder, DurationSecondBuilder, DurationMillisecondBuilder, DurationMicrosecondBuilder, DurationNanosecondBuilder } from '../builder/duration.js';
 import { IntBuilder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, Uint8Builder, Uint16Builder, Uint32Builder, Uint64Builder } from '../builder/int.js';
 import { ListBuilder } from '../builder/list.js';
+import { ListViewBuilder, LargeListViewBuilder } from '../builder/listview.js';
 import { MapBuilder } from '../builder/map.js';
 import { NullBuilder } from '../builder/null.js';
 import { StructBuilder } from '../builder/struct.js';
@@ -90,6 +91,8 @@ export class GetBuilderCtor extends Visitor {
     public visitTimeNanosecond() { return TimeNanosecondBuilder; }
     public visitDecimal() { return DecimalBuilder; }
     public visitList() { return ListBuilder; }
+    public visitListView() { return ListViewBuilder; }
+    public visitLargeListView() { return LargeListViewBuilder; }
     public visitStruct() { return StructBuilder; }
     public visitUnion() { return UnionBuilder; }
     public visitDenseUnion() { return DenseUnionBuilder; }
