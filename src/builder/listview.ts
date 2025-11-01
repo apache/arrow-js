@@ -137,7 +137,7 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
     protected _offsets: DataBufferBuilder<BigInt64Array>;
     protected _sizes: DataBufferBuilder<BigInt64Array>;
     protected _pending: Map<number, T['TValue'] | undefined> | undefined;
-    protected _writeIndex = 0n; // BigInt for LargeListView
+    protected _writeIndex = BigInt(0); // BigInt for LargeListView
 
     constructor(opts: BuilderOptions<LargeListView<T>, TNull>) {
         super(opts);
@@ -169,7 +169,7 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
 
     public clear() {
         this._pending = undefined;
-        this._writeIndex = 0n;
+        this._writeIndex = BigInt(0);
         return super.clear();
     }
 
@@ -221,8 +221,8 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
 
             if (typeof value === 'undefined') {
                 // Null or empty list
-                offsets.buffer[index] = 0n;
-                sizes.buffer[index] = 0n;
+                offsets.buffer[index] = BigInt(0);
+                sizes.buffer[index] = BigInt(0);
             } else {
                 const v = value as T['TValue'];
                 const n = v.length;
