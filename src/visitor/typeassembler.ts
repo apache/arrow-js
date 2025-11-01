@@ -38,6 +38,8 @@ import { Timestamp } from '../fb/timestamp.js';
 import { Interval } from '../fb/interval.js';
 import { Duration } from '../fb/duration.js';
 import { List } from '../fb/list.js';
+import { ListView } from '../fb/list-view.js';
+import { LargeListView } from '../fb/large-list-view.js';
 import { Struct_ as Struct } from '../fb/struct-.js';
 import { Union } from '../fb/union.js';
 import { DictionaryEncoding } from '../fb/dictionary-encoding.js';
@@ -138,6 +140,14 @@ export class TypeAssembler extends Visitor {
     public visitList<T extends type.List>(_node: T, b: Builder) {
         List.startList(b);
         return List.endList(b);
+    }
+    public visitListView<T extends type.ListView>(_node: T, b: Builder) {
+        ListView.startListView(b);
+        return ListView.endListView(b);
+    }
+    public visitLargeListView<T extends type.LargeListView>(_node: T, b: Builder) {
+        LargeListView.startLargeListView(b);
+        return LargeListView.endLargeListView(b);
     }
     public visitStruct<T extends type.Struct>(_node: T, b: Builder) {
         Struct.startStruct_(b);

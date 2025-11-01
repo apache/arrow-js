@@ -84,6 +84,10 @@ export class GetDataTypeConstructor extends Visitor {
     public visitDurationNanosecond() { return type.DurationNanosecond; }
     public visitFixedSizeList() { return type.FixedSizeList; }
     public visitMap() { return type.Map_; }
+    public visitBinaryView() { return type.BinaryView; }
+    public visitUtf8View() { return type.Utf8View; }
+    public visitListView() { return type.ListView; }
+    public visitLargeListView() { return type.LargeListView; }
 }
 
 /** @ignore */

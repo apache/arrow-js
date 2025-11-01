@@ -294,7 +294,7 @@ export class Data<T extends DataType = DataType> {
 
 import {
     Dictionary,
-    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, ListView, LargeListView, FixedSizeList, Map_, Struct,
     Float,
     Int,
     Date_,
@@ -517,6 +517,8 @@ interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: Va
 interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array>; data?: DataBuffer<T> }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
+interface ListViewDataProps<T extends ListView> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; sizes: ValueOffsetsBuffer; child: Data<T['valueType']> }
+interface LargeListViewDataProps<T extends LargeListView> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; sizes: LargeValueOffsetsBuffer | ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
 interface StructDataProps<T extends Struct> extends DataProps_<T> { children: Data[] }
 interface Map_DataProps<T extends Map_> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data }
@@ -544,6 +546,8 @@ export type DataProps<T extends DataType> = (
     T extends LargeUtf8 /*       */ ? LargeUtf8DataProps<T> :
     T extends Utf8View /*        */ ? Utf8ViewDataProps<T> :
     T extends List /*            */ ? ListDataProps<T> :
+    T extends ListView /*        */ ? ListViewDataProps<T> :
+    T extends LargeListView /*   */ ? LargeListViewDataProps<T> :
     T extends FixedSizeList /*   */ ? FixedSizeListDataProps<T> :
     T extends Struct /*          */ ? StructDataProps<T> :
     T extends Map_ /*            */ ? Map_DataProps<T> :
@@ -574,6 +578,8 @@ export function makeData<T extends Utf8>(props: Utf8DataProps<T>): Data<T>;
 export function makeData<T extends LargeUtf8>(props: LargeUtf8DataProps<T>): Data<T>;
 export function makeData<T extends Utf8View>(props: Utf8ViewDataProps<T>): Data<T>;
 export function makeData<T extends List>(props: ListDataProps<T>): Data<T>;
+export function makeData<T extends ListView>(props: ListViewDataProps<T>): Data<T>;
+export function makeData<T extends LargeListView>(props: LargeListViewDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeList>(props: FixedSizeListDataProps<T>): Data<T>;
 export function makeData<T extends Struct>(props: StructDataProps<T>): Data<T>;
 export function makeData<T extends Map_>(props: Map_DataProps<T>): Data<T>;
