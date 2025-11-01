@@ -81,7 +81,7 @@ export {
 } from './Arrow.js';
 
 export {
-    BinaryBuilder, LargeBinaryBuilder,
+    BinaryBuilder, BinaryViewBuilder, LargeBinaryBuilder,
     BoolBuilder,
     DateBuilder, DateDayBuilder, DateMillisecondBuilder,
     DecimalBuilder,
@@ -99,5 +99,5 @@ export {
     TimestampBuilder, TimestampSecondBuilder, TimestampMillisecondBuilder, TimestampMicrosecondBuilder, TimestampNanosecondBuilder,
     TimeBuilder, TimeSecondBuilder, TimeMillisecondBuilder, TimeMicrosecondBuilder, TimeNanosecondBuilder,
     UnionBuilder, DenseUnionBuilder, SparseUnionBuilder,
-    Utf8Builder, LargeUtf8Builder
+    Utf8Builder, Utf8ViewBuilder, LargeUtf8Builder
 } from './Arrow.js';
