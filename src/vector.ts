@@ -362,17 +362,21 @@ export class Vector<T extends DataType = any> {
             .filter((T: any) => typeof T === 'number' && T !== Type.NONE);
 
         for (const typeId of typeIds) {
-            const get = getVisitor.getVisitFnByTypeId(typeId);
-            const set = setVisitor.getVisitFnByTypeId(typeId);
-            const indexOf = indexOfVisitor.getVisitFnByTypeId(typeId);
+            try {
+                const get = getVisitor.getVisitFnByTypeId(typeId);
+                const set = setVisitor.getVisitFnByTypeId(typeId);
+                const indexOf = indexOfVisitor.getVisitFnByTypeId(typeId);
 
-            visitorsByTypeId[typeId] = { get, set, indexOf };
-            vectorPrototypesByTypeId[typeId] = Object.create(proto, {
-                ['isValid']: { value: wrapChunkedCall1(isChunkedValid) },
-                ['get']: { value: wrapChunkedCall1(getVisitor.getVisitFnByTypeId(typeId)) },
-                ['set']: { value: wrapChunkedCall2(setVisitor.getVisitFnByTypeId(typeId)) },
-                ['indexOf']: { value: wrapChunkedIndexOf(indexOfVisitor.getVisitFnByTypeId(typeId)) },
-            });
+                visitorsByTypeId[typeId] = { get, set, indexOf };
+                vectorPrototypesByTypeId[typeId] = Object.create(proto, {
+                    ['isValid']: { value: wrapChunkedCall1(isChunkedValid) },
+                    ['get']: { value: wrapChunkedCall1(getVisitor.getVisitFnByTypeId(typeId)) },
+                    ['set']: { value: wrapChunkedCall2(setVisitor.getVisitFnByTypeId(typeId)) },
+                    ['indexOf']: { value: wrapChunkedIndexOf(indexOfVisitor.getVisitFnByTypeId(typeId)) },
+                });
+            } catch {
+                continue;
+            }
         }
 
         return 'Vector';
