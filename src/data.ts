@@ -433,6 +433,22 @@ class MakeDataVisitor extends Visitor {
         const { ['length']: length = valueOffsets.length - 1, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, undefined, nullBitmap], [child]);
     }
+    public visitListView<T extends ListView>(props: ListViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0, ['child']: child } = props;
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const valueOffsets = toInt32Array(props['valueOffsets']);
+        const sizes = toInt32Array(props['sizes']);
+        const { ['length']: length = sizes.length, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [valueOffsets, sizes, nullBitmap], [child]);
+    }
+    public visitLargeListView<T extends LargeListView>(props: LargeListViewDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0, ['child']: child } = props;
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const valueOffsets = toBigInt64Array(props['valueOffsets']);
+        const sizes = toBigInt64Array(props['sizes']);
+        const { ['length']: length = Number(sizes.length), ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [valueOffsets, sizes, nullBitmap], [child]);
+    }
     public visitStruct<T extends Struct>(props: StructDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0, ['children']: children = [] } = props;
         const nullBitmap = toUint8Array(props['nullBitmap']);
