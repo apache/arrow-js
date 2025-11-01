@@ -92,7 +92,7 @@ export {
     IntervalBuilder, IntervalDayTimeBuilder, IntervalYearMonthBuilder, IntervalMonthDayNanoBuilder,
     DurationBuilder, DurationSecondBuilder, DurationMillisecondBuilder, DurationMicrosecondBuilder, DurationNanosecondBuilder,
     IntBuilder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, Uint8Builder, Uint16Builder, Uint32Builder, Uint64Builder,
-    ListBuilder,
+    ListBuilder, ListViewBuilder, LargeListViewBuilder,
     MapBuilder,
     NullBuilder,
     StructBuilder,
