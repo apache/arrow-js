@@ -33,7 +33,7 @@ describe('ListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([1, 2, 3]));
         expect(vector.get(1)?.toArray()).toEqual(new Int32Array([4, 5]));
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([6]));
@@ -50,7 +50,7 @@ describe('ListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([1, 2]));
         expect(vector.get(1)).toBeNull();
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([3, 4, 5]));
@@ -67,7 +67,7 @@ describe('ListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([]));
         expect(vector.get(1)?.toArray()).toEqual(new Int32Array([1, 2]));
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([]));
@@ -88,9 +88,9 @@ describe('ListViewBuilder', () => {
         const vector1 = new Vector([data1]);
         const vector2 = new Vector([data2]);
 
-        expect(vector1.length).toBe(1);
+        expect(vector1).toHaveLength(1);
         expect(vector1.get(0)?.toArray()).toEqual(new Int32Array([1, 2]));
-        expect(vector2.length).toBe(1);
+        expect(vector2).toHaveLength(1);
         expect(vector2.get(0)?.toArray()).toEqual(new Int32Array([3, 4]));
     });
 
@@ -106,7 +106,7 @@ describe('ListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(4);
+        expect(vector).toHaveLength(4);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([1]));
         expect(vector.get(1)?.toArray()).toEqual(new Int32Array([2, 3]));
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([4, 5, 6]));
@@ -126,7 +126,7 @@ describe('LargeListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([1, 2, 3]));
         expect(vector.get(1)?.toArray()).toEqual(new Int32Array([4, 5]));
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([6]));
@@ -143,7 +143,7 @@ describe('LargeListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([1, 2]));
         expect(vector.get(1)).toBeNull();
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([3, 4, 5]));
@@ -160,7 +160,7 @@ describe('LargeListViewBuilder', () => {
 
         const vector = builder.finish().toVector();
 
-        expect(vector.length).toBe(3);
+        expect(vector).toHaveLength(3);
         expect(vector.get(0)?.toArray()).toEqual(new Int32Array([]));
         expect(vector.get(1)?.toArray()).toEqual(new Int32Array([1, 2]));
         expect(vector.get(2)?.toArray()).toEqual(new Int32Array([]));
