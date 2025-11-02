@@ -72,6 +72,8 @@ export enum Type {
     LargeUtf8 = 20, /** Large variable-length string as List<Char> */
     BinaryView = 23, /** Variable-length binary values backed by inline-or-referenced views */
     Utf8View = 24, /** Variable-length UTF8 string values backed by inline-or-referenced views */
+    ListView = 25, /** Variable-length list values backed by entry views */
+    LargeListView = 26, /** Large variable-length list values backed by entry views */
 
     Dictionary = -1, /** Dictionary aka Category type */
     Int8 = -2,
