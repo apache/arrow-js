@@ -39,9 +39,7 @@ export class Utf8ViewBuilder<TNull = any> extends Builder<Utf8View, TNull> {
         let size = 0;
         this._views && (size += this._views.byteLength);
         this._nulls && (size += this._nulls.byteLength);
-        for (const buffer of this._variadicBuffers) {
-            size += buffer.byteLength;
-        }
+        size += this._variadicBuffers.reduce((acc, buffer) => acc + buffer.byteLength, 0);
         this._currentBuffer && (size += this._currentBuffer.byteLength);
         return size;
     }
