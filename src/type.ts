@@ -71,6 +71,7 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
     /** @nocollapse */ static isInterval(x: any): x is Interval_ { return x?.typeId === Type.Interval; }
     /** @nocollapse */ static isDuration(x: any): x is Duration { return x?.typeId === Type.Duration; }
     /** @nocollapse */ static isList(x: any): x is List { return x?.typeId === Type.List; }
+    /** @nocollapse */ static isLargeList(x: any): x is LargeList { return x?.typeId === Type.LargeList; }
     /** @nocollapse */ static isListView(x: any): x is ListView { return x?.typeId === Type.ListView; }
     /** @nocollapse */ static isLargeListView(x: any): x is LargeListView { return x?.typeId === Type.LargeListView; }
     /** @nocollapse */ static isStruct(x: any): x is Struct { return x?.typeId === Type.Struct; }
@@ -594,6 +595,32 @@ export class List<T extends DataType = any> extends DataType<Type.List, { [0]: T
         (<any>proto).children = null;
         return proto[Symbol.toStringTag] = 'List';
     })(List.prototype);
+}
+
+/** @ignore */
+export interface LargeList<T extends DataType = any> extends DataType<Type.LargeList, { [0]: T }> {
+    TArray: Array<T>;
+    TValue: Vector<T>;
+    TOffsetArray: BigInt64Array;
+    OffsetArrayType: BigIntArrayConstructor<BigInt64Array>;
+}
+
+/** @ignore */
+export class LargeList<T extends DataType = any> extends DataType<Type.LargeList, { [0]: T }> {
+    constructor(child: Field<T>) {
+        super(Type.LargeList);
+        this.children = [child];
+    }
+    public declare readonly children: Field<T>[];
+    public toString() { return `LargeList<${this.valueType}>`; }
+    public get valueType(): T { return this.children[0].type as T; }
+    public get valueField(): Field<T> { return this.children[0] as Field<T>; }
+    public get ArrayType(): T['ArrayType'] { return this.valueType.ArrayType; }
+    protected static [Symbol.toStringTag] = ((proto: LargeList) => {
+        (<any>proto).children = null;
+        (<any>proto).OffsetArrayType = BigInt64Array;
+        return proto[Symbol.toStringTag] = 'LargeList';
+    })(LargeList.prototype);
 }
 
 /** @ignore */
