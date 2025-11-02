@@ -21,7 +21,7 @@ import { Type, Precision } from '../enum.js';
 import { TypeToDataType } from '../interfaces.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -31,6 +31,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 import { ChunkedIterator } from '../util/chunk.js';
 
@@ -77,6 +78,7 @@ export interface IteratorVisitor extends Visitor {
     visitTimeNanosecond<T extends TimeNanosecond>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitDecimal<T extends Decimal>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitList<T extends List>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
+    visitLargeList<T extends LargeList>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitStruct<T extends Struct>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitUnion<T extends Union>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitDenseUnion<T extends DenseUnion>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
@@ -93,6 +95,7 @@ export interface IteratorVisitor extends Visitor {
     visitDurationNanosecond<T extends DurationNanosecond>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitFixedSizeList<T extends FixedSizeList>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitMap<T extends Map_>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
+    visitRunEndEncoded<T extends RunEndEncoded>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
 }
 
 /** @ignore */
@@ -186,6 +189,7 @@ IteratorVisitor.prototype.visitTimeMicrosecond = vectorIterator;
 IteratorVisitor.prototype.visitTimeNanosecond = vectorIterator;
 IteratorVisitor.prototype.visitDecimal = vectorIterator;
 IteratorVisitor.prototype.visitList = vectorIterator;
+IteratorVisitor.prototype.visitLargeList = vectorIterator;
 IteratorVisitor.prototype.visitStruct = vectorIterator;
 IteratorVisitor.prototype.visitUnion = vectorIterator;
 IteratorVisitor.prototype.visitDenseUnion = vectorIterator;
@@ -202,6 +206,7 @@ IteratorVisitor.prototype.visitDurationMicrosecond = vectorIterator;
 IteratorVisitor.prototype.visitDurationNanosecond = vectorIterator;
 IteratorVisitor.prototype.visitFixedSizeList = vectorIterator;
 IteratorVisitor.prototype.visitMap = vectorIterator;
+IteratorVisitor.prototype.visitRunEndEncoded = vectorIterator;
 
 /** @ignore */
 export const instance = new IteratorVisitor();

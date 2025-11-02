@@ -74,6 +74,7 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
     /** @nocollapse */ static isLargeList(x: any): x is LargeList { return x?.typeId === Type.LargeList; }
     /** @nocollapse */ static isListView(x: any): x is ListView { return x?.typeId === Type.ListView; }
     /** @nocollapse */ static isLargeListView(x: any): x is LargeListView { return x?.typeId === Type.LargeListView; }
+    /** @nocollapse */ static isRunEndEncoded(x: any): x is RunEndEncoded { return x?.typeId === Type.RunEndEncoded; }
     /** @nocollapse */ static isStruct(x: any): x is Struct { return x?.typeId === Type.Struct; }
     /** @nocollapse */ static isUnion(x: any): x is Union_ { return x?.typeId === Type.Union; }
     /** @nocollapse */ static isFixedSizeBinary(x: any): x is FixedSizeBinary { return x?.typeId === Type.FixedSizeBinary; }
@@ -655,6 +656,34 @@ export class LargeListView<T extends DataType = any> extends DataType<Type.Large
         (<any>proto).children = null;
         return proto[Symbol.toStringTag] = 'LargeListView';
     })(LargeListView.prototype);
+}
+
+/** @ignore */
+export type TRunEnds = Int16 | Int32 | Int64;
+
+/** @ignore */
+export interface RunEndEncoded<TRunEnds extends Int_ = Int_, TValue extends DataType = DataType> extends DataType<Type.RunEndEncoded, { [0]: TRunEnds; [1]: TValue }> {
+    TArray: TValue['TArray'];
+    TValue: TValue['TValue'];
+}
+
+/** @ignore */
+export class RunEndEncoded<TRunEnds extends Int_ = Int_, TValue extends DataType = DataType> extends DataType<Type.RunEndEncoded, { [0]: TRunEnds; [1]: TValue }> {
+    constructor(runEnds: Field<TRunEnds>, values: Field<TValue>) {
+        super(Type.RunEndEncoded);
+        this.children = [runEnds, values];
+    }
+    public declare readonly children: [Field<TRunEnds>, Field<TValue>];
+    public toString() { return `RunEndEncoded<${this.runEndsType}, ${this.valueType}>`; }
+    public get runEndsType(): TRunEnds { return this.children[0].type as TRunEnds; }
+    public get valueType(): TValue { return this.children[1].type as TValue; }
+    public get runEndsField(): Field<TRunEnds> { return this.children[0] as Field<TRunEnds>; }
+    public get valueField(): Field<TValue> { return this.children[1] as Field<TValue>; }
+    public get ArrayType(): TValue['ArrayType'] { return this.valueType.ArrayType; }
+    protected static [Symbol.toStringTag] = ((proto: RunEndEncoded) => {
+        (<any>proto).children = null;
+        return proto[Symbol.toStringTag] = 'RunEndEncoded';
+    })(RunEndEncoded.prototype);
 }
 
 /** @ignore */

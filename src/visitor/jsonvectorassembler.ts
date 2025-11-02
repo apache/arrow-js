@@ -29,6 +29,7 @@ import {
     DataType,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
     Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct, IntArray,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -61,6 +62,7 @@ export interface JSONVectorAssembler extends Visitor {
     visitDuration<T extends Duration>(data: Data<T>): { DATA: string[] };
     visitFixedSizeList<T extends FixedSizeList>(data: Data<T>): { children: any[] };
     visitMap<T extends Map_>(data: Data<T>): { children: any[] };
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>): { children: any[] };
 }
 
 /** @ignore */
@@ -189,6 +191,11 @@ export class JSONVectorAssembler extends Visitor {
     public visitMap<T extends Map_>(data: Data<T>) {
         return {
             'OFFSET': [...data.valueOffsets],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>) {
+        return {
             'children': this.visitMany(data.type.children, data.children)
         };
     }

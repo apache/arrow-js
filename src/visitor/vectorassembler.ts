@@ -28,6 +28,7 @@ import {
     DataType, Dictionary,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
     Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct,
+    RunEndEncoded,
 } from '../type.js';
 import { bigIntToNumber } from '../util/bigint.js';
 
@@ -58,6 +59,7 @@ export interface VectorAssembler extends Visitor {
     visitDuration<T extends Duration>(data: Data<T>): this;
     visitFixedSizeList<T extends FixedSizeList>(data: Data<T>): this;
     visitMap<T extends Map_>(data: Data<T>): this;
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>): this;
 }
 
 /** @ignore */
@@ -250,7 +252,7 @@ function assembleListVector<T extends Map_ | List | LargeList | FixedSizeList>(t
 }
 
 /** @ignore */
-function assembleNestedVector<T extends Struct | Union>(this: VectorAssembler, data: Data<T>) {
+function assembleNestedVector<T extends Struct | Union | RunEndEncoded>(this: VectorAssembler, data: Data<T>) {
     return this.visitMany(data.type.children.map((_, i) => data.children[i]).filter(Boolean))[0];
 }
 
@@ -276,3 +278,4 @@ VectorAssembler.prototype.visitInterval = assembleFlatVector;
 VectorAssembler.prototype.visitDuration = assembleFlatVector;
 VectorAssembler.prototype.visitFixedSizeList = assembleListVector;
 VectorAssembler.prototype.visitMap = assembleListVector;
+VectorAssembler.prototype.visitRunEndEncoded = assembleNestedVector;

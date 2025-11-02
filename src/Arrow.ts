@@ -51,7 +51,8 @@ export {
     Interval, IntervalDayTime, IntervalYearMonth, IntervalMonthDayNano,
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     FixedSizeList,
-    Map_
+    Map_,
+    RunEndEncoded
 } from './type.js';
 
 export { Table, makeTable, tableFromArrays } from './table.js';

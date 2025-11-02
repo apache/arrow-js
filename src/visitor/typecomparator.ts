@@ -31,6 +31,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -91,6 +92,7 @@ export interface TypeComparator extends Visitor {
     visitDurationNanosecond<T extends DurationNanosecond>(type: T, other?: DataType | null): other is T;
     visitFixedSizeList<T extends FixedSizeList>(type: T, other?: DataType | null): other is T;
     visitMap<T extends Map_>(type: T, other?: DataType | null): other is T;
+    visitRunEndEncoded<T extends RunEndEncoded>(type: T, other?: DataType | null): other is T;
 }
 
 /** @ignore */
@@ -239,6 +241,14 @@ function compareMap<T extends Map_>(type: T, other?: DataType | null): other is 
     );
 }
 
+function compareRunEndEncoded<T extends RunEndEncoded>(type: T, other?: DataType | null): other is T {
+    return (type === other) || (
+        compareConstructor(type, other) &&
+        type.children.length === other.children.length &&
+        instance.compareManyFields(type.children, other.children)
+    );
+}
+
 TypeComparator.prototype.visitNull = compareAny;
 TypeComparator.prototype.visitBool = compareAny;
 TypeComparator.prototype.visitInt = compareInt;
@@ -292,6 +302,7 @@ TypeComparator.prototype.visitDurationMicrosecond = compareDuration;
 TypeComparator.prototype.visitDurationNanosecond = compareDuration;
 TypeComparator.prototype.visitFixedSizeList = compareFixedSizeList;
 TypeComparator.prototype.visitMap = compareMap;
+TypeComparator.prototype.visitRunEndEncoded = compareRunEndEncoded;
 
 /** @ignore */
 export const instance = new TypeComparator();

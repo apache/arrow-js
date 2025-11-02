@@ -106,4 +106,7 @@ export class JSONTypeAssembler extends Visitor {
     public visitMap<T extends type.Map_>({ typeId, keysSorted }: T) {
         return { 'name': ArrowType[typeId].toLowerCase(), 'keysSorted': keysSorted };
     }
+    public visitRunEndEncoded<T extends type.RunEndEncoded>({ typeId }: T) {
+        return { 'name': ArrowType[typeId].toLowerCase() };
+    }
 }

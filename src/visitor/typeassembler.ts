@@ -41,6 +41,7 @@ import { List } from '../fb/list.js';
 import { LargeList } from '../fb/large-list.js';
 import { ListView } from '../fb/list-view.js';
 import { LargeListView } from '../fb/large-list-view.js';
+import { RunEndEncoded } from '../fb/run-end-encoded.js';
 import { Struct_ as Struct } from '../fb/struct-.js';
 import { Union } from '../fb/union.js';
 import { DictionaryEncoding } from '../fb/dictionary-encoding.js';
@@ -153,6 +154,10 @@ export class TypeAssembler extends Visitor {
     public visitLargeListView<T extends type.LargeListView>(_node: T, b: Builder) {
         LargeListView.startLargeListView(b);
         return LargeListView.endLargeListView(b);
+    }
+    public visitRunEndEncoded<T extends type.RunEndEncoded>(_node: T, b: Builder) {
+        RunEndEncoded.startRunEndEncoded(b);
+        return RunEndEncoded.endRunEndEncoded(b);
     }
     public visitStruct<T extends type.Struct>(_node: T, b: Builder) {
         Struct.startStruct_(b);

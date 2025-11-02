@@ -89,6 +89,7 @@ export class GetDataTypeConstructor extends Visitor {
     public visitUtf8View() { return type.Utf8View; }
     public visitListView() { return type.ListView; }
     public visitLargeListView() { return type.LargeListView; }
+    public visitRunEndEncoded() { return type.RunEndEncoded; }
 }
 
 /** @ignore */

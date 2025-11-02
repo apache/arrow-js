@@ -303,6 +303,7 @@ import {
     Time,
     Timestamp,
     Union, DenseUnion, SparseUnion,
+    RunEndEncoded,
 } from './type.js';
 
 import { Visitor } from './visitor.js';
@@ -456,6 +457,13 @@ class MakeDataVisitor extends Visitor {
         const { ['length']: length = Number(sizes.length), ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, sizes, nullBitmap], [child]);
     }
+    public visitRunEndEncoded<T extends RunEndEncoded>(props: RunEndEncodedDataProps<T>) {
+        const { ['type']: type, ['offset']: offset = 0, ['children']: children } = props;
+        const nullBitmap = toUint8Array(props['nullBitmap']);
+        const length = children[0].length;
+        const { ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [undefined, undefined, nullBitmap], children);
+    }
     public visitStruct<T extends Struct>(props: StructDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0, ['children']: children = [] } = props;
         const nullBitmap = toUint8Array(props['nullBitmap']);
@@ -544,6 +552,7 @@ interface LargeListDataProps<T extends LargeList> extends DataProps_<T> { valueO
 interface ListViewDataProps<T extends ListView> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; sizes: ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface LargeListViewDataProps<T extends LargeListView> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; sizes: LargeValueOffsetsBuffer | ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
+interface RunEndEncodedDataProps<T extends RunEndEncoded> extends DataProps_<T> { children: [Data<T['runEndsType']>, Data<T['valueType']>] }
 interface StructDataProps<T extends Struct> extends DataProps_<T> { children: Data[] }
 interface Map_DataProps<T extends Map_> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data }
 interface SparseUnionDataProps<T extends SparseUnion> extends DataProps_<T> { nullBitmap: never; typeIds: TypeIdsBuffer; children: Data[] }
@@ -574,6 +583,7 @@ export type DataProps<T extends DataType> = (
     T extends ListView /*        */ ? ListViewDataProps<T> :
     T extends LargeListView /*   */ ? LargeListViewDataProps<T> :
     T extends FixedSizeList /*   */ ? FixedSizeListDataProps<T> :
+    T extends RunEndEncoded /*   */ ? RunEndEncodedDataProps<T> :
     T extends Struct /*          */ ? StructDataProps<T> :
     T extends Map_ /*            */ ? Map_DataProps<T> :
     T extends SparseUnion /*     */ ? SparseUnionDataProps<T> :
@@ -607,6 +617,7 @@ export function makeData<T extends LargeList>(props: LargeListDataProps<T>): Dat
 export function makeData<T extends ListView>(props: ListViewDataProps<T>): Data<T>;
 export function makeData<T extends LargeListView>(props: LargeListViewDataProps<T>): Data<T>;
 export function makeData<T extends FixedSizeList>(props: FixedSizeListDataProps<T>): Data<T>;
+export function makeData<T extends RunEndEncoded>(props: RunEndEncodedDataProps<T>): Data<T>;
 export function makeData<T extends Struct>(props: StructDataProps<T>): Data<T>;
 export function makeData<T extends Map_>(props: Map_DataProps<T>): Data<T>;
 export function makeData<T extends SparseUnion>(props: SparseUnionDataProps<T>): Data<T>;

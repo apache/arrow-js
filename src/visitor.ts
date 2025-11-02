@@ -57,6 +57,7 @@ export abstract class Visitor {
     public visitMap(_node: any, ..._args: any[]): any { return null; }
     public visitListView(_node: any, ..._args: any[]): any { return null; }
     public visitLargeListView(_node: any, ..._args: any[]): any { return null; }
+    public visitRunEndEncoded(_node: any, ..._args: any[]): any { return null; }
 }
 
 /** @ignore */
@@ -136,6 +137,7 @@ function getVisitFnByTypeId(visitor: Visitor, dtype: Type, throwIfNotFound = tru
         case Type.Map: fn = visitor.visitMap; break;
         case Type.ListView: fn = visitor.visitListView; break;
         case Type.LargeListView: fn = visitor.visitLargeListView; break;
+        case Type.RunEndEncoded: fn = visitor.visitRunEndEncoded; break;
     }
     if (typeof fn === 'function') return fn;
     if (!throwIfNotFound) return () => null;
@@ -231,6 +233,7 @@ function inferDType<T extends DataType>(type: T): Type {
         case Type.Dictionary: return Type.Dictionary;
         case Type.ListView: return Type.ListView;
         case Type.LargeListView: return Type.LargeListView;
+        case Type.RunEndEncoded: return Type.RunEndEncoded;
     }
     throw new Error(`Unrecognized type '${Type[type.typeId]}'`);
 }
@@ -290,6 +293,7 @@ export interface Visitor {
     visitMap(node: any, ...args: any[]): any;
     visitListView(node: any, ...args: any[]): any;
     visitLargeListView(node: any, ...args: any[]): any;
+    visitRunEndEncoded(node: any, ...args: any[]): any;
 }
 
 // Add these here so they're picked up by the externs creator

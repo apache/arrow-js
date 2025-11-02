@@ -38,6 +38,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -86,6 +87,7 @@ export interface GetVisitor extends Visitor {
     visitLargeList<T extends LargeList>(data: Data<T>, index: number): T['TValue'] | null;
     visitListView<T extends ListView>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeListView<T extends LargeListView>(data: Data<T>, index: number): T['TValue'] | null;
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>, index: number): T['TValue'] | null;
     visitStruct<T extends Struct>(data: Data<T>, index: number): T['TValue'] | null;
     visitUnion<T extends Union>(data: Data<T>, index: number): T['TValue'] | null;
     visitDenseUnion<T extends DenseUnion>(data: Data<T>, index: number): T['TValue'] | null;
@@ -294,6 +296,30 @@ const getLargeListView = <T extends LargeListView>(data: Data<T>, index: number)
 };
 
 /** @ignore */
+const getRunEndEncoded = <T extends RunEndEncoded>(data: Data<T>, index: number): T['TValue'] => {
+    const { children } = data;
+    const runEnds = children[0] as Data<T['runEndsType']>;
+    const values = children[1] as Data<T['valueType']>;
+    const getRunEnd = instance.getVisitFn(runEnds);
+    const get = instance.getVisitFn(values);
+
+    // Binary search to find the run that contains this index
+    let low = 0;
+    let high = runEnds.length - 1;
+    while (low < high) {
+        const mid = (low + high) >>> 1;
+        const runEnd = bigIntToNumber(getRunEnd(runEnds, mid) as number | bigint);
+        if (index < runEnd) {
+            high = mid;
+        } else {
+            low = mid + 1;
+        }
+    }
+
+    return get(values, low);
+};
+
+/** @ignore */
 const getMap = <T extends Map_>(data: Data<T>, index: number): T['TValue'] => {
     const { valueOffsets, children } = data;
     const { [index]: begin, [index + 1]: end } = valueOffsets;
@@ -426,6 +452,7 @@ GetVisitor.prototype.visitList = wrapGet(getList);
 GetVisitor.prototype.visitLargeList = wrapGet(getLargeList);
 GetVisitor.prototype.visitListView = wrapGet(getListView);
 GetVisitor.prototype.visitLargeListView = wrapGet(getLargeListView);
+GetVisitor.prototype.visitRunEndEncoded = wrapGet(getRunEndEncoded);
 GetVisitor.prototype.visitStruct = wrapGet(getStruct);
 GetVisitor.prototype.visitUnion = wrapGet(getUnion);
 GetVisitor.prototype.visitDenseUnion = wrapGet(getDenseUnion);

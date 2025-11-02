@@ -36,6 +36,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -82,6 +83,7 @@ export interface SetVisitor extends Visitor {
     visitDecimal<T extends Decimal>(data: Data<T>, index: number, value: T['TValue']): void;
     visitList<T extends List>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeList<T extends LargeList>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>, index: number, value: T['TValue']): void;
     visitStruct<T extends Struct>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUnion<T extends Union>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDenseUnion<T extends DenseUnion>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -278,6 +280,11 @@ const setMap = <T extends Map_>(data: Data<T>, index: number, value: T['TValue']
     <T extends DataType>(set: SetFunc<T>, c: Data<T>, f: Field, _: number) => c && set(c, o, v[f.name]);
 
 /** @ignore */
+const setRunEndEncoded = <T extends RunEndEncoded>(_data: Data<T>, _index: number, _value: T['TValue']) => {
+    throw new Error('RunEndEncoded is immutable');
+};
+
+/** @ignore */
 const setStruct = <T extends Struct>(data: Data<T>, index: number, value: T['TValue']) => {
 
     const childSetters = data.type.children.map((f) => instance.getVisitFn(f.type));
@@ -409,6 +416,7 @@ SetVisitor.prototype.visitTimeNanosecond = wrapSet(setTimeNanosecond);
 SetVisitor.prototype.visitDecimal = wrapSet(setDecimal);
 SetVisitor.prototype.visitList = wrapSet(setList);
 SetVisitor.prototype.visitLargeList = wrapSet(setLargeList);
+SetVisitor.prototype.visitRunEndEncoded = wrapSet(setRunEndEncoded);
 SetVisitor.prototype.visitStruct = wrapSet(setStruct);
 SetVisitor.prototype.visitUnion = wrapSet(setUnion);
 SetVisitor.prototype.visitDenseUnion = wrapSet(setDenseUnion);

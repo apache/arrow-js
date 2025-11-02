@@ -149,6 +149,10 @@ export class VectorLoader extends Visitor {
     public visitMap<T extends type.Map_>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), 'child': this.visit(type.children[0]) });
     }
+    public visitRunEndEncoded<T extends type.RunEndEncoded>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        const children = this.visitMany(type.children) as [Data<T['runEndsType']>, Data<T['valueType']>];
+        return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), children });
+    }
 
     protected nextFieldNode() { return this.nodes[++this.nodesIndex]; }
     protected nextBufferRange() { return this.buffers[++this.buffersIndex]; }

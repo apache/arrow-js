@@ -34,6 +34,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -96,6 +97,7 @@ export interface IndexOfVisitor extends Visitor {
     visitDurationNanosecond<T extends DurationNanosecond>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitFixedSizeList<T extends FixedSizeList>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitMap<T extends Map_>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
 }
 
 /** @ignore */
@@ -217,6 +219,7 @@ IndexOfVisitor.prototype.visitDurationMicrosecond = indexOfValue;
 IndexOfVisitor.prototype.visitDurationNanosecond = indexOfValue;
 IndexOfVisitor.prototype.visitFixedSizeList = indexOfValue;
 IndexOfVisitor.prototype.visitMap = indexOfValue;
+IndexOfVisitor.prototype.visitRunEndEncoded = indexOfValue;
 
 /** @ignore */
 export const instance = new IndexOfVisitor();
