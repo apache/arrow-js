@@ -157,16 +157,8 @@ export class VectorLoader extends Visitor {
     protected readData<T extends DataType>(_type: T, { length, offset } = this.nextBufferRange()) {
         return this.bytes.subarray(offset, offset + length);
     }
-    protected readVariadicBuffers(count: number) {
-        if (count <= 0) {
-            return [] as Uint8Array[];
-        }
-        const buffers: Uint8Array[] = [];
-        for (let i = 0; i < count; ++i) {
-            const { length, offset } = this.nextBufferRange();
-            buffers[i] = this.bytes.subarray(offset, offset + length);
-        }
-        return buffers;
+    protected readVariadicBuffers(length: number) {
+        return Array.from({ length }, () => this.readData(null as any));
     }
     protected nextVariadicBufferCount() {
         return this.variadicBufferCounts[++this.variadicBufferIndex] ?? 0;
@@ -243,16 +235,5 @@ export class CompressedVectorLoader extends VectorLoader {
     }
     protected readData<T extends DataType>(_type: T, _buffer = this.nextBufferRange()) {
         return this.bodyChunks[this.buffersIndex];
-    }
-    protected readVariadicBuffers(count: number) {
-        if (count <= 0) {
-            return [] as Uint8Array[];
-        }
-        const buffers: Uint8Array[] = [];
-        for (let i = 0; i < count; ++i) {
-            this.nextBufferRange();
-            buffers[i] = this.bodyChunks[this.buffersIndex];
-        }
-        return buffers;
     }
 }

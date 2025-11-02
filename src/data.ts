@@ -98,11 +98,7 @@ export class Data<T extends DataType = DataType> {
         values && (byteLength += values.byteLength);
         nullBitmap && (byteLength += nullBitmap.byteLength);
         typeIds && (byteLength += typeIds.byteLength);
-        if (this.variadicBuffers.length > 0) {
-            for (const buffer of this.variadicBuffers) {
-                buffer && (byteLength += buffer.byteLength);
-            }
-        }
+        byteLength += this.variadicBuffers.reduce((size, data) => size + (data?.byteLength ?? 0), 0);
         return this.children.reduce((byteLength, child) => byteLength + child.byteLength, byteLength);
     }
 

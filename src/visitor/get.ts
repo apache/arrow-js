@@ -154,7 +154,7 @@ const getFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }: Data<
 /** @ignore */
 const getBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => getVariableWidthBytes(values, valueOffsets, index);
 /** @ignore */
-const getBinaryViewValue = <T extends BinaryView>(data: Data<T>, index: number): T['TValue'] => {
+const getBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number): Uint8Array => {
     const values = data.values as Uint8Array;
     if (!values) {
         throw new Error('BinaryView data is missing view buffer');
@@ -164,10 +164,10 @@ const getBinaryViewValue = <T extends BinaryView>(data: Data<T>, index: number):
     const view = new DataView(values.buffer, baseOffset, BINARY_VIEW_SIZE);
     const size = view.getInt32(0, true);
     if (size <= 0) {
-        return new Uint8Array(0) as T['TValue'];
+        return new Uint8Array(0);
     }
     if (size <= BINARY_VIEW_INLINE_CAPACITY) {
-        return new Uint8Array(values.buffer, baseOffset + 4, size) as T['TValue'];
+        return new Uint8Array(values.buffer, baseOffset + 4, size);
     }
     const bufferIndex = view.getInt32(8, true);
     const offset = view.getInt32(12, true);
@@ -175,7 +175,11 @@ const getBinaryViewValue = <T extends BinaryView>(data: Data<T>, index: number):
     if (!variadicBuffer) {
         throw new Error(`BinaryView variadic buffer ${bufferIndex} is missing`);
     }
-    return variadicBuffer.subarray(offset, offset + size) as T['TValue'];
+    return variadicBuffer.subarray(offset, offset + size);
+};
+/** @ignore */
+const getBinaryViewValue = <T extends BinaryView>(data: Data<T>, index: number): T['TValue'] => {
+    return getBinaryViewBytes(data, index) as T['TValue'];
 };
 /** @ignore */
 const getUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => {
@@ -184,8 +188,8 @@ const getUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, 
 };
 /** @ignore */
 const getUtf8ViewValue = <T extends Utf8View>(data: Data<T>, index: number): T['TValue'] => {
-    const bytes = getBinaryViewValue(data as unknown as Data<BinaryView>, index);
-    return decodeUtf8(bytes as unknown as Uint8Array);
+    const bytes = getBinaryViewBytes(data, index);
+    return decodeUtf8(bytes);
 };
 
 /* istanbul ignore next */
