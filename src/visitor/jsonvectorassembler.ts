@@ -28,7 +28,7 @@ import { toIntervalDayTimeObjects, toIntervalMonthDayNanoObjects } from '../util
 import {
     DataType,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray,
+    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct, IntArray,
 } from '../type.js';
 
 /** @ignore */
@@ -54,6 +54,7 @@ export interface JSONVectorAssembler extends Visitor {
     visitTime<T extends Time>(data: Data<T>): { DATA: number[] };
     visitDecimal<T extends Decimal>(data: Data<T>): { DATA: string[] };
     visitList<T extends List>(data: Data<T>): { children: any[]; OFFSET: number[] };
+    visitLargeList<T extends LargeList>(data: Data<T>): { children: any[]; OFFSET: string[] };
     visitStruct<T extends Struct>(data: Data<T>): { children: any[] };
     visitUnion<T extends Union>(data: Data<T>): { children: any[]; TYPE_ID: number[] };
     visitInterval<T extends Interval>(data: Data<T>): { DATA: number[] };
@@ -146,6 +147,12 @@ export class JSONVectorAssembler extends Visitor {
     public visitList<T extends List>(data: Data<T>) {
         return {
             'OFFSET': [...data.valueOffsets],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitLargeList<T extends LargeList>(data: Data<T>) {
+        return {
+            'OFFSET': [...data.valueOffsets].map(x => `${x}`),
             'children': this.visitMany(data.type.children, data.children)
         };
     }

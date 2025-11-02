@@ -38,6 +38,7 @@ import { Timestamp } from '../fb/timestamp.js';
 import { Interval } from '../fb/interval.js';
 import { Duration } from '../fb/duration.js';
 import { List } from '../fb/list.js';
+import { LargeList } from '../fb/large-list.js';
 import { ListView } from '../fb/list-view.js';
 import { LargeListView } from '../fb/large-list-view.js';
 import { Struct_ as Struct } from '../fb/struct-.js';
@@ -140,6 +141,10 @@ export class TypeAssembler extends Visitor {
     public visitList<T extends type.List>(_node: T, b: Builder) {
         List.startList(b);
         return List.endList(b);
+    }
+    public visitLargeList<T extends type.LargeList>(_node: T, b: Builder) {
+        LargeList.startLargeList(b);
+        return LargeList.endLargeList(b);
     }
     public visitListView<T extends type.ListView>(_node: T, b: Builder) {
         ListView.startListView(b);
