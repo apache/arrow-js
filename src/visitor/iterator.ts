@@ -15,10 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import { Data } from '../data.js';
 import { Vector } from '../vector.js';
 import { Visitor } from '../visitor.js';
 import { Type, Precision } from '../enum.js';
 import { TypeToDataType } from '../interfaces.js';
+import { instance as getVisitor } from './get.js';
 import {
     DataType, Dictionary,
     Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct,
@@ -132,6 +134,19 @@ function vectorIterator<T extends DataType>(vector: Vector<T>): IterableIterator
 }
 
 /** @ignore */
+function runEndEncodedIterator<T extends RunEndEncoded>(vector: Vector<T>): IterableIterator<T['TValue'] | null> {
+    // Use specialized iterator with O(1) amortized sequential access
+    let offset = 0;
+    return new ChunkedIterator(vector.data.length, (chunkIndex) => {
+        const data = vector.data[chunkIndex];
+        const length = data.length;
+        const inner = vector.slice(offset, offset + length);
+        offset += length;
+        return new RunEndEncodedIterator(inner);
+    });
+}
+
+/** @ignore */
 class VectorIterator<T extends DataType> implements IterableIterator<T['TValue'] | null> {
     private index = 0;
 
@@ -145,6 +160,89 @@ class VectorIterator<T extends DataType> implements IterableIterator<T['TValue']
         }
 
         return { done: true, value: null };
+    }
+
+    [Symbol.iterator]() {
+        return this;
+    }
+}
+
+/** @ignore */
+class RunEndEncodedIterator<T extends RunEndEncoded> implements IterableIterator<T['TValue'] | null> {
+    private index = 0;
+    private lastPhysicalIndex = 0;
+    private readonly runEnds: Data<T['runEndsType']>;
+    private readonly values: Data<T['valueType']>;
+    private readonly getRunEnd: (data: Data<T['runEndsType']>, index: number) => T['runEndsType']['TValue'] | null;
+    private readonly getValue: (data: Data<T['valueType']>, index: number) => T['TValue'] | null;
+
+    constructor(private vector: Vector<T>) {
+        const data = vector.data[0];
+        this.runEnds = data.children[0] as Data<T['runEndsType']>;
+        this.values = data.children[1] as Data<T['valueType']>;
+        this.getRunEnd = getVisitor.getVisitFn(this.runEnds);
+        this.getValue = getVisitor.getVisitFn(this.values);
+    }
+
+    next(): IteratorResult<T['TValue'] | null> {
+        if (this.index < this.vector.length) {
+            const value = this.getValueAtIndex(this.index++);
+            return { value };
+        }
+        return { done: true, value: null };
+    }
+
+    private getValueAtIndex(logicalIndex: number): T['TValue'] {
+        const physicalIndex = this.findPhysicalIndex(logicalIndex);
+        return this.getValue(this.values, physicalIndex);
+    }
+
+    private findPhysicalIndex(i: number): number {
+        const runEndsLength = this.runEnds.length;
+        const offset = this.vector.data[0].offset;
+
+        // Fast path: check if the cached physical index is still valid
+        const cachedRunEnd = Number(this.getRunEnd(this.runEnds, this.lastPhysicalIndex));
+        if (offset + i < cachedRunEnd) {
+            // Cached value is an upper bound, but is it the least upper bound?
+            if (this.lastPhysicalIndex === 0) {
+                return this.lastPhysicalIndex;
+            }
+            const prevRunEnd = Number(this.getRunEnd(this.runEnds, this.lastPhysicalIndex - 1));
+            if (offset + i >= prevRunEnd) {
+                // Cache hit - same run as before
+                return this.lastPhysicalIndex;
+            }
+            // Search in the range before the cached index
+            this.lastPhysicalIndex = this.binarySearchRange(0, this.lastPhysicalIndex, i, offset);
+            return this.lastPhysicalIndex;
+        }
+
+        // Cached index is not an upper bound, search after it
+        const minPhysicalIndex = this.lastPhysicalIndex + 1;
+        const relativeIndex = this.binarySearchRange(
+            minPhysicalIndex,
+            runEndsLength,
+            i,
+            offset
+        );
+        this.lastPhysicalIndex = relativeIndex;
+        return this.lastPhysicalIndex;
+    }
+
+    private binarySearchRange(start: number, end: number, i: number, offset: number): number {
+        let low = start;
+        let high = end - 1;
+        while (low < high) {
+            const mid = (low + high) >>> 1;
+            const runEnd = Number(this.getRunEnd(this.runEnds, mid));
+            if (offset + i < runEnd) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+        return low;
     }
 
     [Symbol.iterator]() {
@@ -206,7 +304,7 @@ IteratorVisitor.prototype.visitDurationMicrosecond = vectorIterator;
 IteratorVisitor.prototype.visitDurationNanosecond = vectorIterator;
 IteratorVisitor.prototype.visitFixedSizeList = vectorIterator;
 IteratorVisitor.prototype.visitMap = vectorIterator;
-IteratorVisitor.prototype.visitRunEndEncoded = vectorIterator;
+IteratorVisitor.prototype.visitRunEndEncoded = runEndEncodedIterator;
 
 /** @ignore */
 export const instance = new IteratorVisitor();
