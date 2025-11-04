@@ -171,8 +171,8 @@ export class VectorLoader extends Visitor {
 /** @ignore */
 export class JSONVectorLoader extends VectorLoader {
     private sources: any[][];
-    constructor(sources: any[][], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion) {
-        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion);
+    constructor(sources: any[][], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion, variadicBufferCounts: number[] = []) {
+        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion, variadicBufferCounts);
         this.sources = sources;
     }
     protected readNullBitmap<T extends DataType>(_type: T, nullCount: number, { offset } = this.nextBufferRange()) {

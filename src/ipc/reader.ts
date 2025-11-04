@@ -758,7 +758,7 @@ class RecordBatchJSONReaderImpl<T extends TypeMap = any> extends RecordBatchStre
         super(source, dictionaries);
     }
     protected _loadVectors(header: metadata.RecordBatch, body: any, types: (Field | DataType)[]) {
-        return new JSONVectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion).visitMany(types);
+        return new JSONVectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion, header.variadicBufferCounts).visitMany(types);
     }
 }
 
