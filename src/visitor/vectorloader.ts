@@ -171,8 +171,8 @@ export class VectorLoader extends Visitor {
 /** @ignore */
 export class JSONVectorLoader extends VectorLoader {
     private sources: any[][];
-    constructor(sources: any[][], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion) {
-        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion);
+    constructor(sources: any[][], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion, variadicBufferCounts: number[] = []) {
+        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion, variadicBufferCounts);
         this.sources = sources;
     }
     protected readNullBitmap<T extends DataType>(_type: T, nullCount: number, { offset } = this.nextBufferRange()) {
@@ -196,6 +196,8 @@ export class JSONVectorLoader extends VectorLoader {
             return toArrayBufferView(Uint8Array, Int128.convertArray(sources[offset] as string[]));
         } else if (DataType.isBinary(type) || DataType.isLargeBinary(type) || DataType.isFixedSizeBinary(type)) {
             return binaryDataFromJSON(sources[offset] as string[]);
+        } else if (DataType.isBinaryView(type) || DataType.isUtf8View(type)) {
+            return viewDataFromJSON(sources[offset] as any[]);
         } else if (DataType.isBool(type)) {
             return packBools(sources[offset] as number[]);
         } else if (DataType.isUtf8(type) || DataType.isLargeUtf8(type)) {
@@ -212,6 +214,15 @@ export class JSONVectorLoader extends VectorLoader {
         }
         return toArrayBufferView(Uint8Array, toArrayBufferView(type.ArrayType, sources[offset].map((x) => +x)));
     }
+    protected readVariadicBuffers(length: number) {
+        const buffers: Uint8Array[] = [];
+        for (let i = 0; i < length; i++) {
+            const { offset } = this.nextBufferRange();
+            const hexData = this.sources[offset] as string[];
+            buffers.push(binaryDataFromJSON(hexData));
+        }
+        return buffers;
+    }
 }
 
 /** @ignore */
@@ -224,6 +235,43 @@ function binaryDataFromJSON(values: string[]) {
     for (let i = 0; i < joined.length; i += 2) {
         data[i >> 1] = Number.parseInt(joined.slice(i, i + 2), 16);
     }
+    return data;
+}
+
+/** @ignore */
+function viewDataFromJSON(views: any[]) {
+    // Each view is a 16-byte struct: [length: i32, prefix/inlined: 4 bytes, buffer_index: i32, offset: i32]
+    const data = new Uint8Array(views.length * 16);
+    const dataView = new DataView(data.buffer);
+
+    for (let i = 0; i < views.length; i++) {
+        const view = views[i];
+        const offset = i * 16;
+        const size = view.SIZE;
+
+        // Write size (int32 at byte 0)
+        dataView.setInt32(offset, size, true);
+
+        if (view.INLINED !== undefined) {
+            // Inline view: write the inlined data as hex to bytes 4-15
+            const inlined = view.INLINED;
+            for (let j = 0; j < inlined.length && j < 24; j += 2) {
+                data[offset + 4 + (j >> 1)] = Number.parseInt(inlined.slice(j, j + 2), 16);
+            }
+        } else {
+            // Out-of-line view: write prefix, buffer_index, offset
+            const prefix = view.PREFIX_HEX;
+            // Write 4-byte prefix at bytes 4-7
+            for (let j = 0; j < 8 && j < prefix.length; j += 2) {
+                data[offset + 4 + (j >> 1)] = Number.parseInt(prefix.slice(j, j + 2), 16);
+            }
+            // Write buffer_index (int32 at byte 8)
+            dataView.setInt32(offset + 8, view.BUFFER_INDEX, true);
+            // Write offset (int32 at byte 12)
+            dataView.setInt32(offset + 12, view.OFFSET, true);
+        }
+    }
+
     return data;
 }
 
