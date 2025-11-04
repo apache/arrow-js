@@ -2670,15 +2670,16 @@ define-properties@^1.2.1:
     has-property-descriptors "^1.0.0"
     object-keys "^1.1.1"
 
-del-cli@6.0.0:
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/del-cli/-/del-cli-6.0.0.tgz#7822d0ffd5b73449a506a586d839711485bfb119"
-  integrity sha512-9nitGV2W6KLFyya4qYt4+9AKQFL+c0Ehj5K7V7IwlxTc6RMCfQUGY9E9pLG6e8TQjtwXpuiWIGGZb3mfVxyZkw==
+del-cli@7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/del-cli/-/del-cli-7.0.0.tgz#ffb696b3af54e145870c2aee455ed171be3145a8"
+  integrity sha512-fRl4pWJYu9WFQH8jXdQUYvcD0IMtij9WEc7qmB7xOyJEweNJNuE7iKmqNeoOT1DbBUjtRjxlw8Y63qKBI/NQ1g==
   dependencies:
-    del "^8.0.0"
-    meow "^13.2.0"
+    del "^8.0.1"
+    meow "^14.0.0"
+    presentable-error "^0.0.1"
 
-del@8.0.1, del@^8.0.0:
+del@8.0.1, del@^8.0.1:
   version "8.0.1"
   resolved "https://registry.yarnpkg.com/del/-/del-8.0.1.tgz#86772fe3a8c9f91bad0d7c6f79e04c6f310e50ac"
   integrity sha512-gPqh0mKTPvaUZGAuHbrBUYKZWBNAeHG7TU3QH5EhVwPMyKvmfJaNXhcD2jTcXsJRRcffuho4vaYweu80dRrMGA==
@@ -4843,10 +4844,10 @@ memory-fs@^0.5.0:
     errno "^0.1.3"
     readable-stream "^2.0.1"
 
-meow@^13.2.0:
-  version "13.2.0"
-  resolved "https://registry.yarnpkg.com/meow/-/meow-13.2.0.tgz#6b7d63f913f984063b3cc261b6e8800c4cd3474f"
-  integrity sha512-pxQJQzB6djGPXh08dacEloMFopsOqGVRKFPYvPOt9XDZ1HasbgDZA74CJGreSU4G3Ak7EFJGoiH2auq+yXISgA==
+meow@^14.0.0:
+  version "14.0.0"
+  resolved "https://registry.yarnpkg.com/meow/-/meow-14.0.0.tgz#97d44d2f9eeb9836db06108570891f7523103bbc"
+  integrity sha512-JhC3R1f6dbspVtmF3vKjAWz1EVIvwFrGGPLSdU6rK79xBwHWTuHoLnRX/t1/zHS1Ch1Y2UtIrih7DAHuH9JFJA==
 
 merge-stream@^2.0.0:
   version "2.0.0"
