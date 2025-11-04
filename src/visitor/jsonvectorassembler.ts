@@ -230,7 +230,7 @@ function viewDataToJSON(data: Data<BinaryView> | Data<Utf8View>, isBinary: boole
 
             views.push({
                 'SIZE': size,
-                'INLINED': isBinary ? inlinedHex : Array.from(inlined).map(b => String.fromCharCode(b)).join('')
+                'INLINED': isBinary ? inlinedHex : Array.from(inlined).map(b => String.fromCodePoint(b)).join('')
             });
         } else {
             // Out-of-line view: read prefix (4 bytes at offset 4-7), buffer_index, offset

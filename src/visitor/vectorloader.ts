@@ -218,8 +218,9 @@ export class JSONVectorLoader extends VectorLoader {
         const buffers: Uint8Array[] = [];
         for (let i = 0; i < length; i++) {
             const { offset } = this.nextBufferRange();
-            const hexData = this.sources[offset] as string[];
-            buffers.push(binaryDataFromJSON(hexData));
+            const hexString = this.sources[offset] as unknown as string;
+            // Each variadic buffer is a single hex string, not an array
+            buffers.push(binaryDataFromJSON([hexString]));
         }
         return buffers;
     }
@@ -240,12 +241,11 @@ function binaryDataFromJSON(values: string[]) {
 
 /** @ignore */
 function viewDataFromJSON(views: any[]) {
-    // Each view is a 16-byte struct: [length: i32, prefix/inlined: 4 bytes, buffer_index: i32, offset: i32]
+    // Each view is a 16-byte struct: [length: i32, prefix/inlined: 12 bytes, buffer_index: i32, offset: i32]
     const data = new Uint8Array(views.length * 16);
     const dataView = new DataView(data.buffer);
 
-    for (let i = 0; i < views.length; i++) {
-        const view = views[i];
+    for (const [i, view] of views.entries()) {
         const offset = i * 16;
         const size = view.SIZE;
 
@@ -253,10 +253,26 @@ function viewDataFromJSON(views: any[]) {
         dataView.setInt32(offset, size, true);
 
         if (view.INLINED !== undefined) {
-            // Inline view: write the inlined data as hex to bytes 4-15
+            // Inline view: INLINED can be hex string (BinaryView) or UTF-8 string (Utf8View)
             const inlined = view.INLINED;
-            for (let j = 0; j < inlined.length && j < 24; j += 2) {
-                data[offset + 4 + (j >> 1)] = Number.parseInt(inlined.slice(j, j + 2), 16);
+
+            // Check if it's a hex string (even length, all hex chars) or a UTF-8 string
+            const isHex = typeof inlined === 'string' &&
+                          inlined.length % 2 === 0 &&
+                          /^[0-9A-Fa-f]*$/.test(inlined);
+
+            if (isHex) {
+                // BinaryView: hex-encoded string
+                for (let j = 0; j < inlined.length && j < 24; j += 2) {
+                    data[offset + 4 + (j >> 1)] = Number.parseInt(inlined.slice(j, j + 2), 16);
+                }
+            } else {
+                // Utf8View: UTF-8 string - encode to bytes
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(inlined);
+                for (let j = 0; j < bytes.length && j < 12; j++) {
+                    data[offset + 4 + j] = bytes[j];
+                }
             }
         } else {
             // Out-of-line view: write prefix, buffer_index, offset
