@@ -83,6 +83,7 @@ function buffersFromJSON(xs: any[], buffers: BufferRegion[] = []): BufferRegion[
         column['VALIDITY'] && buffers.push(new BufferRegion(buffers.length, column['VALIDITY'].length));
         column['TYPE_ID'] && buffers.push(new BufferRegion(buffers.length, column['TYPE_ID'].length));
         column['OFFSET'] && buffers.push(new BufferRegion(buffers.length, column['OFFSET'].length));
+        column['SIZE'] && buffers.push(new BufferRegion(buffers.length, column['SIZE'].length));
         column['DATA'] && buffers.push(new BufferRegion(buffers.length, column['DATA'].length));
         column['VIEWS'] && buffers.push(new BufferRegion(buffers.length, column['VIEWS'].length));
         // Handle variadic buffers for view types (BinaryView, Utf8View)

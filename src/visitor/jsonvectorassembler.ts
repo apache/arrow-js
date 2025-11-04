@@ -29,6 +29,7 @@ import {
     DataType,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
     Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray,
+    ListView, LargeListView,
 } from '../type.js';
 
 /** @ignore */
@@ -54,6 +55,8 @@ export interface JSONVectorAssembler extends Visitor {
     visitTime<T extends Time>(data: Data<T>): { DATA: number[] };
     visitDecimal<T extends Decimal>(data: Data<T>): { DATA: string[] };
     visitList<T extends List>(data: Data<T>): { children: any[]; OFFSET: number[] };
+    visitListView<T extends ListView>(data: Data<T>): { children: any[]; OFFSET: number[]; SIZE: number[] };
+    visitLargeListView<T extends LargeListView>(data: Data<T>): { children: any[]; OFFSET: string[]; SIZE: string[] };
     visitStruct<T extends Struct>(data: Data<T>): { children: any[] };
     visitUnion<T extends Union>(data: Data<T>): { children: any[]; TYPE_ID: number[] };
     visitInterval<T extends Interval>(data: Data<T>): { DATA: number[] };
@@ -146,6 +149,20 @@ export class JSONVectorAssembler extends Visitor {
     public visitList<T extends List>(data: Data<T>) {
         return {
             'OFFSET': [...data.valueOffsets],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitListView<T extends ListView>(data: Data<T>) {
+        return {
+            'OFFSET': [...data.valueOffsets],
+            'SIZE': [...data.values],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitLargeListView<T extends LargeListView>(data: Data<T>) {
+        return {
+            'OFFSET': [...bigNumsToStrings(data.valueOffsets, 2)],
+            'SIZE': [...bigNumsToStrings(data.values, 2)],
             'children': this.visitMany(data.type.children, data.children)
         };
     }
