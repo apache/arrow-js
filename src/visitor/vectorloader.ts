@@ -215,28 +215,43 @@ export class JSONVectorLoader extends VectorLoader {
         return toArrayBufferView(Uint8Array, toArrayBufferView(type.ArrayType, sources[offset].map((x) => +x)));
     }
     protected readVariadicBuffers(length: number) {
+        // Per Arrow C++ reference implementation (cpp/src/arrow/ipc/reader.cc),
+        // each variadic buffer is stored as a separate buffer region, matching
+        // the IPC format where each is accessed via separate GetBuffer() calls.
+        // VARIADIC_DATA_BUFFERS in JSON is an array, but flattenDataSources spreads
+        // it so each hex string gets its own sources entry, maintaining 1:1
+        // correspondence with BufferRegion entries.
         const buffers: Uint8Array[] = [];
         for (let i = 0; i < length; i++) {
             const { offset } = this.nextBufferRange();
+            // sources[offset] is 'any[]' but for variadic buffers it's actually a string
+            // after spreading in flattenDataSources. Cast necessary due to heterogeneous
+            // sources array structure (most fields are arrays, variadic elements are strings).
             const hexString = this.sources[offset] as unknown as string;
-            // Each variadic buffer is a single hex string, not an array
-            buffers.push(binaryDataFromJSON([hexString]));
+            buffers.push(hexStringToBytes(hexString));
         }
         return buffers;
     }
 }
 
 /** @ignore */
-function binaryDataFromJSON(values: string[]) {
-    // "DATA": ["49BC7D5B6C47D2","3F5FB6D9322026"]
-    // There are definitely more efficient ways to do this... but it gets the
-    // job done.
-    const joined = values.join('');
-    const data = new Uint8Array(joined.length / 2);
-    for (let i = 0; i < joined.length; i += 2) {
-        data[i >> 1] = Number.parseInt(joined.slice(i, i + 2), 16);
+function hexStringToBytes(hexString: string): Uint8Array {
+    // Parse hex string per Arrow JSON integration format (uppercase hex encoding).
+    // Used for: VARIADIC_DATA_BUFFERS elements, Binary DATA (after join),
+    // BinaryView PREFIX_HEX and INLINED fields.
+    const data = new Uint8Array(hexString.length / 2);
+    for (let i = 0; i < hexString.length; i += 2) {
+        data[i >> 1] = Number.parseInt(hexString.slice(i, i + 2), 16);
     }
     return data;
+}
+
+/** @ignore */
+function binaryDataFromJSON(values: string[]): Uint8Array {
+    // Arrow JSON Binary/LargeBinary/FixedSizeBinary format:
+    // "DATA": ["49BC7D5B6C47D2","3F5FB6D9322026"] (array of hex strings, one per value)
+    // Join all values into one continuous hex string, then parse to bytes.
+    return hexStringToBytes(values.join(''));
 }
 
 /** @ignore */
