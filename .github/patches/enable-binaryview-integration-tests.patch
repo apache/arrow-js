@@ -1,0 +1,12 @@
+diff --git a/dev/archery/archery/integration/datagen.py b/dev/archery/archery/integration/datagen.py
+index 83913dc379..7ace28e1be 100644
+--- a/dev/archery/archery/integration/datagen.py
++++ b/dev/archery/archery/integration/datagen.py
+@@ -2003,7 +2003,6 @@ def get_generated_json_files(tempdir=None):
+         .skip_tester('Rust'),
+
+         generate_binary_view_case()
+-        .skip_tester('JS')
+         # TODO(https://github.com/apache/arrow-nanoarrow/issues/618)
+         .skip_tester('nanoarrow')
+         .skip_tester('Rust'),
