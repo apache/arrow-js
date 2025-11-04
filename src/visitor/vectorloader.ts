@@ -212,6 +212,15 @@ export class JSONVectorLoader extends VectorLoader {
         }
         return toArrayBufferView(Uint8Array, toArrayBufferView(type.ArrayType, sources[offset].map((x) => +x)));
     }
+    protected readVariadicBuffers(length: number) {
+        const buffers: Uint8Array[] = [];
+        for (let i = 0; i < length; i++) {
+            const { offset } = this.nextBufferRange();
+            const hexData = this.sources[offset] as string[];
+            buffers.push(binaryDataFromJSON(hexData));
+        }
+        return buffers;
+    }
 }
 
 /** @ignore */
