@@ -18,7 +18,7 @@
 import { Schema, Field } from '../../schema.js';
 import {
     DataType, Dictionary, TimeBitWidth,
-    Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary,
+    Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary,
     List, FixedSizeList, Map_, Struct, Union,
     Bool, Null, Int, Float, Date_, Time, Interval, Timestamp, IntBitWidth, Int32, TKeys, Duration,
 } from '../../type.js';
@@ -149,8 +149,10 @@ function typeFromJSON(f: any, children?: Field[]): DataType<any> {
         case 'null': return new Null();
         case 'binary': return new Binary();
         case 'largebinary': return new LargeBinary();
+        case 'binaryview': return new BinaryView();
         case 'utf8': return new Utf8();
         case 'largeutf8': return new LargeUtf8();
+        case 'utf8view': return new Utf8View();
         case 'bool': return new Bool();
         case 'list': return new List((children || [])[0]);
         case 'struct': return new Struct(children || []);
