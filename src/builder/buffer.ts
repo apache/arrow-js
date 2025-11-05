@@ -27,10 +27,8 @@ function roundLengthUpToNearest64Bytes(len: number, BPE: number) {
 
 /** @ignore */
 function resizeArray<T extends TypedArray | BigIntArray>(arr: T, len = 0): T {
-    // Use slice() to create a copy instead of subarray() which creates a view
-    // This prevents issues where the underlying buffer might be reused/cleared
     return arr.length >= len ?
-        arr.slice(0, len) as T :
+        arr.subarray(0, len) as T :
         memcpy(new (arr.constructor as any)(len), arr, 0);
 }
 

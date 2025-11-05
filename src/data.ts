@@ -350,7 +350,7 @@ class MakeDataVisitor extends Visitor {
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
     }
     public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
-        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const { type, offset = 0 } = props;
         const views = toArrayBufferView(type.ArrayType, props.views);
         const nullBitmap = toUint8Array(props.nullBitmap);
         const variadicBuffers = (props.variadicBuffers || []).map((buffer) => toUint8Array(buffer));
@@ -375,7 +375,7 @@ class MakeDataVisitor extends Visitor {
         return new Data(type, offset, length, nullCount, [valueOffsets, data, nullBitmap]);
     }
     public visitBinaryView<T extends BinaryView>(props: BinaryViewDataProps<T>) {
-        const { ['type']: type, ['offset']: offset = 0 } = props;
+        const { type, offset = 0 } = props;
         const views = toArrayBufferView(type.ArrayType, props.views);
         const nullBitmap = toUint8Array(props.nullBitmap);
         const variadicBuffers = (props.variadicBuffers || []).map((buffer) => toUint8Array(buffer));
