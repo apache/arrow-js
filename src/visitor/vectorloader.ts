@@ -262,14 +262,14 @@ function viewDataFromJSON(views: any[]) {
 
     for (const [i, view] of views.entries()) {
         const offset = i * 16;
-        const size = view.SIZE;
+        const size = view['SIZE'];
 
         // Write size (int32 at byte 0)
         dataView.setInt32(offset, size, true);
 
-        if (view.INLINED !== undefined) {
+        if (view['INLINED'] !== undefined) {
             // Inline view: INLINED can be hex string (BinaryView) or UTF-8 string (Utf8View)
-            const inlined = view.INLINED;
+            const inlined = view['INLINED'];
 
             // Check if it's a hex string (even length, all hex chars) or a UTF-8 string
             const isHex = typeof inlined === 'string' &&
@@ -291,15 +291,15 @@ function viewDataFromJSON(views: any[]) {
             }
         } else {
             // Out-of-line view: write prefix, buffer_index, offset
-            const prefix = view.PREFIX_HEX;
+            const prefix = view['PREFIX_HEX'];
             // Write 4-byte prefix at bytes 4-7
             for (let j = 0; j < 8 && j < prefix.length; j += 2) {
                 data[offset + 4 + (j >> 1)] = Number.parseInt(prefix.slice(j, j + 2), 16);
             }
             // Write buffer_index (int32 at byte 8)
-            dataView.setInt32(offset + 8, view.BUFFER_INDEX, true);
+            dataView.setInt32(offset + 8, view['BUFFER_INDEX'], true);
             // Write offset (int32 at byte 12)
-            dataView.setInt32(offset + 12, view.OFFSET, true);
+            dataView.setInt32(offset + 12, view['OFFSET'], true);
         }
     }
 

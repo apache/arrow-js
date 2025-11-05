@@ -351,11 +351,11 @@ class MakeDataVisitor extends Visitor {
     }
     public visitUtf8View<T extends Utf8View>(props: Utf8ViewDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
-        const views = toArrayBufferView(type.ArrayType, props['views']);
-        const nullBitmap = toUint8Array(props['nullBitmap']);
-        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
-        const length = props['length'] ?? Math.trunc(views.length / Utf8View.ELEMENT_WIDTH);
-        const nullCount = props['nullBitmap'] ? -1 : 0;
+        const views = toArrayBufferView(type.ArrayType, props.views);
+        const nullBitmap = toUint8Array(props.nullBitmap);
+        const variadicBuffers = (props.variadicBuffers || []).map((buffer) => toUint8Array(buffer));
+        const length = props.length ?? Math.trunc(views.length / Utf8View.ELEMENT_WIDTH);
+        const nullCount = props.nullBitmap ? -1 : 0;
         return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
     }
     public visitLargeUtf8<T extends LargeUtf8>(props: LargeUtf8DataProps<T>) {
@@ -376,11 +376,11 @@ class MakeDataVisitor extends Visitor {
     }
     public visitBinaryView<T extends BinaryView>(props: BinaryViewDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0 } = props;
-        const views = toArrayBufferView(type.ArrayType, props['views']);
-        const nullBitmap = toUint8Array(props['nullBitmap']);
-        const variadicBuffers = (props['variadicBuffers'] || []).map((buffer) => toUint8Array(buffer));
-        const length = props['length'] ?? Math.trunc(views.length / BinaryView.ELEMENT_WIDTH);
-        const nullCount = props['nullBitmap'] ? -1 : 0;
+        const views = toArrayBufferView(type.ArrayType, props.views);
+        const nullBitmap = toUint8Array(props.nullBitmap);
+        const variadicBuffers = (props.variadicBuffers || []).map((buffer) => toUint8Array(buffer));
+        const length = props.length ?? Math.trunc(views.length / BinaryView.ELEMENT_WIDTH);
+        const nullCount = props.nullBitmap ? -1 : 0;
         return new Data(type, offset, length, nullCount, [undefined, views, nullBitmap], [], undefined, variadicBuffers);
     }
     public visitLargeBinary<T extends LargeBinary>(props: LargeBinaryDataProps<T>) {
