@@ -26,7 +26,7 @@ import { float64ToUint16 } from '../util/math.js';
 import { Type, UnionMode, Precision, DateUnit, TimeUnit, IntervalUnit } from '../enum.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, ListView, LargeListView, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -81,6 +81,8 @@ export interface SetVisitor extends Visitor {
     visitTimeNanosecond<T extends TimeNanosecond>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDecimal<T extends Decimal>(data: Data<T>, index: number, value: T['TValue']): void;
     visitList<T extends List>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitListView<T extends ListView>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitLargeListView<T extends LargeListView>(data: Data<T>, index: number, value: T['TValue']): void;
     visitStruct<T extends Struct>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUnion<T extends Union>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDenseUnion<T extends DenseUnion>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -123,6 +125,8 @@ export const setVariableWidthBytes = <T extends Int32Array | BigInt64Array>(valu
     }
 };
 
+const toNumber = (value: number | bigint) => typeof value === 'bigint' ? Number(value) : value;
+
 /** @ignore */
 const setBool = <T extends Bool>({ offset, values }: Data<T>, index: number, val: boolean) => {
     const idx = offset + index;
@@ -157,14 +161,62 @@ export const setFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }
 /** @ignore */
 const setBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, value);
 /** @ignore */
-const setBinaryView = <T extends BinaryView>(_data: Data<T>, _index: number, _value: T['TValue']) => {
-    throw new Error('BinaryView values are immutable in the current implementation');
+const ensureWritableVariadicBuffers = (data: Data<BinaryView | Utf8View>): Uint8Array[] => {
+    let buffers = data.variadicBuffers as unknown as Uint8Array[];
+    if (!Array.isArray(buffers) || Object.isFrozen(buffers)) {
+        buffers = Array.from(buffers) as Uint8Array[];
+        (data as any).variadicBuffers = buffers;
+    }
+    return buffers;
+};
+/** @ignore */
+const setBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number, bytes: Uint8Array) => {
+    const views = data.values as Uint8Array | undefined;
+    if (!views) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const elementWidth = BinaryView.ELEMENT_WIDTH;
+    const viewOffset = index * elementWidth;
+    const end = viewOffset + elementWidth;
+    if (viewOffset < 0 || end > views.length) {
+        throw new RangeError(`BinaryView index ${index} out of bounds`);
+    }
+
+    views.fill(0, viewOffset, end);
+
+    const view = new DataView(views.buffer, views.byteOffset + viewOffset, elementWidth);
+    const length = bytes.length;
+    view.setInt32(BinaryView.LENGTH_OFFSET, length, true);
+
+    if (length <= BinaryView.INLINE_CAPACITY) {
+        views.set(bytes, viewOffset + BinaryView.INLINE_OFFSET);
+        return;
+    }
+
+    const prefix =
+        (bytes[0] ?? 0) |
+        ((bytes[1] ?? 0) << 8) |
+        ((bytes[2] ?? 0) << 16) |
+        ((bytes[3] ?? 0) << 24);
+    view.setUint32(BinaryView.INLINE_OFFSET, prefix >>> 0, true);
+
+    const buffers = ensureWritableVariadicBuffers(data);
+    const copy = bytes.slice();
+    const bufferIndex = buffers.push(copy) - 1;
+    view.setInt32(BinaryView.BUFFER_INDEX_OFFSET, bufferIndex, true);
+    view.setInt32(BinaryView.BUFFER_OFFSET_OFFSET, 0, true);
+};
+/** @ignore */
+const setBinaryView = <T extends BinaryView>(data: Data<T>, index: number, value: T['TValue']) => {
+    const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+    setBinaryViewBytes(data as unknown as Data<BinaryView | Utf8View>, index, bytes);
 };
 /** @ignore */
 const setUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
 /** @ignore */
-const setUtf8View = <T extends Utf8View>(_data: Data<T>, _index: number, _value: T['TValue']) => {
-    throw new Error('Utf8View values are immutable in the current implementation');
+const setUtf8View = <T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']) => {
+    const bytes = encodeUtf8(value);
+    setBinaryViewBytes(data as unknown as Data<BinaryView | Utf8View>, index, bytes);
 };
 
 /* istanbul ignore next */
@@ -227,6 +279,44 @@ const setList = <T extends List>(data: Data<T>, index: number, value: T['TValue'
     } else {
         for (let idx = -1, itr = valueOffsets[index], end = valueOffsets[index + 1]; itr < end;) {
             set(values, itr++, value.get(++idx));
+        }
+    }
+};
+
+const setListView = <T extends ListView>(data: Data<T>, index: number, value: T['TValue']) => {
+    const child = data.children[0];
+    const offsets = data.valueOffsets;
+    const sizes = data.valueSizes!;
+    const set = instance.getVisitFn(child);
+    const start = toNumber(offsets[index]);
+    const length = toNumber(sizes[index]);
+
+    if (value instanceof Vector) {
+        for (let i = 0; i < length; i++) {
+            set(child, start + i, value.get(i));
+        }
+    } else {
+        for (let i = 0; i < length; i++) {
+            set(child, start + i, (value as any)[i]);
+        }
+    }
+};
+
+const setLargeListView = <T extends LargeListView>(data: Data<T>, index: number, value: T['TValue']) => {
+    const child = data.children[0];
+    const offsets = data.valueOffsets;
+    const sizes = data.valueSizes!;
+    const set = instance.getVisitFn(child);
+    const start = bigIntToNumber(offsets[index]);
+    const length = bigIntToNumber(sizes[index]);
+
+    if (value instanceof Vector) {
+        for (let i = 0; i < length; i++) {
+            set(child, start + i, value.get(i));
+        }
+    } else {
+        for (let i = 0; i < length; i++) {
+            set(child, start + i, (value as any)[i]);
         }
     }
 };
@@ -389,6 +479,8 @@ SetVisitor.prototype.visitTimeMicrosecond = wrapSet(setTimeMicrosecond);
 SetVisitor.prototype.visitTimeNanosecond = wrapSet(setTimeNanosecond);
 SetVisitor.prototype.visitDecimal = wrapSet(setDecimal);
 SetVisitor.prototype.visitList = wrapSet(setList);
+SetVisitor.prototype.visitListView = wrapSet(setListView);
+SetVisitor.prototype.visitLargeListView = wrapSet(setLargeListView);
 SetVisitor.prototype.visitStruct = wrapSet(setStruct);
 SetVisitor.prototype.visitUnion = wrapSet(setUnion);
 SetVisitor.prototype.visitDenseUnion = wrapSet(setDenseUnion);

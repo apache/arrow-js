@@ -589,11 +589,19 @@ export class List<T extends DataType = any> extends DataType<Type.List, { [0]: T
     public toString() { return `List<${this.valueType}>`; }
     public get valueType(): T { return this.children[0].type as T; }
     public get valueField(): Field<T> { return this.children[0] as Field<T>; }
-    public get ArrayType(): T['ArrayType'] { return this.valueType.ArrayType; }
+    public get ArrayType(): TypedArrayConstructor<Int32Array> { return Int32Array; }
     protected static [Symbol.toStringTag] = ((proto: List) => {
         (<any>proto).children = null;
         return proto[Symbol.toStringTag] = 'List';
     })(List.prototype);
+}
+
+/** @ignore */
+export interface ListView<T extends DataType = any> extends DataType<Type.ListView, { [0]: T }> {
+    TArray: Vector<T>[];
+    TValue: Vector<T>;
+    ArrayType: TypedArrayConstructor<Int32Array>;
+    OffsetArrayType: TypedArrayConstructor<Int32Array>;
 }
 
 /** @ignore */
@@ -606,11 +614,21 @@ export class ListView<T extends DataType = any> extends DataType<Type.ListView, 
     public toString() { return `ListView<${this.valueType}>`; }
     public get valueType(): T { return this.children[0].type as T; }
     public get valueField(): Field<T> { return this.children[0] as Field<T>; }
-    public get ArrayType(): T['ArrayType'] { return this.valueType.ArrayType; }
+    public get ArrayType(): BigIntArrayConstructor<BigInt64Array> { return BigInt64Array; }
     protected static [Symbol.toStringTag] = ((proto: ListView) => {
         (<any>proto).children = null;
+        (<any>proto).ArrayType = Int32Array;
+        (<any>proto).OffsetArrayType = Int32Array;
         return proto[Symbol.toStringTag] = 'ListView';
     })(ListView.prototype);
+}
+
+/** @ignore */
+export interface LargeListView<T extends DataType = any> extends DataType<Type.LargeListView, { [0]: T }> {
+    TArray: Vector<T>[];
+    TValue: Vector<T>;
+    ArrayType: BigIntArrayConstructor<BigInt64Array>;
+    OffsetArrayType: BigIntArrayConstructor<BigInt64Array>;
 }
 
 /** @ignore */
@@ -626,6 +644,8 @@ export class LargeListView<T extends DataType = any> extends DataType<Type.Large
     public get ArrayType(): T['ArrayType'] { return this.valueType.ArrayType; }
     protected static [Symbol.toStringTag] = ((proto: LargeListView) => {
         (<any>proto).children = null;
+        (<any>proto).ArrayType = BigInt64Array;
+        (<any>proto).OffsetArrayType = BigInt64Array;
         return proto[Symbol.toStringTag] = 'LargeListView';
     })(LargeListView.prototype);
 }

@@ -70,6 +70,13 @@ export class Data<T extends DataType = DataType> {
     declare public readonly valueOffsets: Buffers<T>[BufferType.OFFSET];
     declare public readonly variadicBuffers: ReadonlyArray<Uint8Array>;
 
+    public get valueSizes(): Buffers<T>[BufferType.DATA] | undefined {
+        if (DataType.isListView(this.type) || DataType.isLargeListView(this.type)) {
+            return this.values;
+        }
+        return undefined;
+    }
+
     public get typeId(): T['TType'] { return this.type.typeId; }
 
     public get ArrayType(): T['ArrayType'] { return this.type.ArrayType; }
@@ -276,6 +283,9 @@ export class Data<T extends DataType = DataType> {
         if (DataType.isBinaryView(this.type) || DataType.isUtf8View(this.type)) {
             const width = BinaryView.ELEMENT_WIDTH;
             (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = arr.subarray(offset * width, (offset + length) * width));
+        } else if (DataType.isListView(this.type) || DataType.isLargeListView(this.type)) {
+            (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length));
+            (arr = buffers[BufferType.DATA]) && (buffers[BufferType.DATA] = arr.subarray(offset, offset + length));
         } else {
             // If offsets exist, only slice the offsets buffer
             (arr = buffers[BufferType.OFFSET]) && (buffers[BufferType.OFFSET] = arr.subarray(offset, offset + length + 1)) ||
@@ -437,17 +447,17 @@ class MakeDataVisitor extends Visitor {
         const { ['type']: type, ['offset']: offset = 0, ['child']: child } = props;
         const nullBitmap = toUint8Array(props['nullBitmap']);
         const valueOffsets = toInt32Array(props['valueOffsets']);
-        const sizes = toInt32Array(props['sizes']);
-        const { ['length']: length = sizes.length, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
-        return new Data(type, offset, length, nullCount, [valueOffsets, sizes, nullBitmap], [child]);
+        const valueSizes = toInt32Array(props['valueSizes']);
+        const { ['length']: length = valueSizes.length, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [valueOffsets, valueSizes, nullBitmap], [child]);
     }
     public visitLargeListView<T extends LargeListView>(props: LargeListViewDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0, ['child']: child } = props;
         const nullBitmap = toUint8Array(props['nullBitmap']);
         const valueOffsets = toBigInt64Array(props['valueOffsets']);
-        const sizes = toBigInt64Array(props['sizes']);
-        const { ['length']: length = Number(sizes.length), ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
-        return new Data(type, offset, length, nullCount, [valueOffsets, sizes, nullBitmap], [child]);
+        const valueSizes = toBigInt64Array(props['valueSizes']);
+        const { ['length']: length = Number(valueSizes.length), ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
+        return new Data(type, offset, length, nullCount, [valueOffsets, valueSizes, nullBitmap], [child]);
     }
     public visitStruct<T extends Struct>(props: StructDataProps<T>) {
         const { ['type']: type, ['offset']: offset = 0, ['children']: children = [] } = props;
@@ -533,8 +543,8 @@ interface Utf8DataProps<T extends Utf8> extends DataProps_<T> { valueOffsets: Va
 interface Utf8ViewDataProps<T extends Utf8View> extends DataProps_<T> { views: DataBuffer<T>; variadicBuffers?: ReadonlyArray<ArrayLike<number> | Iterable<number> | Uint8Array>; data?: DataBuffer<T> }
 interface LargeUtf8DataProps<T extends LargeUtf8> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; data?: DataBuffer<T> }
 interface ListDataProps<T extends List> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data<T['valueType']> }
-interface ListViewDataProps<T extends ListView> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; sizes: ValueOffsetsBuffer; child: Data<T['valueType']> }
-interface LargeListViewDataProps<T extends LargeListView> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; sizes: LargeValueOffsetsBuffer | ValueOffsetsBuffer; child: Data<T['valueType']> }
+interface ListViewDataProps<T extends ListView> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; valueSizes: ValueOffsetsBuffer; child: Data<T['valueType']> }
+interface LargeListViewDataProps<T extends LargeListView> extends DataProps_<T> { valueOffsets: LargeValueOffsetsBuffer | ValueOffsetsBuffer; valueSizes: LargeValueOffsetsBuffer | ValueOffsetsBuffer; child: Data<T['valueType']> }
 interface FixedSizeListDataProps<T extends FixedSizeList> extends DataProps_<T> { child: Data<T['valueType']> }
 interface StructDataProps<T extends Struct> extends DataProps_<T> { children: Data[] }
 interface Map_DataProps<T extends Map_> extends DataProps_<T> { valueOffsets: ValueOffsetsBuffer; child: Data }

@@ -15,7 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { BinaryView, Utf8View } from '../../../src/type.js';
+import { BinaryView, Utf8View, ListView, LargeListView, Int32 } from '../../../src/type.js';
+import { Field } from '../../../src/schema.js';
 import { makeBuilder, vectorFromArray } from '../../../src/factories.js';
 
 describe('BinaryViewBuilder', () => {
@@ -254,5 +255,69 @@ describe('Utf8ViewBuilder', () => {
         for (let i = 0; i < count; i++) {
             expect(vector.get(i)).toBe(values[i]);
         }
+    });
+});
+
+describe('ListViewBuilder', () => {
+    const itemField = new Field('item', new Int32(), true);
+
+    it('builds list views from plain arrays', () => {
+        const builder = makeBuilder({ type: new ListView(itemField) });
+        builder.append([1, 2, 3]);
+        builder.append([]);
+        builder.append([4]);
+
+        const vector = builder.finish().toVector();
+        expect(vector).toHaveLength(3);
+        expect(vector.type).toBeInstanceOf(ListView);
+        expect(vector.get(0)?.toJSON()).toEqual([1, 2, 3]);
+        expect(vector.get(1)?.toJSON()).toEqual([]);
+        expect(vector.get(2)?.toJSON()).toEqual([4]);
+    });
+
+    it('handles nulls and vector values', () => {
+        const builder = makeBuilder({ type: new ListView(itemField), nullValues: [null] });
+        const childVector = vectorFromArray([10, 11, 12], new Int32());
+
+        builder.append([5]);
+        builder.append(childVector.slice(1, 3));
+        builder.append(null);
+        builder.append([]);
+
+        const vector = builder.finish().toVector();
+        expect(vector).toHaveLength(4);
+        expect(vector.get(0)?.toJSON()).toEqual([5]);
+        expect(vector.get(1)?.toJSON()).toEqual([11, 12]);
+        expect(vector.get(2)).toBeNull();
+        expect(vector.get(3)?.toJSON()).toEqual([]);
+    });
+});
+
+describe('LargeListViewBuilder', () => {
+    const itemField = new Field('item', new Int32(), true);
+
+    it('builds large list views with mixed lengths', () => {
+        const builder = makeBuilder({ type: new LargeListView(itemField) });
+        builder.append([1, 2]);
+        builder.append([3, 4, 5, 6]);
+        builder.append([]);
+
+        const vector = builder.finish().toVector();
+        expect(vector).toHaveLength(3);
+        expect(vector.type).toBeInstanceOf(LargeListView);
+        expect(vector.get(0)?.toJSON()).toEqual([1, 2]);
+        expect(vector.get(1)?.toJSON()).toEqual([3, 4, 5, 6]);
+        expect(vector.get(2)?.toJSON()).toEqual([]);
+    });
+
+    it('handles null values', () => {
+        const builder = makeBuilder({ type: new LargeListView(itemField), nullValues: [null] });
+        builder.append(null);
+        builder.append([7, 8]);
+
+        const vector = builder.finish().toVector();
+        expect(vector).toHaveLength(2);
+        expect(vector.get(0)).toBeNull();
+        expect(vector.get(1)?.toJSON()).toEqual([7, 8]);
     });
 });

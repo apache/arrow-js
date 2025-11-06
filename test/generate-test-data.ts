@@ -29,7 +29,7 @@ import {
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
     Decimal,
-    List,
+    List, ListView, LargeListView,
     Struct,
     Union, DenseUnion, SparseUnion,
     Dictionary,
@@ -64,6 +64,8 @@ interface TestDataVectorGenerator extends Visitor {
     visit<T extends Interval>(type: T, length?: number, nullCount?: number): GeneratedVector<T>;
     visit<T extends Duration>(type: T, length?: number, nullCount?: number): GeneratedVector<T>;
     visit<T extends List>(type: T, length?: number, nullCount?: number, child?: Vector): GeneratedVector<T>;
+    visit<T extends ListView>(type: T, length?: number, nullCount?: number): GeneratedVector<T>;
+    visit<T extends LargeListView>(type: T, length?: number, nullCount?: number): GeneratedVector<T>;
     visit<T extends FixedSizeList>(type: T, length?: number, nullCount?: number, child?: Vector): GeneratedVector<T>;
     visit<T extends Dictionary>(type: T, length?: number, nullCount?: number, dictionary?: Vector): GeneratedVector<T>;
     visit<T extends Union>(type: T, length?: number, nullCount?: number, children?: Vector[]): GeneratedVector<T>;
@@ -114,6 +116,8 @@ TestDataVectorGenerator.prototype.visitTimestamp = generateTimestamp;
 TestDataVectorGenerator.prototype.visitTime = generateTime;
 TestDataVectorGenerator.prototype.visitDecimal = generateDecimal;
 TestDataVectorGenerator.prototype.visitList = generateList;
+TestDataVectorGenerator.prototype.visitListView = generateListView;
+TestDataVectorGenerator.prototype.visitLargeListView = generateLargeListView;
 TestDataVectorGenerator.prototype.visitStruct = generateStruct;
 TestDataVectorGenerator.prototype.visitUnion = generateUnion;
 TestDataVectorGenerator.prototype.visitDictionary = generateDictionary;
@@ -237,6 +241,8 @@ export const timeMicrosecond = (length = 100, nullCount = Math.trunc(length * 0.
 export const timeNanosecond = (length = 100, nullCount = Math.trunc(length * 0.2)) => vectorGenerator.visit(new TimeNanosecond(), length, nullCount);
 export const decimal = (length = 100, nullCount = Math.trunc(length * 0.2), scale = 2, precision = 9, bitWidth = 128) => vectorGenerator.visit(new Decimal(scale, precision, bitWidth), length, nullCount);
 export const list = (length = 100, nullCount = Math.trunc(length * 0.2), child = defaultListChild) => vectorGenerator.visit(new List(child), length, nullCount);
+export const listView = (length = 100, nullCount = Math.trunc(length * 0.2), child = defaultListChild) => vectorGenerator.visit(new ListView(child), length, nullCount);
+export const largeListView = (length = 100, nullCount = Math.trunc(length * 0.2), child = defaultListChild) => vectorGenerator.visit(new LargeListView(child), length, nullCount);
 export const struct = <T extends TypeMap = any>(length = 100, nullCount = Math.trunc(length * 0.2), children: Field<T[keyof T]>[] = <any>defaultStructChildren()) => vectorGenerator.visit(new Struct<T>(children), length, nullCount);
 export const denseUnion = (length = 100, nullCount = Math.trunc(length * 0.2), children: Field[] = defaultUnionChildren()) => vectorGenerator.visit(new DenseUnion(children.map((f) => f.typeId), children), length, nullCount);
 export const sparseUnion = (length = 100, nullCount = Math.trunc(length * 0.2), children: Field[] = defaultUnionChildren()) => vectorGenerator.visit(new SparseUnion(children.map((f) => f.typeId), children), length, nullCount);
@@ -491,6 +497,97 @@ function generateList<T extends List>(this: TestDataVectorGenerator, type: T, le
         return values;
     });
     return { values, vector: new Vector([makeData({ type, length, nullCount, nullBitmap, valueOffsets, child: childVec.data[0] })]) };
+}
+
+function generateListView<T extends ListView>(this: TestDataVectorGenerator, type: T, length = 100, nullCount = Math.trunc(length * 0.2)): GeneratedVector<T> {
+    const nullBitmap = createBitmap(length, nullCount);
+    const valueOffsets = new Int32Array(length);
+    const valueSizes = new Int32Array(length);
+    let totalValues = 0;
+
+    iterateBitmap(length, nullBitmap, (i, valid) => {
+        valueOffsets[i] = totalValues;
+        if (!valid) {
+            valueSizes[i] = 0;
+            return;
+        }
+        const size = Math.trunc(rand() * 5);
+        valueSizes[i] = size;
+        totalValues += size;
+    });
+
+    const childLength = Math.max(totalValues, 1);
+    const childNullCount = Math.trunc(childLength * 0.2);
+    const childVector = this.visit(type.children[0].type, childLength, childNullCount).vector;
+    const childData = childVector.data[0];
+    const childSlice = totalValues === childLength ? childData : childData.slice(0, totalValues);
+
+    const vector = new Vector([makeData({
+        type,
+        length,
+        nullCount,
+        nullBitmap,
+        valueOffsets,
+        valueSizes,
+        child: childSlice
+    })]);
+
+    const values = memoize(() => {
+        const entries = new Array(length) as (T['TValue'] | null)[];
+        for (let i = 0; i < length; i++) {
+            entries[i] = vector.get(i);
+        }
+        return entries;
+    });
+
+    return { values, vector };
+}
+
+function generateLargeListView<T extends LargeListView>(this: TestDataVectorGenerator, type: T, length = 100, nullCount = Math.trunc(length * 0.2)): GeneratedVector<T> {
+    const nullBitmap = createBitmap(length, nullCount);
+    const valueOffsets = new BigInt64Array(length);
+    const valueSizes = new BigInt64Array(length);
+    let totalValues = 0n;
+
+    iterateBitmap(length, nullBitmap, (i, valid) => {
+        valueOffsets[i] = totalValues;
+        if (!valid) {
+            valueSizes[i] = 0n;
+            return;
+        }
+        const size = BigInt(Math.trunc(rand() * 5));
+        valueSizes[i] = size;
+        totalValues += size;
+    });
+
+    const childLength = Number(totalValues > 0n ? totalValues : 1n);
+    const childNullCount = Math.trunc(childLength * 0.2);
+    const childVector = this.visit(type.children[0].type, childLength, childNullCount).vector;
+    const childData = childVector.data[0];
+    const targetLength = Number(totalValues);
+    const childSlice = totalValues === BigInt(childLength)
+        ? childData
+        : childData.slice(0, targetLength);
+
+    const vector = new Vector([makeData({
+        type,
+        length,
+        nullCount,
+        nullBitmap,
+        valueOffsets,
+        valueSizes,
+        child: childSlice
+    })]);
+
+    const values = memoize(() => {
+        const entries = new Array(length) as (T['TValue'] | null)[];
+        for (let i = 0; i < length; i++) {
+            entries[i] = vector.get(i);
+        }
+        return entries;
+    });
+
+    return { values, vector };
 }
 
 function generateFixedSizeList<T extends FixedSizeList>(this: TestDataVectorGenerator, type: T, length = 100, nullCount = Math.trunc(length * 0.2), child = this.visit(type.children[0].type, length * type.listSize, nullCount * type.listSize)): GeneratedVector<T> {

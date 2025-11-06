@@ -37,6 +37,7 @@ import type { LargeUtf8Builder } from './builder/largeutf8.js';
 import type { BinaryBuilder } from './builder/binary.js';
 import type { LargeBinaryBuilder } from './builder/largebinary.js';
 import type { ListBuilder } from './builder/list.js';
+import type { ListViewBuilder, LargeListViewBuilder } from './builder/listview.js';
 import type { FixedSizeListBuilder } from './builder/fixedsizelist.js';
 import type { MapBuilder } from './builder/map.js';
 import type { StructBuilder } from './builder/struct.js';
@@ -241,6 +242,8 @@ export type TypeToDataType<T extends Type> = {
     [Type.DurationMicrosecond]: type.DurationMicrosecond;
     [Type.DurationNanosecond]: type.DurationNanosecond;
     [Type.Map]: type.Map_;
+    [Type.ListView]: type.ListView;
+    [Type.LargeListView]: type.LargeListView;
     [Type.List]: type.List;
     [Type.Struct]: type.Struct;
     [Type.Dictionary]: type.Dictionary;
@@ -300,6 +303,8 @@ type TypeToBuilder<T extends Type = any, TNull = any> = {
     [Type.DurationNanosecond]: DurationNanosecondBuilder<TNull>;
     [Type.Map]: MapBuilder<any, any, TNull>;
     [Type.List]: ListBuilder<any, TNull>;
+    [Type.ListView]: ListViewBuilder<any, TNull>;
+    [Type.LargeListView]: LargeListViewBuilder<any, TNull>;
     [Type.Struct]: StructBuilder<any, TNull>;
     [Type.Dictionary]: DictionaryBuilder<any, TNull>;
     [Type.FixedSizeList]: FixedSizeListBuilder<any, TNull>;
@@ -358,6 +363,8 @@ type DataTypeToBuilder<T extends DataType = any, TNull = any> = {
     [Type.DurationNanosecond]: T extends type.DurationNanosecond ? DurationNanosecondBuilder<TNull> : never;
     [Type.Map]: T extends type.Map_ ? MapBuilder<T['keyType'], T['valueType'], TNull> : never;
     [Type.List]: T extends type.List ? ListBuilder<T['valueType'], TNull> : never;
+    [Type.ListView]: T extends type.ListView ? ListViewBuilder<T['valueType'], TNull> : never;
+    [Type.LargeListView]: T extends type.LargeListView ? LargeListViewBuilder<T['valueType'], TNull> : never;
     [Type.Struct]: T extends type.Struct ? StructBuilder<T['dataTypes'], TNull> : never;
     [Type.Dictionary]: T extends type.Dictionary ? DictionaryBuilder<T, TNull> : never;
     [Type.FixedSizeList]: T extends type.FixedSizeList ? FixedSizeListBuilder<T['valueType'], TNull> : never;

@@ -16,6 +16,7 @@
 // under the License.
 
 import { Field } from '../schema.js';
+import { Vector } from '../vector.js';
 import { DataType, ListView, LargeListView } from '../type.js';
 import { DataBufferBuilder } from './buffer.js';
 import { Builder, BuilderOptions } from '../builder.js';
@@ -59,6 +60,8 @@ export class ListViewBuilder<T extends DataType = any, TNull = any> extends Buil
     public clear() {
         this._pending = undefined;
         this._writeIndex = 0;
+        this._offsets.clear();
+        this._sizes.clear();
         return super.clear();
     }
 
@@ -69,7 +72,7 @@ export class ListViewBuilder<T extends DataType = any, TNull = any> extends Buil
         const { type, length, nullCount, _offsets, _sizes, _nulls } = this;
 
         const valueOffsets = _offsets.flush(length);
-        const sizes = _sizes.flush(length);
+        const valueSizes = _sizes.flush(length);
         const nullBitmap = nullCount > 0 ? _nulls.flush(length) : undefined;
         const children = this.children.map((child) => child.flush());
 
@@ -81,7 +84,7 @@ export class ListViewBuilder<T extends DataType = any, TNull = any> extends Buil
             nullCount,
             nullBitmap,
             valueOffsets,
-            sizes,
+            valueSizes,
             child: children[0]
         });
     }
@@ -104,30 +107,30 @@ export class ListViewBuilder<T extends DataType = any, TNull = any> extends Buil
         const sizes = this._sizes;
         const [child] = this.children;
 
-        for (const [index, value] of pending) {
-            offsets.reserve(index + 1);
-            sizes.reserve(index + 1);
+        const entries = [...pending.entries()].sort((a, b) => a[0] - b[0]);
+        for (const [index, value] of entries) {
+            const offset = this._writeIndex;
+            offsets.set(index, offset);
 
             if (typeof value === 'undefined') {
-                // Null or empty list
-                offsets.buffer[index] = 0;
-                sizes.buffer[index] = 0;
-            } else {
-                const v = value as T['TValue'];
-                const n = v.length;
-                const offset = this._writeIndex;
-
-                // Set offset and size directly
-                offsets.buffer[index] = offset;
-                sizes.buffer[index] = n;
-
-                // Write child values
-                for (let i = 0; i < n; i++) {
-                    child.set(offset + i, v[i]);
-                }
-
-                this._writeIndex += n;
+                sizes.set(index, 0);
+                continue;
             }
+
+            const listValues = value as T['TValue'];
+            const length = Array.isArray(listValues)
+                ? listValues.length
+                : (listValues as Vector).length;
+            sizes.set(index, length);
+
+            for (let i = 0; i < length; i++) {
+                const element = Array.isArray(listValues)
+                    ? listValues[i]
+                    : (listValues as Vector).get(i);
+                child.set(offset + i, element);
+            }
+
+            this._writeIndex += length;
         }
     }
 }
@@ -170,6 +173,8 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
     public clear() {
         this._pending = undefined;
         this._writeIndex = BigInt(0);
+        this._offsets.clear();
+        this._sizes.clear();
         return super.clear();
     }
 
@@ -180,7 +185,7 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
         const { type, length, nullCount, _offsets, _sizes, _nulls } = this;
 
         const valueOffsets = _offsets.flush(length);
-        const sizes = _sizes.flush(length);
+        const valueSizes = _sizes.flush(length);
         const nullBitmap = nullCount > 0 ? _nulls.flush(length) : undefined;
         const children = this.children.map((child) => child.flush());
 
@@ -192,7 +197,7 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
             nullCount,
             nullBitmap,
             valueOffsets,
-            sizes,
+            valueSizes,
             child: children[0]
         });
     }
@@ -215,30 +220,31 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
         const sizes = this._sizes;
         const [child] = this.children;
 
-        for (const [index, value] of pending) {
-            offsets.reserve(index + 1);
-            sizes.reserve(index + 1);
+        const entries = [...pending.entries()].sort((a, b) => a[0] - b[0]);
+        for (const [index, value] of entries) {
+            const offset = this._writeIndex;
+            offsets.set(index, offset);
 
             if (typeof value === 'undefined') {
-                // Null or empty list
-                offsets.buffer[index] = BigInt(0);
-                sizes.buffer[index] = BigInt(0);
-            } else {
-                const v = value as T['TValue'];
-                const n = v.length;
-                const offset = this._writeIndex;
-
-                // Set offset and size directly (using BigInt for LargeListView)
-                offsets.buffer[index] = offset;
-                sizes.buffer[index] = BigInt(n);
-
-                // Write child values
-                for (let i = 0; i < n; i++) {
-                    child.set(Number(offset) + i, v[i]);
-                }
-
-                this._writeIndex += BigInt(n);
+                sizes.set(index, BigInt(0));
+                continue;
             }
+
+            const listValues = value as T['TValue'];
+            const numericLength = Array.isArray(listValues)
+                ? listValues.length
+                : (listValues as Vector).length;
+            const length = BigInt(numericLength);
+            sizes.set(index, length);
+
+            for (let i = 0; i < numericLength; i++) {
+                const element = Array.isArray(listValues)
+                    ? listValues[i]
+                    : (listValues as Vector).get(i);
+                child.set(Number(offset + BigInt(i)), element);
+            }
+
+            this._writeIndex += length;
         }
     }
 }

@@ -82,7 +82,14 @@ export class VectorLoader extends Visitor {
         const nullBitmap = this.readNullBitmap(type, nullCount);
         const views = this.readData(type);
         const variadicBuffers = this.readVariadicBuffers(this.nextVariadicBufferCount());
-        return makeData({ type, length, nullCount, nullBitmap, views, variadicBuffers });
+        return makeData({
+            type,
+            length,
+            nullCount,
+            nullBitmap,
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
+        });
     }
     public visitBinary<T extends type.Binary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
@@ -94,7 +101,14 @@ export class VectorLoader extends Visitor {
         const nullBitmap = this.readNullBitmap(type, nullCount);
         const views = this.readData(type);
         const variadicBuffers = this.readVariadicBuffers(this.nextVariadicBufferCount());
-        return makeData({ type, length, nullCount, nullBitmap, views, variadicBuffers });
+        return makeData({
+            type,
+            length,
+            nullCount,
+            nullBitmap,
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
+        });
     }
     public visitFixedSizeBinary<T extends type.FixedSizeBinary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), data: this.readData(type) });
@@ -113,6 +127,36 @@ export class VectorLoader extends Visitor {
     }
     public visitList<T extends type.List>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), 'child': this.visit(type.children[0]) });
+    }
+    public visitListView<T extends type.ListView>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        const nullBitmap = this.readNullBitmap(type, nullCount);
+        const valueOffsets = this.readOffsets(type);
+        const valueSizes = this.readOffsets(type);
+        const child = this.visit(type.children[0]);
+        return makeData({
+            type,
+            length,
+            nullCount,
+            nullBitmap,
+            valueOffsets,
+            valueSizes,
+            'child': child
+        });
+    }
+    public visitLargeListView<T extends type.LargeListView>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        const nullBitmap = this.readNullBitmap(type, nullCount);
+        const valueOffsets = this.readOffsets(type);
+        const valueSizes = this.readOffsets(type);
+        const child = this.visit(type.children[0]);
+        return makeData({
+            type,
+            length,
+            nullCount,
+            nullBitmap,
+            valueOffsets,
+            valueSizes,
+            'child': child
+        });
     }
     public visitStruct<T extends type.Struct>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), children: this.visitMany(type.children) });
@@ -196,8 +240,10 @@ export class JSONVectorLoader extends VectorLoader {
             return toArrayBufferView(Uint8Array, Int128.convertArray(sources[offset] as string[]));
         } else if (DataType.isBinary(type) || DataType.isLargeBinary(type) || DataType.isFixedSizeBinary(type)) {
             return binaryDataFromJSON(sources[offset] as string[]);
-        } else if (DataType.isBinaryView(type) || DataType.isUtf8View(type)) {
-            return viewDataFromJSON(sources[offset] as any[]);
+        } else if (DataType.isBinaryView(type)) {
+            return binaryViewDataFromJSON(sources[offset] as any[]);
+        } else if (DataType.isUtf8View(type)) {
+            return utf8ViewDataFromJSON(sources[offset] as any[]);
         } else if (DataType.isBool(type)) {
             return packBools(sources[offset] as number[]);
         } else if (DataType.isUtf8(type) || DataType.isLargeUtf8(type)) {
@@ -215,64 +261,100 @@ export class JSONVectorLoader extends VectorLoader {
         return toArrayBufferView(Uint8Array, toArrayBufferView(type.ArrayType, sources[offset].map((x) => +x)));
     }
     protected readVariadicBuffers(length: number) {
+        // Per Arrow C++ reference implementation (cpp/src/arrow/ipc/reader.cc),
+        // each variadic buffer is stored as a separate buffer region, matching
+        // the IPC format where each is accessed via separate GetBuffer() calls.
+        // VARIADIC_DATA_BUFFERS in JSON is an array, but flattenDataSources spreads
+        // it so each hex string gets its own sources entry, maintaining 1:1
+        // correspondence with BufferRegion entries.
         const buffers: Uint8Array[] = [];
         for (let i = 0; i < length; i++) {
             const { offset } = this.nextBufferRange();
-            const hexData = this.sources[offset] as string[];
-            buffers.push(binaryDataFromJSON(hexData));
+            // sources[offset] is 'any[]' but for variadic buffers it's actually a string
+            // after spreading in flattenDataSources. Cast necessary due to heterogeneous
+            // sources array structure (most fields are arrays, variadic elements are strings).
+            const hexString = this.sources[offset] as unknown as string;
+            buffers.push(hexStringToBytes(hexString));
         }
         return buffers;
     }
 }
 
 /** @ignore */
-function binaryDataFromJSON(values: string[]) {
-    // "DATA": ["49BC7D5B6C47D2","3F5FB6D9322026"]
-    // There are definitely more efficient ways to do this... but it gets the
-    // job done.
-    const joined = values.join('');
-    const data = new Uint8Array(joined.length / 2);
-    for (let i = 0; i < joined.length; i += 2) {
-        data[i >> 1] = Number.parseInt(joined.slice(i, i + 2), 16);
+function hexStringToBytes(hexString: string): Uint8Array {
+    // Parse hex string per Arrow JSON integration format (uppercase hex encoding).
+    // Used for: VARIADIC_DATA_BUFFERS elements, Binary DATA (after join),
+    // BinaryView PREFIX_HEX and INLINED fields.
+    const data = new Uint8Array(hexString.length / 2);
+    for (let i = 0; i < hexString.length; i += 2) {
+        data[i >> 1] = Number.parseInt(hexString.slice(i, i + 2), 16);
     }
     return data;
 }
 
 /** @ignore */
-function viewDataFromJSON(views: any[]) {
-    // Each view is a 16-byte struct: [length: i32, prefix/inlined: 4 bytes, buffer_index: i32, offset: i32]
+function binaryDataFromJSON(values: string[]): Uint8Array {
+    // Arrow JSON Binary/LargeBinary/FixedSizeBinary format:
+    // "DATA": ["49BC7D5B6C47D2","3F5FB6D9322026"] (array of hex strings, one per value)
+    // Join all values into one continuous hex string, then parse to bytes.
+    return hexStringToBytes(values.join(''));
+}
+
+/** @ignore */
+function parseViewDataFromJSON(views: any[], parseInlined: (inlined: string) => Uint8Array) {
+    // Each view is a 16-byte struct: [length: i32, prefix/inlined: 12 bytes, buffer_index: i32, offset: i32]
     const data = new Uint8Array(views.length * 16);
     const dataView = new DataView(data.buffer);
 
-    for (let i = 0; i < views.length; i++) {
-        const view = views[i];
+    for (const [i, view] of views.entries()) {
         const offset = i * 16;
-        const size = view.SIZE;
+        const size = view['SIZE'];
 
         // Write size (int32 at byte 0)
         dataView.setInt32(offset, size, true);
 
-        if (view.INLINED !== undefined) {
-            // Inline view: write the inlined data as hex to bytes 4-15
-            const inlined = view.INLINED;
-            for (let j = 0; j < inlined.length && j < 24; j += 2) {
-                data[offset + 4 + (j >> 1)] = Number.parseInt(inlined.slice(j, j + 2), 16);
+        if (view['INLINED'] !== undefined) {
+            // Inline view: parse INLINED field using provided callback
+            const bytes = parseInlined(view['INLINED']);
+            for (let j = 0; j < bytes.length && j < 12; j++) {
+                data[offset + 4 + j] = bytes[j];
             }
         } else {
             // Out-of-line view: write prefix, buffer_index, offset
-            const prefix = view.PREFIX_HEX;
+            const prefix = view['PREFIX_HEX'];
             // Write 4-byte prefix at bytes 4-7
             for (let j = 0; j < 8 && j < prefix.length; j += 2) {
                 data[offset + 4 + (j >> 1)] = Number.parseInt(prefix.slice(j, j + 2), 16);
             }
             // Write buffer_index (int32 at byte 8)
-            dataView.setInt32(offset + 8, view.BUFFER_INDEX, true);
+            dataView.setInt32(offset + 8, view['BUFFER_INDEX'], true);
             // Write offset (int32 at byte 12)
-            dataView.setInt32(offset + 12, view.OFFSET, true);
+            dataView.setInt32(offset + 12, view['OFFSET'], true);
         }
     }
 
     return data;
+}
+
+/** @ignore */
+function binaryViewDataFromJSON(views: any[]) {
+    return parseViewDataFromJSON(views, (inlined: string) => {
+        // BinaryView: INLINED is hex-encoded string
+        const bytes = new Uint8Array(inlined.length / 2);
+        for (let i = 0; i < inlined.length; i += 2) {
+            bytes[i >> 1] = Number.parseInt(inlined.slice(i, i + 2), 16);
+        }
+        return bytes;
+    });
+}
+
+/** @ignore */
+function utf8ViewDataFromJSON(views: any[]) {
+    return parseViewDataFromJSON(views, (inlined: string) => {
+        // Utf8View: INLINED is UTF-8 string - encode to bytes
+        const encoder = new TextEncoder();
+        return encoder.encode(inlined);
+    });
 }
 
 export class CompressedVectorLoader extends VectorLoader {
