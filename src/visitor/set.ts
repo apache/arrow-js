@@ -157,14 +157,62 @@ export const setFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }
 /** @ignore */
 const setBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, value);
 /** @ignore */
-const setBinaryView = <T extends BinaryView>(_data: Data<T>, _index: number, _value: T['TValue']) => {
-    throw new Error('BinaryView values are immutable in the current implementation');
+const ensureWritableVariadicBuffers = (data: Data<BinaryView | Utf8View>): Uint8Array[] => {
+    let buffers = data.variadicBuffers as unknown as Uint8Array[];
+    if (!Array.isArray(buffers) || Object.isFrozen(buffers)) {
+        buffers = Array.from(buffers) as Uint8Array[];
+        (data as any).variadicBuffers = buffers;
+    }
+    return buffers;
+};
+/** @ignore */
+const setBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number, bytes: Uint8Array) => {
+    const views = data.values as Uint8Array | undefined;
+    if (!views) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const elementWidth = BinaryView.ELEMENT_WIDTH;
+    const viewOffset = index * elementWidth;
+    const end = viewOffset + elementWidth;
+    if (viewOffset < 0 || end > views.length) {
+        throw new RangeError(`BinaryView index ${index} out of bounds`);
+    }
+
+    views.fill(0, viewOffset, end);
+
+    const view = new DataView(views.buffer, views.byteOffset + viewOffset, elementWidth);
+    const length = bytes.length;
+    view.setInt32(BinaryView.LENGTH_OFFSET, length, true);
+
+    if (length <= BinaryView.INLINE_CAPACITY) {
+        views.set(bytes, viewOffset + BinaryView.INLINE_OFFSET);
+        return;
+    }
+
+    const prefix =
+        (bytes[0] ?? 0) |
+        ((bytes[1] ?? 0) << 8) |
+        ((bytes[2] ?? 0) << 16) |
+        ((bytes[3] ?? 0) << 24);
+    view.setUint32(BinaryView.INLINE_OFFSET, prefix >>> 0, true);
+
+    const buffers = ensureWritableVariadicBuffers(data);
+    const copy = bytes.slice();
+    const bufferIndex = buffers.push(copy) - 1;
+    view.setInt32(BinaryView.BUFFER_INDEX_OFFSET, bufferIndex, true);
+    view.setInt32(BinaryView.BUFFER_OFFSET_OFFSET, 0, true);
+};
+/** @ignore */
+const setBinaryView = <T extends BinaryView>(data: Data<T>, index: number, value: T['TValue']) => {
+    const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+    setBinaryViewBytes(data as unknown as Data<BinaryView | Utf8View>, index, bytes);
 };
 /** @ignore */
 const setUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
 /** @ignore */
-const setUtf8View = <T extends Utf8View>(_data: Data<T>, _index: number, _value: T['TValue']) => {
-    throw new Error('Utf8View values are immutable in the current implementation');
+const setUtf8View = <T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']) => {
+    const bytes = encodeUtf8(value);
+    setBinaryViewBytes(data as unknown as Data<BinaryView | Utf8View>, index, bytes);
 };
 
 /* istanbul ignore next */

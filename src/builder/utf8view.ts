@@ -145,8 +145,8 @@ export class Utf8ViewBuilder<TNull = any> extends Builder<Utf8View, TNull> {
             length,
             nullCount,
             nullBitmap,
-            views,
-            variadicBuffers
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
         });
     }
 

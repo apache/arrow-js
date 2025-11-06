@@ -158,8 +158,8 @@ export class BinaryViewBuilder<TNull = any> extends Builder<BinaryView, TNull> {
             length,
             nullCount,
             nullBitmap,
-            views,
-            variadicBuffers
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
         });
     }
 

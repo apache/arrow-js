@@ -115,10 +115,13 @@ export class JSONVectorAssembler extends Visitor {
         return { 'DATA': [...binaryToString(new Vector([data]))], 'OFFSET': [...bigNumsToStrings(data.valueOffsets, 2)] };
     }
     public visitBinaryView<T extends BinaryView>(data: Data<T>) {
-        return viewDataToJSON(data, true);
+        return binaryViewDataToJSON(data, (bytes) => Array.from(bytes)
+                .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+                .join('')
+                .toUpperCase());
     }
     public visitUtf8View<T extends Utf8View>(data: Data<T>) {
-        return viewDataToJSON(data, false);
+        return binaryViewDataToJSON(data, (bytes) => Array.from(bytes).map(b => String.fromCodePoint(b)).join(''));
     }
     public visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>) {
         return { 'DATA': [...binaryToString(new Vector([data]))] };
@@ -205,65 +208,44 @@ function* bigNumsToStrings(values: BigUint64Array | BigInt64Array | Uint32Array 
 }
 
 /** @ignore */
-function viewDataToJSON(data: Data<BinaryView> | Data<Utf8View>, isBinary: boolean) {
+function binaryViewDataToJSON(data: Data<BinaryView> | Data<Utf8View>, formatInlined: (bytes: Uint8Array) => string) {
     const INLINE_SIZE = 12;
-    const views: any[] = [];
-    const variadicBuffers: string[] = [];
-    const variadicBuffersMap = new Map<number, number>(); // buffer index in data -> index in output array
-
-    // Read view structs from the views buffer (16 bytes each)
     const viewsData = data.values;
     const dataView = new DataView(viewsData.buffer, viewsData.byteOffset, viewsData.byteLength);
     const numViews = viewsData.byteLength / 16;
-
-    for (let i = 0; i < numViews; i++) {
-        const offset = i * 16;
-        const size = dataView.getInt32(offset, true);
-
-        if (size <= INLINE_SIZE) {
-            // Inline view: read the inlined data (bytes 4-15, up to 12 bytes)
-            const inlined = viewsData.subarray(offset + 4, offset + 4 + size);
-            const inlinedHex = Array.from(inlined)
-                .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
-                .join('')
-                .toUpperCase();
-
-            views.push({
-                'SIZE': size,
-                'INLINED': isBinary ? inlinedHex : Array.from(inlined).map(b => String.fromCodePoint(b)).join('')
-            });
-        } else {
-            // Out-of-line view: read prefix (4 bytes at offset 4-7), buffer_index, offset
-            const prefix = viewsData.subarray(offset + 4, offset + 8);
-            const prefixHex = Array.from(prefix)
-                .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
-                .join('')
-                .toUpperCase();
-            const bufferIndex = dataView.getInt32(offset + 8, true);
-            const bufferOffset = dataView.getInt32(offset + 12, true);
-
-            // Track which variadic buffers we're using and map to output indices
-            if (!variadicBuffersMap.has(bufferIndex)) {
-                const outputIndex = variadicBuffers.length;
-                variadicBuffersMap.set(bufferIndex, outputIndex);
-
-                // Get the actual buffer data and convert to hex
-                const buffer = data.variadicBuffers[bufferIndex];
-                const hex = Array.from(buffer)
-                    .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
-                    .join('')
-                    .toUpperCase();
-                variadicBuffers.push(hex);
-            }
-
-            views.push({
-                'SIZE': size,
-                'PREFIX_HEX': prefixHex,
-                'BUFFER_INDEX': variadicBuffersMap.get(bufferIndex),
-                'OFFSET': bufferOffset
-            });
-        }
-    }
-
+    const bytesToHex = (bytes: Uint8Array) =>
+        Array.from(bytes)
+            .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+            .join('')
+            .toUpperCase();
+    const parsedViews = Array.from({ length: numViews }, (_, i) => {
+      const offset = i * 16;
+      const size = dataView.getInt32(offset, true);
+      return [offset, size];
+    }).map(([offset, size]) => (size > INLINE_SIZE) ? {
+      'SIZE': size,
+      'PREFIX_HEX': bytesToHex(viewsData.subarray(offset + 4, offset + 8)),
+      'BUFFER_INDEX': dataView.getInt32(offset + 8, true),
+      'OFFSET': dataView.getInt32(offset + 12, true)
+    } : {
+      'SIZE': size,
+      'INLINED': formatInlined(viewsData.subarray(offset + 4, offset + 4 + size))
+    });
+    const uniqueBufferIndices = [...new Set(
+        parsedViews
+            .map(v => v['BUFFER_INDEX'])
+            .filter((idx): idx is number => idx !== undefined)
+    )];
+    const variadicBuffers = uniqueBufferIndices.map(bufferIndex =>
+        bytesToHex(data.variadicBuffers[bufferIndex])
+    );
+    const bufferIndexMap = new Map(
+        uniqueBufferIndices.map((bufferIndex, outputIndex) => [bufferIndex, outputIndex])
+    );
+    // Remap buffer indices in views
+    const views = parsedViews.map(v => v['BUFFER_INDEX'] !== undefined
+      ? { ...v, 'BUFFER_INDEX': bufferIndexMap.get(v['BUFFER_INDEX']) }
+      : v
+    );
     return { 'VIEWS': views, 'VARIADIC_DATA_BUFFERS': variadicBuffers };
 }

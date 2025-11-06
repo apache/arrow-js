@@ -82,7 +82,14 @@ export class VectorLoader extends Visitor {
         const nullBitmap = this.readNullBitmap(type, nullCount);
         const views = this.readData(type);
         const variadicBuffers = this.readVariadicBuffers(this.nextVariadicBufferCount());
-        return makeData({ type, length, nullCount, nullBitmap, views, variadicBuffers });
+        return makeData({
+            type,
+            length,
+            nullCount,
+            nullBitmap,
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
+        });
     }
     public visitBinary<T extends type.Binary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
@@ -94,7 +101,14 @@ export class VectorLoader extends Visitor {
         const nullBitmap = this.readNullBitmap(type, nullCount);
         const views = this.readData(type);
         const variadicBuffers = this.readVariadicBuffers(this.nextVariadicBufferCount());
-        return makeData({ type, length, nullCount, nullBitmap, views, variadicBuffers });
+        return makeData({
+            type,
+            length,
+            nullCount,
+            nullBitmap,
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
+        });
     }
     public visitFixedSizeBinary<T extends type.FixedSizeBinary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), data: this.readData(type) });
@@ -196,8 +210,10 @@ export class JSONVectorLoader extends VectorLoader {
             return toArrayBufferView(Uint8Array, Int128.convertArray(sources[offset] as string[]));
         } else if (DataType.isBinary(type) || DataType.isLargeBinary(type) || DataType.isFixedSizeBinary(type)) {
             return binaryDataFromJSON(sources[offset] as string[]);
-        } else if (DataType.isBinaryView(type) || DataType.isUtf8View(type)) {
-            return viewDataFromJSON(sources[offset] as any[]);
+        } else if (DataType.isBinaryView(type)) {
+            return binaryViewDataFromJSON(sources[offset] as any[]);
+        } else if (DataType.isUtf8View(type)) {
+            return utf8ViewDataFromJSON(sources[offset] as any[]);
         } else if (DataType.isBool(type)) {
             return packBools(sources[offset] as number[]);
         } else if (DataType.isUtf8(type) || DataType.isLargeUtf8(type)) {
@@ -255,7 +271,7 @@ function binaryDataFromJSON(values: string[]): Uint8Array {
 }
 
 /** @ignore */
-function viewDataFromJSON(views: any[]) {
+function parseViewDataFromJSON(views: any[], parseInlined: (inlined: string) => Uint8Array) {
     // Each view is a 16-byte struct: [length: i32, prefix/inlined: 12 bytes, buffer_index: i32, offset: i32]
     const data = new Uint8Array(views.length * 16);
     const dataView = new DataView(data.buffer);
@@ -268,26 +284,10 @@ function viewDataFromJSON(views: any[]) {
         dataView.setInt32(offset, size, true);
 
         if (view['INLINED'] !== undefined) {
-            // Inline view: INLINED can be hex string (BinaryView) or UTF-8 string (Utf8View)
-            const inlined = view['INLINED'];
-
-            // Check if it's a hex string (even length, all hex chars) or a UTF-8 string
-            const isHex = typeof inlined === 'string' &&
-                          inlined.length % 2 === 0 &&
-                          /^[0-9A-Fa-f]*$/.test(inlined);
-
-            if (isHex) {
-                // BinaryView: hex-encoded string
-                for (let j = 0; j < inlined.length && j < 24; j += 2) {
-                    data[offset + 4 + (j >> 1)] = Number.parseInt(inlined.slice(j, j + 2), 16);
-                }
-            } else {
-                // Utf8View: UTF-8 string - encode to bytes
-                const encoder = new TextEncoder();
-                const bytes = encoder.encode(inlined);
-                for (let j = 0; j < bytes.length && j < 12; j++) {
-                    data[offset + 4 + j] = bytes[j];
-                }
+            // Inline view: parse INLINED field using provided callback
+            const bytes = parseInlined(view['INLINED']);
+            for (let j = 0; j < bytes.length && j < 12; j++) {
+                data[offset + 4 + j] = bytes[j];
             }
         } else {
             // Out-of-line view: write prefix, buffer_index, offset
@@ -304,6 +304,27 @@ function viewDataFromJSON(views: any[]) {
     }
 
     return data;
+}
+
+/** @ignore */
+function binaryViewDataFromJSON(views: any[]) {
+    return parseViewDataFromJSON(views, (inlined: string) => {
+        // BinaryView: INLINED is hex-encoded string
+        const bytes = new Uint8Array(inlined.length / 2);
+        for (let i = 0; i < inlined.length; i += 2) {
+            bytes[i >> 1] = Number.parseInt(inlined.slice(i, i + 2), 16);
+        }
+        return bytes;
+    });
+}
+
+/** @ignore */
+function utf8ViewDataFromJSON(views: any[]) {
+    return parseViewDataFromJSON(views, (inlined: string) => {
+        // Utf8View: INLINED is UTF-8 string - encode to bytes
+        const encoder = new TextEncoder();
+        return encoder.encode(inlined);
+    });
 }
 
 export class CompressedVectorLoader extends VectorLoader {
