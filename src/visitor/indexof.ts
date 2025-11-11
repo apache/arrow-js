@@ -24,7 +24,7 @@ import { getBool, BitIterator } from '../util/bit.js';
 import { createElementComparator } from '../util/vector.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -59,8 +59,10 @@ export interface IndexOfVisitor extends Visitor {
     visitFloat64<T extends Float64>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitUtf8<T extends Utf8>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitBinary<T extends Binary>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
+    visitBinaryView<T extends BinaryView>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitDate<T extends Date_>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitDateDay<T extends DateDay>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
@@ -77,6 +79,7 @@ export interface IndexOfVisitor extends Visitor {
     visitTimeNanosecond<T extends TimeNanosecond>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitDecimal<T extends Decimal>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitList<T extends List>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
+    visitLargeList<T extends LargeList>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitStruct<T extends Struct>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitUnion<T extends Union>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
     visitDenseUnion<T extends DenseUnion>(data: Data<T>, value: T['TValue'] | null, index?: number): number;
@@ -177,8 +180,10 @@ IndexOfVisitor.prototype.visitFloat32 = indexOfValue;
 IndexOfVisitor.prototype.visitFloat64 = indexOfValue;
 IndexOfVisitor.prototype.visitUtf8 = indexOfValue;
 IndexOfVisitor.prototype.visitLargeUtf8 = indexOfValue;
+IndexOfVisitor.prototype.visitUtf8View = indexOfValue;
 IndexOfVisitor.prototype.visitBinary = indexOfValue;
 IndexOfVisitor.prototype.visitLargeBinary = indexOfValue;
+IndexOfVisitor.prototype.visitBinaryView = indexOfValue;
 IndexOfVisitor.prototype.visitFixedSizeBinary = indexOfValue;
 IndexOfVisitor.prototype.visitDate = indexOfValue;
 IndexOfVisitor.prototype.visitDateDay = indexOfValue;
@@ -195,6 +200,7 @@ IndexOfVisitor.prototype.visitTimeMicrosecond = indexOfValue;
 IndexOfVisitor.prototype.visitTimeNanosecond = indexOfValue;
 IndexOfVisitor.prototype.visitDecimal = indexOfValue;
 IndexOfVisitor.prototype.visitList = indexOfValue;
+IndexOfVisitor.prototype.visitLargeList = indexOfValue;
 IndexOfVisitor.prototype.visitStruct = indexOfValue;
 IndexOfVisitor.prototype.visitUnion = indexOfValue;
 IndexOfVisitor.prototype.visitDenseUnion = indexOfUnion;

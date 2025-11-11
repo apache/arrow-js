@@ -397,7 +397,8 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
                     header.data.length,
                     header.data.nodes,
                     buffers,
-                    null
+                    null,
+                    header.data.variadicBufferCounts
                 ), id, isDelta)
             } else {
                 throw new Error('Dictionary batch is compressed but codec not found');
@@ -412,11 +413,11 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
     }
 
     protected _loadVectors(header: metadata.RecordBatch, body: Uint8Array, types: (Field | DataType)[]) {
-        return new VectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion).visitMany(types);
+        return new VectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion, header.variadicBufferCounts).visitMany(types);
     }
 
     protected _loadCompressedVectors(header: metadata.RecordBatch, body: Uint8Array[], types: (Field | DataType)[]) {
-        return new CompressedVectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion).visitMany(types);
+        return new CompressedVectorLoader(body, header.nodes, header.buffers, this.dictionaries, this.schema.metadataVersion, header.variadicBufferCounts).visitMany(types);
     }
 
     private _decompressBuffers(header: metadata.RecordBatch, body: Uint8Array, codec: Codec): { decommpressedBody: Uint8Array[]; buffers: metadata.BufferRegion[] } {
