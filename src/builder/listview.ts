@@ -69,11 +69,16 @@ export class ListViewBuilder<T extends DataType = any, TNull = any> extends Buil
         this._flush();
 
         // Custom flush logic for ListView
-        const { type, length, nullCount, _offsets, _sizes, _nulls } = this;
+        const type = this.type;
+        const length = this.length;
+        const nullCount = this.nullCount;
+        const offsetsBuilder = this._offsets;
+        const sizesBuilder = this._sizes;
+        const nullsBuilder = this._nulls;
 
-        const valueOffsets = _offsets.flush(length);
-        const valueSizes = _sizes.flush(length);
-        const nullBitmap = nullCount > 0 ? _nulls.flush(length) : undefined;
+        const valueOffsets = offsetsBuilder.flush(length);
+        const valueSizes = sizesBuilder.flush(length);
+        const nullBitmap = nullCount > 0 ? nullsBuilder.flush(length) : undefined;
         const children = this.children.map((child) => child.flush());
 
         this.clear();
@@ -127,7 +132,11 @@ export class ListViewBuilder<T extends DataType = any, TNull = any> extends Buil
                 const element = Array.isArray(listValues)
                     ? listValues[i]
                     : (listValues as Vector).get(i);
-                child.set(offset + i, element);
+                if (element == null) {
+                    child.setValid(offset + i, false);
+                } else {
+                    child.set(offset + i, element as any);
+                }
             }
 
             this._writeIndex += length;
@@ -182,11 +191,16 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
         this._flush();
 
         // Custom flush logic for LargeListView
-        const { type, length, nullCount, _offsets, _sizes, _nulls } = this;
+        const type = this.type;
+        const length = this.length;
+        const nullCount = this.nullCount;
+        const offsetsBuilder = this._offsets;
+        const sizesBuilder = this._sizes;
+        const nullsBuilder = this._nulls;
 
-        const valueOffsets = _offsets.flush(length);
-        const valueSizes = _sizes.flush(length);
-        const nullBitmap = nullCount > 0 ? _nulls.flush(length) : undefined;
+        const valueOffsets = offsetsBuilder.flush(length);
+        const valueSizes = sizesBuilder.flush(length);
+        const nullBitmap = nullCount > 0 ? nullsBuilder.flush(length) : undefined;
         const children = this.children.map((child) => child.flush());
 
         this.clear();
@@ -241,7 +255,12 @@ export class LargeListViewBuilder<T extends DataType = any, TNull = any> extends
                 const element = Array.isArray(listValues)
                     ? listValues[i]
                     : (listValues as Vector).get(i);
-                child.set(Number(offset + BigInt(i)), element);
+                const targetIndex = Number(offset + BigInt(i));
+                if (element == null) {
+                    child.setValid(targetIndex, false);
+                } else {
+                    child.set(targetIndex, element as any);
+                }
             }
 
             this._writeIndex += length;

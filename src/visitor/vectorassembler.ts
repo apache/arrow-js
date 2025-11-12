@@ -250,7 +250,10 @@ function assembleListVector<T extends Map_ | List | FixedSizeList>(this: VectorA
 }
 
 function assembleListViewVector<T extends ListView | LargeListView>(this: VectorAssembler, data: Data<T>) {
-    const { length, valueOffsets, valueSizes, children } = data;
+    const length = data['length'];
+    const valueOffsets = data['valueOffsets'];
+    const valueSizes = data['valueSizes'];
+    const children = data['children'];
     if (!valueSizes) {
         throw new Error('ListView data is missing size buffer');
     }

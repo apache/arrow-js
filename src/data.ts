@@ -447,7 +447,8 @@ class MakeDataVisitor extends Visitor {
         const { ['type']: type, ['offset']: offset = 0, ['child']: child } = props;
         const nullBitmap = toUint8Array(props['nullBitmap']);
         const valueOffsets = toInt32Array(props['valueOffsets']);
-        const valueSizes = toInt32Array(props['valueSizes']);
+        const sizesSource = props['valueSizes'] ?? props['sizes'];
+        const valueSizes = toInt32Array(sizesSource);
         const { ['length']: length = valueSizes.length, ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, valueSizes, nullBitmap], [child]);
     }
@@ -455,7 +456,8 @@ class MakeDataVisitor extends Visitor {
         const { ['type']: type, ['offset']: offset = 0, ['child']: child } = props;
         const nullBitmap = toUint8Array(props['nullBitmap']);
         const valueOffsets = toBigInt64Array(props['valueOffsets']);
-        const valueSizes = toBigInt64Array(props['valueSizes']);
+        const sizesSource = props['valueSizes'] ?? props['sizes'];
+        const valueSizes = toBigInt64Array(sizesSource);
         const { ['length']: length = Number(valueSizes.length), ['nullCount']: nullCount = props['nullBitmap'] ? -1 : 0 } = props;
         return new Data(type, offset, length, nullCount, [valueOffsets, valueSizes, nullBitmap], [child]);
     }

@@ -306,7 +306,11 @@ describe(`ListViewVector`, () => {
         for (let i = 0; i < vector.length; i++) {
             const search = vector.get(i);
             if (search !== null) {
-                expect(vector.indexOf(search)).toBe(i);
+                const searchJSON = search.toJSON();
+                const expectedIndex = expected.findIndex((value) =>
+                    value !== null && JSON.stringify(value) === JSON.stringify(searchJSON)
+                );
+                expect(vector.indexOf(search)).toBe(expectedIndex);
             }
         }
     });
@@ -349,7 +353,11 @@ describe(`LargeListViewVector`, () => {
         for (let i = 0; i < vector.length; i++) {
             const search = vector.get(i);
             if (search !== null) {
-                expect(vector.indexOf(search)).toBe(i);
+                const searchJSON = search.toJSON();
+                const expectedIndex = expected.findIndex((value) =>
+                    value !== null && JSON.stringify(value) === JSON.stringify(searchJSON)
+                );
+                expect(vector.indexOf(search)).toBe(expectedIndex);
             }
         }
     });

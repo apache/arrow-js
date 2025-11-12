@@ -92,22 +92,25 @@ export class Utf8ViewBuilder<TNull = any> extends Builder<Utf8View, TNull> {
     }
 
     public setValid(index: number, isValid: boolean) {
-        if (!super.setValid(index, isValid)) {
-            // Ensure space is allocated
-            const bytesNeeded = (index + 1) * BinaryView.ELEMENT_WIDTH;
-            const currentBytes = this._views.length;
-            if (bytesNeeded > currentBytes) {
-                this._views.reserve(bytesNeeded - currentBytes);
-            }
+        // Ensure space is allocated in the views buffer for this index
+        const bytesNeeded = (index + 1) * BinaryView.ELEMENT_WIDTH;
+        const currentBytes = this._views.length;
+        if (bytesNeeded > currentBytes) {
+            this._views.reserve(bytesNeeded - currentBytes);
+        }
 
+        const result = super.setValid(index, isValid);
+
+        if (!result) {
+            // For null values, zero out the view struct
             const viewBuffer = this._views.buffer;
             const viewOffset = index * BinaryView.ELEMENT_WIDTH;
             for (let i = 0; i < BinaryView.ELEMENT_WIDTH; i++) {
                 viewBuffer[viewOffset + i] = 0;
             }
-            return false;
         }
-        return true;
+
+        return result;
     }
 
     public clear() {
@@ -142,8 +145,8 @@ export class Utf8ViewBuilder<TNull = any> extends Builder<Utf8View, TNull> {
             length,
             nullCount,
             nullBitmap,
-            views,
-            variadicBuffers
+            ['views']: views,
+            ['variadicBuffers']: variadicBuffers
         });
     }
 

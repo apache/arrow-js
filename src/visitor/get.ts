@@ -161,15 +161,24 @@ const getBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number): U
     if (!values) {
         throw new Error('BinaryView data is missing view buffer');
     }
-    const start = (data.offset + index) * BINARY_VIEW_SIZE;
-    const baseOffset = values.byteOffset + start;
-    const view = new DataView(values.buffer, baseOffset, BINARY_VIEW_SIZE);
+    const viewOffset = index * BINARY_VIEW_SIZE;
+    const end = viewOffset + BINARY_VIEW_SIZE;
+    if (viewOffset < 0 || end > values.length) {
+        throw new Error(`BinaryView data buffer is too short: expected ${BINARY_VIEW_SIZE} bytes, got ${Math.max(0, values.length - viewOffset)}`);
+    }
+    // Get the 16-byte view struct from the values array
+    const viewStruct = values.subarray(viewOffset, end);
+    if (viewStruct.length < BINARY_VIEW_SIZE) {
+        throw new Error(`BinaryView data buffer is too short: expected ${BINARY_VIEW_SIZE} bytes, got ${viewStruct.length}`);
+    }
+    const view = new DataView(values.buffer, viewStruct.byteOffset, BINARY_VIEW_SIZE);
     const size = view.getInt32(0, true);
     if (size <= 0) {
         return new Uint8Array(0);
     }
     if (size <= BINARY_VIEW_INLINE_CAPACITY) {
-        return new Uint8Array(values.buffer, baseOffset + 4, size);
+        // Inline data is in bytes 4-15 of the view struct
+        return viewStruct.subarray(4, 4 + size);
     }
     const bufferIndex = view.getInt32(8, true);
     const offset = view.getInt32(12, true);
