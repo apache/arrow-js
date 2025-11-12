@@ -25,9 +25,11 @@ import { Null } from '../fb/null.js';
 import { Int } from '../fb/int.js';
 import { FloatingPoint } from '../fb/floating-point.js';
 import { Binary } from '../fb/binary.js';
+import { BinaryView } from '../fb/binary-view.js';
 import { LargeBinary } from '../fb/large-binary.js';
 import { Bool } from '../fb/bool.js';
 import { Utf8 } from '../fb/utf8.js';
+import { Utf8View } from '../fb/utf8-view.js';
 import { LargeUtf8 } from '../fb/large-utf8.js';
 import { Decimal } from '../fb/decimal.js';
 import { Date } from '../fb/date.js';
@@ -36,6 +38,10 @@ import { Timestamp } from '../fb/timestamp.js';
 import { Interval } from '../fb/interval.js';
 import { Duration } from '../fb/duration.js';
 import { List } from '../fb/list.js';
+import { LargeList } from '../fb/large-list.js';
+import { ListView } from '../fb/list-view.js';
+import { LargeListView } from '../fb/large-list-view.js';
+import { RunEndEncoded } from '../fb/run-end-encoded.js';
 import { Struct_ as Struct } from '../fb/struct-.js';
 import { Union } from '../fb/union.js';
 import { DictionaryEncoding } from '../fb/dictionary-encoding.js';
@@ -72,6 +78,10 @@ export class TypeAssembler extends Visitor {
         Binary.startBinary(b);
         return Binary.endBinary(b);
     }
+    public visitBinaryView<T extends type.BinaryView>(_node: T, b: Builder) {
+        BinaryView.startBinaryView(b);
+        return BinaryView.endBinaryView(b);
+    }
     public visitLargeBinary<T extends type.LargeBinary>(_node: T, b: Builder) {
         LargeBinary.startLargeBinary(b);
         return LargeBinary.endLargeBinary(b);
@@ -83,6 +93,10 @@ export class TypeAssembler extends Visitor {
     public visitUtf8<T extends type.Utf8>(_node: T, b: Builder) {
         Utf8.startUtf8(b);
         return Utf8.endUtf8(b);
+    }
+    public visitUtf8View<T extends type.Utf8View>(_node: T, b: Builder) {
+        Utf8View.startUtf8View(b);
+        return Utf8View.endUtf8View(b);
     }
     public visitLargeUtf8<T extends type.LargeUtf8>(_node: T, b: Builder) {
         LargeUtf8.startLargeUtf8(b);
@@ -128,6 +142,22 @@ export class TypeAssembler extends Visitor {
     public visitList<T extends type.List>(_node: T, b: Builder) {
         List.startList(b);
         return List.endList(b);
+    }
+    public visitLargeList<T extends type.LargeList>(_node: T, b: Builder) {
+        LargeList.startLargeList(b);
+        return LargeList.endLargeList(b);
+    }
+    public visitListView<T extends type.ListView>(_node: T, b: Builder) {
+        ListView.startListView(b);
+        return ListView.endListView(b);
+    }
+    public visitLargeListView<T extends type.LargeListView>(_node: T, b: Builder) {
+        LargeListView.startLargeListView(b);
+        return LargeListView.endLargeListView(b);
+    }
+    public visitRunEndEncoded<T extends type.RunEndEncoded>(_node: T, b: Builder) {
+        RunEndEncoded.startRunEndEncoded(b);
+        return RunEndEncoded.endRunEndEncoded(b);
     }
     public visitStruct<T extends type.Struct>(_node: T, b: Builder) {
         Struct.startStruct_(b);

@@ -49,15 +49,16 @@ export {
     Bool,
     Int, Int8, Int16, Int32, Int64, Uint8, Uint16, Uint32, Uint64,
     Float, Float16, Float32, Float64,
-    Utf8, LargeUtf8,
-    Binary, LargeBinary,
+    Utf8, LargeUtf8, Utf8View,
+    Binary, LargeBinary, BinaryView,
     FixedSizeBinary,
     Date_, DateDay, DateMillisecond,
     Timestamp, TimestampSecond, TimestampMillisecond, TimestampMicrosecond, TimestampNanosecond,
     Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
     Decimal,
-    List,
+    List, LargeList, ListView, LargeListView,
     Struct, StructRow,
+    RunEndEncoded,
     Union, DenseUnion, SparseUnion,
     Dictionary,
     Interval, IntervalDayTime, IntervalYearMonth, IntervalMonthDayNano,
@@ -81,7 +82,7 @@ export {
 } from './Arrow.js';
 
 export {
-    BinaryBuilder, LargeBinaryBuilder,
+    BinaryBuilder, BinaryViewBuilder, LargeBinaryBuilder,
     BoolBuilder,
     DateBuilder, DateDayBuilder, DateMillisecondBuilder,
     DecimalBuilder,
@@ -92,12 +93,12 @@ export {
     IntervalBuilder, IntervalDayTimeBuilder, IntervalYearMonthBuilder, IntervalMonthDayNanoBuilder,
     DurationBuilder, DurationSecondBuilder, DurationMillisecondBuilder, DurationMicrosecondBuilder, DurationNanosecondBuilder,
     IntBuilder, Int8Builder, Int16Builder, Int32Builder, Int64Builder, Uint8Builder, Uint16Builder, Uint32Builder, Uint64Builder,
-    ListBuilder,
+    ListBuilder, ListViewBuilder, LargeListViewBuilder,
     MapBuilder,
     NullBuilder,
     StructBuilder,
     TimestampBuilder, TimestampSecondBuilder, TimestampMillisecondBuilder, TimestampMicrosecondBuilder, TimestampNanosecondBuilder,
     TimeBuilder, TimeSecondBuilder, TimeMillisecondBuilder, TimeMicrosecondBuilder, TimeNanosecondBuilder,
     UnionBuilder, DenseUnionBuilder, SparseUnionBuilder,
-    Utf8Builder, LargeUtf8Builder
+    Utf8Builder, Utf8ViewBuilder, LargeUtf8Builder
 } from './Arrow.js';

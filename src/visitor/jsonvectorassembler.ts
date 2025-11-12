@@ -28,7 +28,8 @@ import { toIntervalDayTimeObjects, toIntervalMonthDayNanoObjects } from '../util
 import {
     DataType,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray,
+    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct, IntArray,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -46,18 +47,22 @@ export interface JSONVectorAssembler extends Visitor {
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>): { DATA: string[]; OFFSET: string[] };
     visitBinary<T extends Binary>(data: Data<T>): { DATA: string[]; OFFSET: number[] };
     visitLargeBinary<T extends LargeBinary>(data: Data<T>): { DATA: string[]; OFFSET: string[] };
+    visitBinaryView<T extends BinaryView>(data: Data<T>): { VIEWS: any[]; VARIADIC_DATA_BUFFERS: string[] };
+    visitUtf8View<T extends Utf8View>(data: Data<T>): { VIEWS: any[]; VARIADIC_DATA_BUFFERS: string[] };
     visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>): { DATA: string[] };
     visitDate<T extends Date_>(data: Data<T>): { DATA: number[] };
     visitTimestamp<T extends Timestamp>(data: Data<T>): { DATA: string[] };
     visitTime<T extends Time>(data: Data<T>): { DATA: number[] };
     visitDecimal<T extends Decimal>(data: Data<T>): { DATA: string[] };
     visitList<T extends List>(data: Data<T>): { children: any[]; OFFSET: number[] };
+    visitLargeList<T extends LargeList>(data: Data<T>): { children: any[]; OFFSET: string[] };
     visitStruct<T extends Struct>(data: Data<T>): { children: any[] };
     visitUnion<T extends Union>(data: Data<T>): { children: any[]; TYPE_ID: number[] };
     visitInterval<T extends Interval>(data: Data<T>): { DATA: number[] };
     visitDuration<T extends Duration>(data: Data<T>): { DATA: string[] };
     visitFixedSizeList<T extends FixedSizeList>(data: Data<T>): { children: any[] };
     visitMap<T extends Map_>(data: Data<T>): { children: any[] };
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>): { children: any[] };
 }
 
 /** @ignore */
@@ -112,6 +117,12 @@ export class JSONVectorAssembler extends Visitor {
     public visitLargeBinary<T extends LargeBinary>(data: Data<T>) {
         return { 'DATA': [...binaryToString(new Vector([data]))], 'OFFSET': [...bigNumsToStrings(data.valueOffsets, 2)] };
     }
+    public visitBinaryView<T extends BinaryView>(data: Data<T>) {
+        return viewDataToJSON(data, true);
+    }
+    public visitUtf8View<T extends Utf8View>(data: Data<T>) {
+        return viewDataToJSON(data, false);
+    }
     public visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>) {
         return { 'DATA': [...binaryToString(new Vector([data]))] };
     }
@@ -138,6 +149,12 @@ export class JSONVectorAssembler extends Visitor {
     public visitList<T extends List>(data: Data<T>) {
         return {
             'OFFSET': [...data.valueOffsets],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitLargeList<T extends LargeList>(data: Data<T>) {
+        return {
+            'OFFSET': [...data.valueOffsets].map(x => `${x}`),
             'children': this.visitMany(data.type.children, data.children)
         };
     }
@@ -177,6 +194,11 @@ export class JSONVectorAssembler extends Visitor {
             'children': this.visitMany(data.type.children, data.children)
         };
     }
+    public visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>) {
+        return {
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
 }
 
 /** @ignore */
@@ -194,4 +216,68 @@ function* bigNumsToStrings(values: BigUint64Array | BigInt64Array | Uint32Array 
     for (let i = -1, n = u32s.length / stride; ++i < n;) {
         yield `${BN.new(u32s.subarray((i + 0) * stride, (i + 1) * stride), false)}`;
     }
+}
+
+/** @ignore */
+function viewDataToJSON(data: Data<BinaryView> | Data<Utf8View>, isBinary: boolean) {
+    const INLINE_SIZE = 12;
+    const views: any[] = [];
+    const variadicBuffers: string[] = [];
+    const variadicBuffersMap = new Map<number, number>(); // buffer index in data -> index in output array
+
+    // Read view structs from the views buffer (16 bytes each)
+    const viewsData = data.values;
+    const dataView = new DataView(viewsData.buffer, viewsData.byteOffset, viewsData.byteLength);
+    const numViews = viewsData.byteLength / 16;
+
+    for (let i = 0; i < numViews; i++) {
+        const offset = i * 16;
+        const size = dataView.getInt32(offset, true);
+
+        if (size <= INLINE_SIZE) {
+            // Inline view: read the inlined data (bytes 4-15, up to 12 bytes)
+            const inlined = viewsData.subarray(offset + 4, offset + 4 + size);
+            const inlinedHex = Array.from(inlined)
+                .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+                .join('')
+                .toUpperCase();
+
+            views.push({
+                'SIZE': size,
+                'INLINED': isBinary ? inlinedHex : Array.from(inlined).map(b => String.fromCodePoint(b)).join('')
+            });
+        } else {
+            // Out-of-line view: read prefix (4 bytes at offset 4-7), buffer_index, offset
+            const prefix = viewsData.subarray(offset + 4, offset + 8);
+            const prefixHex = Array.from(prefix)
+                .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+                .join('')
+                .toUpperCase();
+            const bufferIndex = dataView.getInt32(offset + 8, true);
+            const bufferOffset = dataView.getInt32(offset + 12, true);
+
+            // Track which variadic buffers we're using and map to output indices
+            if (!variadicBuffersMap.has(bufferIndex)) {
+                const outputIndex = variadicBuffers.length;
+                variadicBuffersMap.set(bufferIndex, outputIndex);
+
+                // Get the actual buffer data and convert to hex
+                const buffer = data.variadicBuffers[bufferIndex];
+                const hex = Array.from(buffer)
+                    .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+                    .join('')
+                    .toUpperCase();
+                variadicBuffers.push(hex);
+            }
+
+            views.push({
+                'SIZE': size,
+                'PREFIX_HEX': prefixHex,
+                'BUFFER_INDEX': variadicBuffersMap.get(bufferIndex),
+                'OFFSET': bufferOffset
+            });
+        }
+    }
+
+    return { 'VIEWS': views, 'VARIADIC_DATA_BUFFERS': variadicBuffers };
 }
