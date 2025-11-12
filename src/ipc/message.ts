@@ -203,7 +203,10 @@ export class JSONMessageReader extends MessageReader {
                 ...(column['VALIDITY'] && [column['VALIDITY']] || []),
                 ...(column['TYPE_ID'] && [column['TYPE_ID']] || []),
                 ...(column['OFFSET'] && [column['OFFSET']] || []),
+                ...(column['SIZE'] && [column['SIZE']] || []),
                 ...(column['DATA'] && [column['DATA']] || []),
+                ...(column['VIEWS'] && [column['VIEWS']] || []),
+                ...(column['VARIADIC_DATA_BUFFERS'] || []),
                 ...flattenDataSources(column['children'])
             ], [] as any[][]);
         }

@@ -57,8 +57,8 @@ import ByteBuffer = flatbuffers.ByteBuffer;
 
 import {
     DataType, Dictionary, TimeBitWidth,
-    Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary,
-    List, FixedSizeList, Map_, Struct, Union,
+    Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary,
+    List, ListView, LargeListView, FixedSizeList, Map_, Struct, Union,
     Bool, Null, Int, Float, Date_, Time, Interval, Timestamp, IntBitWidth, Int32, TKeys, Duration,
 } from '../../type.js';
 
@@ -156,20 +156,24 @@ export class RecordBatch {
     protected _nodes: FieldNode[];
     protected _buffers: BufferRegion[];
     protected _compression: BodyCompression | null;
+    protected _variadicBufferCounts: number[];
     public get nodes() { return this._nodes; }
     public get length() { return this._length; }
     public get buffers() { return this._buffers; }
     public get compression() { return this._compression; }
+    public get variadicBufferCounts() { return this._variadicBufferCounts; }
     constructor(
         length: bigint | number,
         nodes: FieldNode[],
         buffers: BufferRegion[],
-        compression: BodyCompression | null
+        compression: BodyCompression | null,
+        variadicBufferCounts: number[] = []
     ) {
         this._nodes = nodes;
         this._buffers = buffers;
         this._length = bigIntToNumber(length);
         this._compression = compression;
+        this._variadicBufferCounts = variadicBufferCounts;
     }
 }
 
@@ -334,7 +338,8 @@ function decodeRecordBatch(batch: _RecordBatch, version = MetadataVersion.V5) {
         batch.length(),
         decodeFieldNodes(batch),
         decodeBuffers(batch, version),
-        decodeBodyCompression(batch.compression())
+        decodeBodyCompression(batch.compression()),
+        decodeVariadicBufferCounts(batch)
     );
     return recordBatch;
 }
@@ -380,6 +385,16 @@ function decodeBuffers(batch: _RecordBatch, version: MetadataVersion) {
         }
     }
     return bufferRegions;
+}
+
+/** @ignore */
+function decodeVariadicBufferCounts(batch: _RecordBatch) {
+    const counts = [] as number[];
+    const length = Math.trunc(batch.variadicBufferCountsLength());
+    for (let i = 0; i < length; ++i) {
+        counts.push(bigIntToNumber(batch.variadicBufferCounts(i)!));
+    }
+    return counts;
 }
 
 /** @ignore */
@@ -468,10 +483,14 @@ function decodeFieldType(f: _Field, children?: Field[]): DataType<any> {
         case Type['Null']: return new Null();
         case Type['Binary']: return new Binary();
         case Type['LargeBinary']: return new LargeBinary();
+        case Type['BinaryView']: return new BinaryView();
         case Type['Utf8']: return new Utf8();
         case Type['LargeUtf8']: return new LargeUtf8();
+        case Type['Utf8View']: return new Utf8View();
         case Type['Bool']: return new Bool();
         case Type['List']: return new List((children || [])[0]);
+        case Type['ListView']: return new ListView((children || [])[0]);
+        case Type['LargeListView']: return new LargeListView((children || [])[0]);
         case Type['Struct_']: return new Struct(children || []);
     }
 
@@ -614,6 +633,7 @@ function encodeRecordBatch(b: Builder, recordBatch: RecordBatch) {
 
     const nodes = recordBatch.nodes || [];
     const buffers = recordBatch.buffers || [];
+    const variadicBufferCounts = recordBatch.variadicBufferCounts || [];
 
     _RecordBatch.startNodesVector(b, nodes.length);
     for (const n of nodes.slice().reverse()) FieldNode.encode(b, n);
@@ -630,12 +650,20 @@ function encodeRecordBatch(b: Builder, recordBatch: RecordBatch) {
         bodyCompressionOffset = encodeBodyCompression(b, recordBatch.compression);
     }
 
+    let variadicBufferCountsOffset = -1;
+    if (variadicBufferCounts.length > 0) {
+        variadicBufferCountsOffset = _RecordBatch.createVariadicBufferCountsVector(b, variadicBufferCounts.map(BigInt));
+    }
+
     _RecordBatch.startRecordBatch(b);
     _RecordBatch.addLength(b, BigInt(recordBatch.length));
     _RecordBatch.addNodes(b, nodesVectorOffset);
     _RecordBatch.addBuffers(b, buffersVectorOffset);
     if (recordBatch.compression !== null && bodyCompressionOffset) {
         _RecordBatch.addCompression(b, bodyCompressionOffset);
+    }
+    if (variadicBufferCountsOffset !== -1) {
+        _RecordBatch.addVariadicBufferCounts(b, variadicBufferCountsOffset);
     }
     return _RecordBatch.endRecordBatch(b);
 }

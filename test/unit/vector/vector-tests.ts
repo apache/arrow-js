@@ -16,8 +16,9 @@
 // under the License.
 
 import {
-    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
+    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, ListView, LargeListView, makeVector, Struct, Utf8, LargeUtf8, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
 } from 'apache-arrow';
+import { listView as generateListView, largeListView as generateLargeListView } from '../../generate-test-data.js';
 
 describe(`makeVectorFromArray`, () => {
     describe(`works with null values`, () => {
@@ -270,6 +271,100 @@ describe(`ListVector`, () => {
             expect(vector.at(i)!.toJSON()).toEqual(values.at(i));
             expect(vector.at(-i)!.toJSON()).toEqual(values.at(-i));
         }
+    });
+});
+
+describe(`ListViewVector`, () => {
+    const generated = generateListView();
+    const vector = generated.vector;
+    const expected = generated.values().map((value) => value == null ? null : value.toJSON());
+
+    test(`has listView type`, () => {
+        expect(vector.type).toBeInstanceOf(ListView);
+    });
+
+    test(`get value`, () => {
+        expected.forEach((expectedValue, index) => {
+            const actual = vector.get(index);
+            if (expectedValue === null) {
+                expect(actual).toBeNull();
+            } else {
+                expect(actual?.toJSON()).toEqual(expectedValue);
+            }
+        });
+    });
+
+    test(`iterates expected values`, () => {
+        const iterated = [] as (any[] | null)[];
+        for (const value of vector) {
+            iterated.push(value == null ? null : value.toJSON());
+        }
+        expect(iterated).toEqual(expected);
+    });
+
+    test(`indexOf matches non-null values`, () => {
+        for (let i = 0; i < vector.length; i++) {
+            const search = vector.get(i);
+            if (search !== null) {
+                const searchJSON = search.toJSON();
+                const expectedIndex = expected.findIndex((value) =>
+                    value !== null && JSON.stringify(value) === JSON.stringify(searchJSON)
+                );
+                expect(vector.indexOf(search)).toBe(expectedIndex);
+            }
+        }
+    });
+
+    test(`indexOf null matches first null`, () => {
+        const expectedNullIndex = expected.indexOf(null);
+        expect(vector.indexOf(null)).toBe(expectedNullIndex);
+    });
+});
+
+describe(`LargeListViewVector`, () => {
+    const generated = generateLargeListView();
+    const vector = generated.vector;
+    const expected = generated.values().map((value) => value == null ? null : value.toJSON());
+
+    test(`has largeListView type`, () => {
+        expect(vector.type).toBeInstanceOf(LargeListView);
+    });
+
+    test(`get value`, () => {
+        expected.forEach((expectedValue, index) => {
+            const actual = vector.get(index);
+            if (expectedValue === null) {
+                expect(actual).toBeNull();
+            } else {
+                expect(actual?.toJSON()).toEqual(expectedValue);
+            }
+        });
+    });
+
+    test(`iterates expected values`, () => {
+        const iterated = [] as (any[] | null)[];
+        for (const value of vector) {
+            iterated.push(value == null ? null : value.toJSON());
+        }
+        expect(iterated).toEqual(expected);
+    });
+
+    test(`indexOf matches non-null values`, () => {
+        for (let i = 0; i < vector.length; i++) {
+            const search = vector.get(i);
+            if (search !== null) {
+                const searchJSON = search.toJSON();
+                const expectedIndex = expected.findIndex((value) =>
+                    value !== null && JSON.stringify(value) === JSON.stringify(searchJSON)
+                );
+                expect(vector.indexOf(search)).toBe(expectedIndex);
+            }
+        }
+    });
+
+    test(`indexOf null matches first null`, () => {
+        const expectedNullIndex = expected.indexOf(null);
+        expect(vector.indexOf(null)).toBe(expectedNullIndex);
     });
 });
 

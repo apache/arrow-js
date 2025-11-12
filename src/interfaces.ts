@@ -37,6 +37,7 @@ import type { LargeUtf8Builder } from './builder/largeutf8.js';
 import type { BinaryBuilder } from './builder/binary.js';
 import type { LargeBinaryBuilder } from './builder/largebinary.js';
 import type { ListBuilder } from './builder/list.js';
+import type { ListViewBuilder, LargeListViewBuilder } from './builder/listview.js';
 import type { FixedSizeListBuilder } from './builder/fixedsizelist.js';
 import type { MapBuilder } from './builder/map.js';
 import type { StructBuilder } from './builder/struct.js';
@@ -212,6 +213,7 @@ export type TypeToDataType<T extends Type> = {
     [Type.LargeUtf8]: type.LargeUtf8;
     [Type.Binary]: type.Binary;
     [Type.LargeBinary]: type.LargeBinary;
+    [Type.BinaryView]: type.BinaryView;
     [Type.FixedSizeBinary]: type.FixedSizeBinary;
     [Type.Date]: type.Date_;
     [Type.DateDay]: type.DateDay;
@@ -240,10 +242,13 @@ export type TypeToDataType<T extends Type> = {
     [Type.DurationMicrosecond]: type.DurationMicrosecond;
     [Type.DurationNanosecond]: type.DurationNanosecond;
     [Type.Map]: type.Map_;
+    [Type.ListView]: type.ListView;
+    [Type.LargeListView]: type.LargeListView;
     [Type.List]: type.List;
     [Type.Struct]: type.Struct;
     [Type.Dictionary]: type.Dictionary;
     [Type.FixedSizeList]: type.FixedSizeList;
+    [Type.Utf8View]: type.Utf8View;
 }[T];
 
 /** @ignore */
@@ -268,6 +273,7 @@ type TypeToBuilder<T extends Type = any, TNull = any> = {
     [Type.LargeUtf8]: LargeUtf8Builder<TNull>;
     [Type.Binary]: BinaryBuilder<TNull>;
     [Type.LargeBinary]: LargeBinaryBuilder<TNull>;
+    [Type.BinaryView]: Builder<any, TNull>;
     [Type.FixedSizeBinary]: FixedSizeBinaryBuilder<TNull>;
     [Type.Date]: DateBuilder<any, TNull>;
     [Type.DateDay]: DateDayBuilder<TNull>;
@@ -297,9 +303,12 @@ type TypeToBuilder<T extends Type = any, TNull = any> = {
     [Type.DurationNanosecond]: DurationNanosecondBuilder<TNull>;
     [Type.Map]: MapBuilder<any, any, TNull>;
     [Type.List]: ListBuilder<any, TNull>;
+    [Type.ListView]: ListViewBuilder<any, TNull>;
+    [Type.LargeListView]: LargeListViewBuilder<any, TNull>;
     [Type.Struct]: StructBuilder<any, TNull>;
     [Type.Dictionary]: DictionaryBuilder<any, TNull>;
     [Type.FixedSizeList]: FixedSizeListBuilder<any, TNull>;
+    [Type.Utf8View]: Builder<any, TNull>;
 }[T];
 
 /** @ignore */
@@ -324,6 +333,7 @@ type DataTypeToBuilder<T extends DataType = any, TNull = any> = {
     [Type.LargeUtf8]: T extends type.LargeUtf8 ? LargeUtf8Builder<TNull> : never;
     [Type.Binary]: T extends type.Binary ? BinaryBuilder<TNull> : never;
     [Type.LargeBinary]: T extends type.LargeBinary ? LargeBinaryBuilder<TNull> : never;
+    [Type.BinaryView]: T extends type.BinaryView ? Builder<any, TNull> : never;
     [Type.FixedSizeBinary]: T extends type.FixedSizeBinary ? FixedSizeBinaryBuilder<TNull> : never;
     [Type.Date]: T extends type.Date_ ? DateBuilder<T, TNull> : never;
     [Type.DateDay]: T extends type.DateDay ? DateDayBuilder<TNull> : never;
@@ -353,7 +363,10 @@ type DataTypeToBuilder<T extends DataType = any, TNull = any> = {
     [Type.DurationNanosecond]: T extends type.DurationNanosecond ? DurationNanosecondBuilder<TNull> : never;
     [Type.Map]: T extends type.Map_ ? MapBuilder<T['keyType'], T['valueType'], TNull> : never;
     [Type.List]: T extends type.List ? ListBuilder<T['valueType'], TNull> : never;
+    [Type.ListView]: T extends type.ListView ? ListViewBuilder<T['valueType'], TNull> : never;
+    [Type.LargeListView]: T extends type.LargeListView ? LargeListViewBuilder<T['valueType'], TNull> : never;
     [Type.Struct]: T extends type.Struct ? StructBuilder<T['dataTypes'], TNull> : never;
     [Type.Dictionary]: T extends type.Dictionary ? DictionaryBuilder<T, TNull> : never;
     [Type.FixedSizeList]: T extends type.FixedSizeList ? FixedSizeListBuilder<T['valueType'], TNull> : never;
+    [Type.Utf8View]: T extends type.Utf8View ? Builder<any, TNull> : never;
 }[T['TType']];

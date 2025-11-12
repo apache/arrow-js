@@ -21,7 +21,7 @@ import { Visitor } from '../visitor.js';
 import { Schema, Field } from '../schema.js';
 import {
     DataType, TypeMap, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, ListView, LargeListView, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -55,8 +55,10 @@ export interface TypeComparator extends Visitor {
     visitFloat64<T extends Float64>(type: T, other?: DataType | null): other is T;
     visitUtf8<T extends Utf8>(type: T, other?: DataType | null): other is T;
     visitLargeUtf8<T extends LargeUtf8>(type: T, other?: DataType | null): other is T;
+    visitUtf8View<T extends Utf8View>(type: T, other?: DataType | null): other is T;
     visitBinary<T extends Binary>(type: T, other?: DataType | null): other is T;
     visitLargeBinary<T extends LargeBinary>(type: T, other?: DataType | null): other is T;
+    visitBinaryView<T extends BinaryView>(type: T, other?: DataType | null): other is T;
     visitFixedSizeBinary<T extends FixedSizeBinary>(type: T, other?: DataType | null): other is T;
     visitDate<T extends Date_>(type: T, other?: DataType | null): other is T;
     visitDateDay<T extends DateDay>(type: T, other?: DataType | null): other is T;
@@ -73,6 +75,8 @@ export interface TypeComparator extends Visitor {
     visitTimeNanosecond<T extends TimeNanosecond>(type: T, other?: DataType | null): other is T;
     visitDecimal<T extends Decimal>(type: T, other?: DataType | null): other is T;
     visitList<T extends List>(type: T, other?: DataType | null): other is T;
+    visitListView<T extends ListView>(type: T, other?: DataType | null): other is T;
+    visitLargeListView<T extends LargeListView>(type: T, other?: DataType | null): other is T;
     visitStruct<T extends Struct>(type: T, other?: DataType | null): other is T;
     visitUnion<T extends Union>(type: T, other?: DataType | null): other is T;
     visitDenseUnion<T extends DenseUnion>(type: T, other?: DataType | null): other is T;
@@ -178,6 +182,14 @@ function compareList<T extends List>(type: T, other?: DataType | null): other is
     );
 }
 
+function compareListView<T extends ListView | LargeListView>(type: T, other?: DataType | null): other is T {
+    return (type === other) || (
+        compareConstructor(type, other) &&
+        type.children.length === other.children.length &&
+        instance.compareManyFields(type.children, other.children)
+    );
+}
+
 function compareStruct<T extends Struct>(type: T, other?: DataType | null): other is T {
     return (type === other) || (
         compareConstructor(type, other) &&
@@ -254,8 +266,10 @@ TypeComparator.prototype.visitFloat32 = compareFloat;
 TypeComparator.prototype.visitFloat64 = compareFloat;
 TypeComparator.prototype.visitUtf8 = compareAny;
 TypeComparator.prototype.visitLargeUtf8 = compareAny;
+TypeComparator.prototype.visitUtf8View = compareAny;
 TypeComparator.prototype.visitBinary = compareAny;
 TypeComparator.prototype.visitLargeBinary = compareAny;
+TypeComparator.prototype.visitBinaryView = compareAny;
 TypeComparator.prototype.visitFixedSizeBinary = compareFixedSizeBinary;
 TypeComparator.prototype.visitDate = compareDate;
 TypeComparator.prototype.visitDateDay = compareDate;
@@ -272,6 +286,8 @@ TypeComparator.prototype.visitTimeMicrosecond = compareTime;
 TypeComparator.prototype.visitTimeNanosecond = compareTime;
 TypeComparator.prototype.visitDecimal = compareAny;
 TypeComparator.prototype.visitList = compareList;
+TypeComparator.prototype.visitListView = compareListView;
+TypeComparator.prototype.visitLargeListView = compareListView;
 TypeComparator.prototype.visitStruct = compareStruct;
 TypeComparator.prototype.visitUnion = compareUnion;
 TypeComparator.prototype.visitDenseUnion = compareUnion;

@@ -27,7 +27,7 @@ import { BufferRegion, FieldNode } from '../ipc/metadata/message.js';
 import {
     DataType, Dictionary,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, ListView, LargeListView, FixedSizeList, Map_, Struct,
 } from '../type.js';
 import { bigIntToNumber } from '../util/bigint.js';
 
@@ -51,6 +51,8 @@ export interface VectorAssembler extends Visitor {
     visitTime<T extends Time>(data: Data<T>): this;
     visitDecimal<T extends Decimal>(data: Data<T>): this;
     visitList<T extends List>(data: Data<T>): this;
+    visitListView<T extends ListView>(data: Data<T>): this;
+    visitLargeListView<T extends LargeListView>(data: Data<T>): this;
     visitStruct<T extends Struct>(data: Data<T>): this;
     visitUnion<T extends Union>(data: Data<T>): this;
     visitInterval<T extends Interval>(data: Data<T>): this;
@@ -115,11 +117,13 @@ export class VectorAssembler extends Visitor {
     public get buffers() { return this._buffers; }
     public get byteLength() { return this._byteLength; }
     public get bufferRegions() { return this._bufferRegions; }
+    public get variadicBufferCounts() { return this._variadicBufferCounts; }
 
     protected _byteLength = 0;
     protected _nodes: FieldNode[] = [];
     protected _buffers: ArrayBufferView[] = [];
     protected _bufferRegions: BufferRegion[] = [];
+    protected _variadicBufferCounts: number[] = [];
 }
 
 /** @ignore */
@@ -216,6 +220,22 @@ function assembleFlatListVector<T extends Utf8 | LargeUtf8 | Binary | LargeBinar
 }
 
 /** @ignore */
+function assembleBinaryViewVector<T extends BinaryView | Utf8View>(this: VectorAssembler, data: Data<T>) {
+    const { offset, length, stride, values, variadicBuffers = [] } = data;
+    if (!values) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const start = offset * stride;
+    const end = start + length * stride;
+    addBuffer.call(this, values.subarray(start, end));
+    for (const buffer of variadicBuffers) {
+        addBuffer.call(this, buffer);
+    }
+    this._variadicBufferCounts.push(variadicBuffers.length);
+    return this;
+}
+
+/** @ignore */
 function assembleListVector<T extends Map_ | List | FixedSizeList>(this: VectorAssembler, data: Data<T>) {
     const { length, valueOffsets } = data;
     // If we have valueOffsets (MapVector, ListVector), push that buffer first
@@ -229,6 +249,63 @@ function assembleListVector<T extends Map_ | List | FixedSizeList>(this: VectorA
     return this.visit(data.children[0]);
 }
 
+function assembleListViewVector<T extends ListView | LargeListView>(this: VectorAssembler, data: Data<T>) {
+    const length = data['length'];
+    const valueOffsets = data['valueOffsets'];
+    const valueSizes = data['valueSizes'];
+    const children = data['children'];
+    if (!valueSizes) {
+        throw new Error('ListView data is missing size buffer');
+    }
+
+    if (length === 0) {
+        addBuffer.call(this, valueOffsets.subarray(0, 0));
+        addBuffer.call(this, valueSizes.subarray(0, 0));
+        return this.visit(children[0].slice(0, 0));
+    }
+
+    let minOffset = Number.POSITIVE_INFINITY;
+    let maxEnd = 0;
+    for (let i = 0; i < length; i++) {
+        const start = bigIntToNumber(valueOffsets[i]);
+        const size = bigIntToNumber(valueSizes[i]);
+        if (start < minOffset) {
+            minOffset = start;
+        }
+        const end = start + size;
+        if (end > maxEnd) {
+            maxEnd = end;
+        }
+    }
+    if (!Number.isFinite(minOffset)) {
+        minOffset = 0;
+    }
+
+    if (typeof valueOffsets[0] === 'bigint') {
+        const base = BigInt(minOffset);
+        const OffsetArrayType = valueOffsets.constructor as typeof BigInt64Array;
+        const rebasedOffsets = new OffsetArrayType(length);
+        for (let i = 0; i < length; i++) {
+            rebasedOffsets[i] = (valueOffsets[i] as bigint) - base;
+        }
+        addBuffer.call(this, rebasedOffsets);
+    } else {
+        const base = minOffset;
+        const OffsetArrayType = valueOffsets.constructor as typeof Int32Array;
+        const rebasedOffsets = new OffsetArrayType(length);
+        for (let i = 0; i < length; i++) {
+            rebasedOffsets[i] = (valueOffsets[i] as number) - base;
+        }
+        addBuffer.call(this, rebasedOffsets);
+    }
+
+    addBuffer.call(this, valueSizes.subarray(0, length));
+
+    const child = children[0].slice(minOffset, maxEnd - minOffset);
+    this.visit(child);
+    return this;
+}
+
 /** @ignore */
 function assembleNestedVector<T extends Struct | Union>(this: VectorAssembler, data: Data<T>) {
     return this.visitMany(data.type.children.map((_, i) => data.children[i]).filter(Boolean))[0];
@@ -239,14 +316,18 @@ VectorAssembler.prototype.visitInt = assembleFlatVector;
 VectorAssembler.prototype.visitFloat = assembleFlatVector;
 VectorAssembler.prototype.visitUtf8 = assembleFlatListVector;
 VectorAssembler.prototype.visitLargeUtf8 = assembleFlatListVector;
+VectorAssembler.prototype.visitUtf8View = assembleBinaryViewVector;
 VectorAssembler.prototype.visitBinary = assembleFlatListVector;
 VectorAssembler.prototype.visitLargeBinary = assembleFlatListVector;
+VectorAssembler.prototype.visitBinaryView = assembleBinaryViewVector;
 VectorAssembler.prototype.visitFixedSizeBinary = assembleFlatVector;
 VectorAssembler.prototype.visitDate = assembleFlatVector;
 VectorAssembler.prototype.visitTimestamp = assembleFlatVector;
 VectorAssembler.prototype.visitTime = assembleFlatVector;
 VectorAssembler.prototype.visitDecimal = assembleFlatVector;
 VectorAssembler.prototype.visitList = assembleListVector;
+VectorAssembler.prototype.visitListView = assembleListViewVector;
+VectorAssembler.prototype.visitLargeListView = assembleListViewVector;
 VectorAssembler.prototype.visitStruct = assembleNestedVector;
 VectorAssembler.prototype.visitUnion = assembleUnion;
 VectorAssembler.prototype.visitInterval = assembleFlatVector;

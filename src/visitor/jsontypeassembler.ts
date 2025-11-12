@@ -45,6 +45,9 @@ export class JSONTypeAssembler extends Visitor {
     public visitLargeBinary<T extends type.LargeBinary>({ typeId }: T) {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
+    public visitBinaryView<T extends type.BinaryView>({ typeId }: T) {
+        return { 'name': ArrowType[typeId].toLowerCase() };
+    }
     public visitBool<T extends type.Bool>({ typeId }: T) {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
@@ -52,6 +55,9 @@ export class JSONTypeAssembler extends Visitor {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
     public visitLargeUtf8<T extends type.LargeUtf8>({ typeId }: T) {
+        return { 'name': ArrowType[typeId].toLowerCase() };
+    }
+    public visitUtf8View<T extends type.Utf8View>({ typeId }: T) {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
     public visitDecimal<T extends type.Decimal>({ typeId, scale, precision, bitWidth }: T) {
@@ -73,6 +79,12 @@ export class JSONTypeAssembler extends Visitor {
         return { 'name': ArrowType[typeId].toLocaleLowerCase(), 'unit': TimeUnit[unit] };
     }
     public visitList<T extends type.List>({ typeId }: T) {
+        return { 'name': ArrowType[typeId].toLowerCase() };
+    }
+    public visitListView<T extends type.ListView>({ typeId }: T) {
+        return { 'name': ArrowType[typeId].toLowerCase() };
+    }
+    public visitLargeListView<T extends type.LargeListView>({ typeId }: T) {
         return { 'name': ArrowType[typeId].toLowerCase() };
     }
     public visitStruct<T extends type.Struct>({ typeId }: T) {

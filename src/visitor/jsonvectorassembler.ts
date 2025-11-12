@@ -28,7 +28,8 @@ import { toIntervalDayTimeObjects, toIntervalMonthDayNanoObjects } from '../util
 import {
     DataType,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray,
+    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct, IntArray,
+    ListView, LargeListView,
 } from '../type.js';
 
 /** @ignore */
@@ -46,12 +47,16 @@ export interface JSONVectorAssembler extends Visitor {
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>): { DATA: string[]; OFFSET: string[] };
     visitBinary<T extends Binary>(data: Data<T>): { DATA: string[]; OFFSET: number[] };
     visitLargeBinary<T extends LargeBinary>(data: Data<T>): { DATA: string[]; OFFSET: string[] };
+    visitBinaryView<T extends BinaryView>(data: Data<T>): { VIEWS: any[]; VARIADIC_DATA_BUFFERS: string[] };
+    visitUtf8View<T extends Utf8View>(data: Data<T>): { VIEWS: any[]; VARIADIC_DATA_BUFFERS: string[] };
     visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>): { DATA: string[] };
     visitDate<T extends Date_>(data: Data<T>): { DATA: number[] };
     visitTimestamp<T extends Timestamp>(data: Data<T>): { DATA: string[] };
     visitTime<T extends Time>(data: Data<T>): { DATA: number[] };
     visitDecimal<T extends Decimal>(data: Data<T>): { DATA: string[] };
     visitList<T extends List>(data: Data<T>): { children: any[]; OFFSET: number[] };
+    visitListView<T extends ListView>(data: Data<T>): { children: any[]; OFFSET: number[]; SIZE: number[] };
+    visitLargeListView<T extends LargeListView>(data: Data<T>): { children: any[]; OFFSET: string[]; SIZE: string[] };
     visitStruct<T extends Struct>(data: Data<T>): { children: any[] };
     visitUnion<T extends Union>(data: Data<T>): { children: any[]; TYPE_ID: number[] };
     visitInterval<T extends Interval>(data: Data<T>): { DATA: number[] };
@@ -112,6 +117,15 @@ export class JSONVectorAssembler extends Visitor {
     public visitLargeBinary<T extends LargeBinary>(data: Data<T>) {
         return { 'DATA': [...binaryToString(new Vector([data]))], 'OFFSET': [...bigNumsToStrings(data.valueOffsets, 2)] };
     }
+    public visitBinaryView<T extends BinaryView>(data: Data<T>) {
+        return binaryViewDataToJSON(data, (bytes) => Array.from(bytes)
+                .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+                .join('')
+                .toUpperCase());
+    }
+    public visitUtf8View<T extends Utf8View>(data: Data<T>) {
+        return binaryViewDataToJSON(data, (bytes) => Array.from(bytes).map(b => String.fromCodePoint(b)).join(''));
+    }
     public visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>) {
         return { 'DATA': [...binaryToString(new Vector([data]))] };
     }
@@ -138,6 +152,20 @@ export class JSONVectorAssembler extends Visitor {
     public visitList<T extends List>(data: Data<T>) {
         return {
             'OFFSET': [...data.valueOffsets],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitListView<T extends ListView>(data: Data<T>) {
+        return {
+            'OFFSET': [...data.valueOffsets],
+            'SIZE': [...data.values],
+            'children': this.visitMany(data.type.children, data.children)
+        };
+    }
+    public visitLargeListView<T extends LargeListView>(data: Data<T>) {
+        return {
+            'OFFSET': [...bigNumsToStrings(data.valueOffsets, 2)],
+            'SIZE': [...bigNumsToStrings(data.values, 2)],
             'children': this.visitMany(data.type.children, data.children)
         };
     }
@@ -194,4 +222,47 @@ function* bigNumsToStrings(values: BigUint64Array | BigInt64Array | Uint32Array 
     for (let i = -1, n = u32s.length / stride; ++i < n;) {
         yield `${BN.new(u32s.subarray((i + 0) * stride, (i + 1) * stride), false)}`;
     }
+}
+
+/** @ignore */
+function binaryViewDataToJSON(data: Data<BinaryView> | Data<Utf8View>, formatInlined: (bytes: Uint8Array) => string) {
+    const INLINE_SIZE = 12;
+    const viewsData = data.values;
+    const dataView = new DataView(viewsData.buffer, viewsData.byteOffset, viewsData.byteLength);
+    const numViews = viewsData.byteLength / 16;
+    const bytesToHex = (bytes: Uint8Array) =>
+        Array.from(bytes)
+            .map(b => ('0' + (b & 0xFF).toString(16)).slice(-2))
+            .join('')
+            .toUpperCase();
+    const parsedViews = Array.from({ length: numViews }, (_, i) => {
+      const offset = i * 16;
+      const size = dataView.getInt32(offset, true);
+      return [offset, size];
+    }).map(([offset, size]) => (size > INLINE_SIZE) ? {
+      'SIZE': size,
+      'PREFIX_HEX': bytesToHex(viewsData.subarray(offset + 4, offset + 8)),
+      'BUFFER_INDEX': dataView.getInt32(offset + 8, true),
+      'OFFSET': dataView.getInt32(offset + 12, true)
+    } : {
+      'SIZE': size,
+      'INLINED': formatInlined(viewsData.subarray(offset + 4, offset + 4 + size))
+    });
+    const uniqueBufferIndices = [...new Set(
+        parsedViews
+            .map(v => v['BUFFER_INDEX'])
+            .filter((idx): idx is number => idx !== undefined)
+    )];
+    const variadicBuffers = uniqueBufferIndices.map(bufferIndex =>
+        bytesToHex(data.variadicBuffers[bufferIndex])
+    );
+    const bufferIndexMap = new Map(
+        uniqueBufferIndices.map((bufferIndex, outputIndex) => [bufferIndex, outputIndex])
+    );
+    // Remap buffer indices in views
+    const views = parsedViews.map(v => v['BUFFER_INDEX'] !== undefined
+      ? { ...v, 'BUFFER_INDEX': bufferIndexMap.get(v['BUFFER_INDEX']) }
+      : v
+    );
+    return { 'VIEWS': views, 'VARIADIC_DATA_BUFFERS': variadicBuffers };
 }

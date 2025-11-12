@@ -22,12 +22,12 @@ import * as generate from '../generate-test-data.js';
 
 import { Schema, Field, Dictionary } from 'apache-arrow';
 
-const listVectorGeneratorNames = ['list', 'fixedSizeList'];
+const listVectorGeneratorNames = ['list', 'fixedSizeList', 'listView', 'largeListView'];
 const nestedVectorGeneratorNames = ['struct', 'denseUnion', 'sparseUnion', 'map'];
 const dictionaryKeyGeneratorNames = ['int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32'];
 const valueVectorGeneratorNames = [
     'null_', 'bool', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64',
-    'float16', 'float32', 'float64', 'utf8', 'largeUtf8', 'binary', 'largeBinary', 'fixedSizeBinary', 'dateDay', 'dateMillisecond',
+    'float16', 'float32', 'float64', 'utf8', 'largeUtf8', 'utf8View', 'binary', 'largeBinary', 'binaryView', 'fixedSizeBinary', 'dateDay', 'dateMillisecond',
     'timestampSecond', 'timestampMillisecond', 'timestampMicrosecond', 'timestampNanosecond',
     'timeSecond', 'timeMillisecond', 'timeMicrosecond', 'timeNanosecond', 'decimal',
     'dictionary', 'intervalDayTime', 'intervalYearMonth', 'intervalMonthDayNano',
