@@ -204,6 +204,8 @@ export class JSONMessageReader extends MessageReader {
                 ...(column['TYPE_ID'] && [column['TYPE_ID']] || []),
                 ...(column['OFFSET'] && [column['OFFSET']] || []),
                 ...(column['DATA'] && [column['DATA']] || []),
+                ...(column['VIEWS'] && [column['VIEWS']] || []),
+                ...(column['VARIADIC_DATA_BUFFERS'] || []),
                 ...flattenDataSources(column['children'])
             ], [] as any[][]);
         }

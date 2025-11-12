@@ -27,7 +27,8 @@ import { BufferRegion, FieldNode } from '../ipc/metadata/message.js';
 import {
     DataType, Dictionary,
     Float, Int, Date_, Interval, Time, Timestamp, Union, Duration,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct,
+    RunEndEncoded,
 } from '../type.js';
 import { bigIntToNumber } from '../util/bigint.js';
 
@@ -51,12 +52,14 @@ export interface VectorAssembler extends Visitor {
     visitTime<T extends Time>(data: Data<T>): this;
     visitDecimal<T extends Decimal>(data: Data<T>): this;
     visitList<T extends List>(data: Data<T>): this;
+    visitLargeList<T extends LargeList>(data: Data<T>): this;
     visitStruct<T extends Struct>(data: Data<T>): this;
     visitUnion<T extends Union>(data: Data<T>): this;
     visitInterval<T extends Interval>(data: Data<T>): this;
     visitDuration<T extends Duration>(data: Data<T>): this;
     visitFixedSizeList<T extends FixedSizeList>(data: Data<T>): this;
     visitMap<T extends Map_>(data: Data<T>): this;
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>): this;
 }
 
 /** @ignore */
@@ -115,11 +118,13 @@ export class VectorAssembler extends Visitor {
     public get buffers() { return this._buffers; }
     public get byteLength() { return this._byteLength; }
     public get bufferRegions() { return this._bufferRegions; }
+    public get variadicBufferCounts() { return this._variadicBufferCounts; }
 
     protected _byteLength = 0;
     protected _nodes: FieldNode[] = [];
     protected _buffers: ArrayBufferView[] = [];
     protected _bufferRegions: BufferRegion[] = [];
+    protected _variadicBufferCounts: number[] = [];
 }
 
 /** @ignore */
@@ -216,11 +221,28 @@ function assembleFlatListVector<T extends Utf8 | LargeUtf8 | Binary | LargeBinar
 }
 
 /** @ignore */
-function assembleListVector<T extends Map_ | List | FixedSizeList>(this: VectorAssembler, data: Data<T>) {
+function assembleBinaryViewVector<T extends BinaryView | Utf8View>(this: VectorAssembler, data: Data<T>) {
+    const { offset, length, stride, values, variadicBuffers = [] } = data;
+    if (!values) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const start = offset * stride;
+    const end = start + length * stride;
+    addBuffer.call(this, values.subarray(start, end));
+    for (const buffer of variadicBuffers) {
+        addBuffer.call(this, buffer);
+    }
+    this._variadicBufferCounts.push(variadicBuffers.length);
+    return this;
+}
+
+/** @ignore */
+function assembleListVector<T extends Map_ | List | LargeList | FixedSizeList>(this: VectorAssembler, data: Data<T>) {
     const { length, valueOffsets } = data;
-    // If we have valueOffsets (MapVector, ListVector), push that buffer first
+    // If we have valueOffsets (MapVector, ListVector, LargeListVector), push that buffer first
     if (valueOffsets) {
-        const { [0]: begin, [length]: end } = valueOffsets;
+        const begin = typeof valueOffsets[0] === 'bigint' ? bigIntToNumber(valueOffsets[0]) : valueOffsets[0];
+        const end = typeof valueOffsets[length] === 'bigint' ? bigIntToNumber(valueOffsets[length]) : valueOffsets[length];
         addBuffer.call(this, rebaseValueOffsets(-begin, length + 1, valueOffsets));
         // Then insert the List's values child
         return this.visit(data.children[0].slice(begin, end - begin));
@@ -230,7 +252,7 @@ function assembleListVector<T extends Map_ | List | FixedSizeList>(this: VectorA
 }
 
 /** @ignore */
-function assembleNestedVector<T extends Struct | Union>(this: VectorAssembler, data: Data<T>) {
+function assembleNestedVector<T extends Struct | Union | RunEndEncoded>(this: VectorAssembler, data: Data<T>) {
     return this.visitMany(data.type.children.map((_, i) => data.children[i]).filter(Boolean))[0];
 }
 
@@ -239,17 +261,21 @@ VectorAssembler.prototype.visitInt = assembleFlatVector;
 VectorAssembler.prototype.visitFloat = assembleFlatVector;
 VectorAssembler.prototype.visitUtf8 = assembleFlatListVector;
 VectorAssembler.prototype.visitLargeUtf8 = assembleFlatListVector;
+VectorAssembler.prototype.visitUtf8View = assembleBinaryViewVector;
 VectorAssembler.prototype.visitBinary = assembleFlatListVector;
 VectorAssembler.prototype.visitLargeBinary = assembleFlatListVector;
+VectorAssembler.prototype.visitBinaryView = assembleBinaryViewVector;
 VectorAssembler.prototype.visitFixedSizeBinary = assembleFlatVector;
 VectorAssembler.prototype.visitDate = assembleFlatVector;
 VectorAssembler.prototype.visitTimestamp = assembleFlatVector;
 VectorAssembler.prototype.visitTime = assembleFlatVector;
 VectorAssembler.prototype.visitDecimal = assembleFlatVector;
 VectorAssembler.prototype.visitList = assembleListVector;
+VectorAssembler.prototype.visitLargeList = assembleListVector;
 VectorAssembler.prototype.visitStruct = assembleNestedVector;
 VectorAssembler.prototype.visitUnion = assembleUnion;
 VectorAssembler.prototype.visitInterval = assembleFlatVector;
 VectorAssembler.prototype.visitDuration = assembleFlatVector;
 VectorAssembler.prototype.visitFixedSizeList = assembleListVector;
 VectorAssembler.prototype.visitMap = assembleListVector;
+VectorAssembler.prototype.visitRunEndEncoded = assembleNestedVector;

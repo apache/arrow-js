@@ -28,7 +28,7 @@ import { uint16ToFloat64 } from '../util/math.js';
 import { Type, UnionMode, Precision, DateUnit, TimeUnit, IntervalUnit } from '../enum.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, ListView, LargeListView, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -38,6 +38,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -63,8 +64,10 @@ export interface GetVisitor extends Visitor {
     visitFloat64<T extends Float64>(data: Data<T>, index: number): T['TValue'] | null;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number): T['TValue'] | null;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number): T['TValue'] | null;
     visitBinary<T extends Binary>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number): T['TValue'] | null;
+    visitBinaryView<T extends BinaryView>(data: Data<T>, index: number): T['TValue'] | null;
     visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>, index: number): T['TValue'] | null;
     visitDate<T extends Date_>(data: Data<T>, index: number): T['TValue'] | null;
     visitDateDay<T extends DateDay>(data: Data<T>, index: number): T['TValue'] | null;
@@ -81,6 +84,10 @@ export interface GetVisitor extends Visitor {
     visitTimeNanosecond<T extends TimeNanosecond>(data: Data<T>, index: number): T['TValue'] | null;
     visitDecimal<T extends Decimal>(data: Data<T>, index: number): T['TValue'] | null;
     visitList<T extends List>(data: Data<T>, index: number): T['TValue'] | null;
+    visitLargeList<T extends LargeList>(data: Data<T>, index: number): T['TValue'] | null;
+    visitListView<T extends ListView>(data: Data<T>, index: number): T['TValue'] | null;
+    visitLargeListView<T extends LargeListView>(data: Data<T>, index: number): T['TValue'] | null;
+    visitRunEndEncoded<T extends RunEndEncoded>(data: Data<T>, index: number): T['TValue'] | null;
     visitStruct<T extends Struct>(data: Data<T>, index: number): T['TValue'] | null;
     visitUnion<T extends Union>(data: Data<T>, index: number): T['TValue'] | null;
     visitDenseUnion<T extends DenseUnion>(data: Data<T>, index: number): T['TValue'] | null;
@@ -108,6 +115,9 @@ function wrapGet<T extends DataType>(fn: (data: Data<T>, _1: any) => any) {
 }
 
 /** @ignore */const epochDaysToMs = (data: Int32Array, index: number) => 86400000 * data[index];
+
+const BINARY_VIEW_SIZE = 16;
+const BINARY_VIEW_INLINE_CAPACITY = 12;
 
 /** @ignore */
 const getNull = <T extends Null>(_data: Data<T>, _index: number): T['TValue'] => null;
@@ -149,9 +159,42 @@ const getFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }: Data<
 /** @ignore */
 const getBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => getVariableWidthBytes(values, valueOffsets, index);
 /** @ignore */
+const getBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number): Uint8Array => {
+    const values = data.values as Uint8Array;
+    if (!values) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const start = (data.offset + index) * BINARY_VIEW_SIZE;
+    const baseOffset = values.byteOffset + start;
+    const view = new DataView(values.buffer, baseOffset, BINARY_VIEW_SIZE);
+    const size = view.getInt32(0, true);
+    if (size <= 0) {
+        return new Uint8Array(0);
+    }
+    if (size <= BINARY_VIEW_INLINE_CAPACITY) {
+        return new Uint8Array(values.buffer, baseOffset + 4, size);
+    }
+    const bufferIndex = view.getInt32(8, true);
+    const offset = view.getInt32(12, true);
+    const variadicBuffer = data.variadicBuffers?.[bufferIndex];
+    if (!variadicBuffer) {
+        throw new Error(`BinaryView variadic buffer ${bufferIndex} is missing`);
+    }
+    return variadicBuffer.subarray(offset, offset + size);
+};
+/** @ignore */
+const getBinaryViewValue = <T extends BinaryView>(data: Data<T>, index: number): T['TValue'] => {
+    return getBinaryViewBytes(data, index) as T['TValue'];
+};
+/** @ignore */
 const getUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => {
     const bytes = getVariableWidthBytes(values, valueOffsets, index);
     return bytes !== null ? decodeUtf8(bytes) : null as any;
+};
+/** @ignore */
+const getUtf8ViewValue = <T extends Utf8View>(data: Data<T>, index: number): T['TValue'] => {
+    const bytes = getBinaryViewBytes(data, index);
+    return decodeUtf8(bytes);
 };
 
 /* istanbul ignore next */
@@ -220,6 +263,60 @@ const getList = <T extends List>(data: Data<T>, index: number): T['TValue'] => {
     const child: Data<T['valueType']> = children[0];
     const slice = child.slice(begin, end - begin);
     return new Vector([slice]) as T['TValue'];
+};
+
+/** @ignore */
+const getLargeList = <T extends LargeList>(data: Data<T>, index: number): T['TValue'] => {
+    const { valueOffsets, stride, children } = data;
+    const begin = bigIntToNumber(valueOffsets[index * stride]);
+    const end = bigIntToNumber(valueOffsets[index * stride + 1]);
+    const child: Data<T['valueType']> = children[0];
+    const slice = child.slice(begin, end - begin);
+    return new Vector([slice]) as T['TValue'];
+};
+
+/** @ignore */
+const getListView = <T extends ListView>(data: Data<T>, index: number): T['TValue'] => {
+    const { valueOffsets, values: sizes, children } = data;
+    const offset = bigIntToNumber(valueOffsets[index]);
+    const size = bigIntToNumber(sizes[index]);
+    const child: Data<T['valueType']> = children[0];
+    const slice = child.slice(offset, size);
+    return new Vector([slice]) as T['TValue'];
+};
+
+/** @ignore */
+const getLargeListView = <T extends LargeListView>(data: Data<T>, index: number): T['TValue'] => {
+    const { valueOffsets, values: sizes, children } = data;
+    const offset = bigIntToNumber(valueOffsets[index]);
+    const size = bigIntToNumber(sizes[index]);
+    const child: Data<T['valueType']> = children[0];
+    const slice = child.slice(offset, size);
+    return new Vector([slice]) as T['TValue'];
+};
+
+/** @ignore */
+const getRunEndEncoded = <T extends RunEndEncoded>(data: Data<T>, index: number): T['TValue'] => {
+    const { children } = data;
+    const runEnds = children[0] as Data<T['runEndsType']>;
+    const values = children[1] as Data<T['valueType']>;
+    const getRunEnd = instance.getVisitFn(runEnds);
+    const get = instance.getVisitFn(values);
+
+    // Binary search to find the run that contains this index
+    let low = 0;
+    let high = runEnds.length - 1;
+    while (low < high) {
+        const mid = (low + high) >>> 1;
+        const runEnd = bigIntToNumber(getRunEnd(runEnds, mid) as number | bigint);
+        if (index < runEnd) {
+            high = mid;
+        } else {
+            low = mid + 1;
+        }
+    }
+
+    return get(values, low);
 };
 
 /** @ignore */
@@ -332,8 +429,10 @@ GetVisitor.prototype.visitFloat32 = wrapGet(getNumeric);
 GetVisitor.prototype.visitFloat64 = wrapGet(getNumeric);
 GetVisitor.prototype.visitUtf8 = wrapGet(getUtf8);
 GetVisitor.prototype.visitLargeUtf8 = wrapGet(getUtf8);
+GetVisitor.prototype.visitUtf8View = wrapGet(getUtf8ViewValue);
 GetVisitor.prototype.visitBinary = wrapGet(getBinary);
 GetVisitor.prototype.visitLargeBinary = wrapGet(getBinary);
+GetVisitor.prototype.visitBinaryView = wrapGet(getBinaryViewValue);
 GetVisitor.prototype.visitFixedSizeBinary = wrapGet(getFixedSizeBinary);
 GetVisitor.prototype.visitDate = wrapGet(getDate);
 GetVisitor.prototype.visitDateDay = wrapGet(getDateDay);
@@ -350,6 +449,10 @@ GetVisitor.prototype.visitTimeMicrosecond = wrapGet(getTimeMicrosecond);
 GetVisitor.prototype.visitTimeNanosecond = wrapGet(getTimeNanosecond);
 GetVisitor.prototype.visitDecimal = wrapGet(getDecimal);
 GetVisitor.prototype.visitList = wrapGet(getList);
+GetVisitor.prototype.visitLargeList = wrapGet(getLargeList);
+GetVisitor.prototype.visitListView = wrapGet(getListView);
+GetVisitor.prototype.visitLargeListView = wrapGet(getLargeListView);
+GetVisitor.prototype.visitRunEndEncoded = wrapGet(getRunEndEncoded);
 GetVisitor.prototype.visitStruct = wrapGet(getStruct);
 GetVisitor.prototype.visitUnion = wrapGet(getUnion);
 GetVisitor.prototype.visitDenseUnion = wrapGet(getDenseUnion);

@@ -21,7 +21,7 @@ import { Visitor } from '../visitor.js';
 import { Schema, Field } from '../schema.js';
 import {
     DataType, TypeMap, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -31,6 +31,7 @@ import {
     Duration, DurationSecond, DurationMillisecond, DurationMicrosecond, DurationNanosecond,
     Union, DenseUnion, SparseUnion,
     IntervalMonthDayNano,
+    RunEndEncoded,
 } from '../type.js';
 
 /** @ignore */
@@ -55,8 +56,10 @@ export interface TypeComparator extends Visitor {
     visitFloat64<T extends Float64>(type: T, other?: DataType | null): other is T;
     visitUtf8<T extends Utf8>(type: T, other?: DataType | null): other is T;
     visitLargeUtf8<T extends LargeUtf8>(type: T, other?: DataType | null): other is T;
+    visitUtf8View<T extends Utf8View>(type: T, other?: DataType | null): other is T;
     visitBinary<T extends Binary>(type: T, other?: DataType | null): other is T;
     visitLargeBinary<T extends LargeBinary>(type: T, other?: DataType | null): other is T;
+    visitBinaryView<T extends BinaryView>(type: T, other?: DataType | null): other is T;
     visitFixedSizeBinary<T extends FixedSizeBinary>(type: T, other?: DataType | null): other is T;
     visitDate<T extends Date_>(type: T, other?: DataType | null): other is T;
     visitDateDay<T extends DateDay>(type: T, other?: DataType | null): other is T;
@@ -89,6 +92,7 @@ export interface TypeComparator extends Visitor {
     visitDurationNanosecond<T extends DurationNanosecond>(type: T, other?: DataType | null): other is T;
     visitFixedSizeList<T extends FixedSizeList>(type: T, other?: DataType | null): other is T;
     visitMap<T extends Map_>(type: T, other?: DataType | null): other is T;
+    visitRunEndEncoded<T extends RunEndEncoded>(type: T, other?: DataType | null): other is T;
 }
 
 /** @ignore */
@@ -237,6 +241,14 @@ function compareMap<T extends Map_>(type: T, other?: DataType | null): other is 
     );
 }
 
+function compareRunEndEncoded<T extends RunEndEncoded>(type: T, other?: DataType | null): other is T {
+    return (type === other) || (
+        compareConstructor(type, other) &&
+        type.children.length === other.children.length &&
+        instance.compareManyFields(type.children, other.children)
+    );
+}
+
 TypeComparator.prototype.visitNull = compareAny;
 TypeComparator.prototype.visitBool = compareAny;
 TypeComparator.prototype.visitInt = compareInt;
@@ -254,8 +266,10 @@ TypeComparator.prototype.visitFloat32 = compareFloat;
 TypeComparator.prototype.visitFloat64 = compareFloat;
 TypeComparator.prototype.visitUtf8 = compareAny;
 TypeComparator.prototype.visitLargeUtf8 = compareAny;
+TypeComparator.prototype.visitUtf8View = compareAny;
 TypeComparator.prototype.visitBinary = compareAny;
 TypeComparator.prototype.visitLargeBinary = compareAny;
+TypeComparator.prototype.visitBinaryView = compareAny;
 TypeComparator.prototype.visitFixedSizeBinary = compareFixedSizeBinary;
 TypeComparator.prototype.visitDate = compareDate;
 TypeComparator.prototype.visitDateDay = compareDate;
@@ -288,6 +302,7 @@ TypeComparator.prototype.visitDurationMicrosecond = compareDuration;
 TypeComparator.prototype.visitDurationNanosecond = compareDuration;
 TypeComparator.prototype.visitFixedSizeList = compareFixedSizeList;
 TypeComparator.prototype.visitMap = compareMap;
+TypeComparator.prototype.visitRunEndEncoded = compareRunEndEncoded;
 
 /** @ignore */
 export const instance = new TypeComparator();

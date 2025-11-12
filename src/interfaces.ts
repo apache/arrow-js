@@ -212,6 +212,7 @@ export type TypeToDataType<T extends Type> = {
     [Type.LargeUtf8]: type.LargeUtf8;
     [Type.Binary]: type.Binary;
     [Type.LargeBinary]: type.LargeBinary;
+    [Type.BinaryView]: type.BinaryView;
     [Type.FixedSizeBinary]: type.FixedSizeBinary;
     [Type.Date]: type.Date_;
     [Type.DateDay]: type.DateDay;
@@ -244,6 +245,7 @@ export type TypeToDataType<T extends Type> = {
     [Type.Struct]: type.Struct;
     [Type.Dictionary]: type.Dictionary;
     [Type.FixedSizeList]: type.FixedSizeList;
+    [Type.Utf8View]: type.Utf8View;
 }[T];
 
 /** @ignore */
@@ -268,6 +270,7 @@ type TypeToBuilder<T extends Type = any, TNull = any> = {
     [Type.LargeUtf8]: LargeUtf8Builder<TNull>;
     [Type.Binary]: BinaryBuilder<TNull>;
     [Type.LargeBinary]: LargeBinaryBuilder<TNull>;
+    [Type.BinaryView]: Builder<any, TNull>;
     [Type.FixedSizeBinary]: FixedSizeBinaryBuilder<TNull>;
     [Type.Date]: DateBuilder<any, TNull>;
     [Type.DateDay]: DateDayBuilder<TNull>;
@@ -300,6 +303,7 @@ type TypeToBuilder<T extends Type = any, TNull = any> = {
     [Type.Struct]: StructBuilder<any, TNull>;
     [Type.Dictionary]: DictionaryBuilder<any, TNull>;
     [Type.FixedSizeList]: FixedSizeListBuilder<any, TNull>;
+    [Type.Utf8View]: Builder<any, TNull>;
 }[T];
 
 /** @ignore */
@@ -324,6 +328,7 @@ type DataTypeToBuilder<T extends DataType = any, TNull = any> = {
     [Type.LargeUtf8]: T extends type.LargeUtf8 ? LargeUtf8Builder<TNull> : never;
     [Type.Binary]: T extends type.Binary ? BinaryBuilder<TNull> : never;
     [Type.LargeBinary]: T extends type.LargeBinary ? LargeBinaryBuilder<TNull> : never;
+    [Type.BinaryView]: T extends type.BinaryView ? Builder<any, TNull> : never;
     [Type.FixedSizeBinary]: T extends type.FixedSizeBinary ? FixedSizeBinaryBuilder<TNull> : never;
     [Type.Date]: T extends type.Date_ ? DateBuilder<T, TNull> : never;
     [Type.DateDay]: T extends type.DateDay ? DateDayBuilder<TNull> : never;
@@ -356,4 +361,5 @@ type DataTypeToBuilder<T extends DataType = any, TNull = any> = {
     [Type.Struct]: T extends type.Struct ? StructBuilder<T['dataTypes'], TNull> : never;
     [Type.Dictionary]: T extends type.Dictionary ? DictionaryBuilder<T, TNull> : never;
     [Type.FixedSizeList]: T extends type.FixedSizeList ? FixedSizeListBuilder<T['valueType'], TNull> : never;
+    [Type.Utf8View]: T extends type.Utf8View ? Builder<any, TNull> : never;
 }[T['TType']];
