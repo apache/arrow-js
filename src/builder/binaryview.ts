@@ -15,14 +15,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { BinaryView } from '../type.js';
+import { BinaryView, Utf8View } from '../type.js';
 import { Builder, BuilderOptions } from '../builder.js';
 import { BufferBuilder } from './buffer.js';
 import { toUint8Array } from '../util/buffer.js';
 import { makeData } from '../data.js';
 
 /** @ignore */
-export class BinaryViewBuilder<TNull = any> extends Builder<BinaryView, TNull> {
+export class BinaryViewBuilder<
+    TType extends BinaryView | Utf8View = BinaryView,
+    TValue = Uint8Array,
+    TNull = any
+> extends Builder<TType, TNull> {
     protected _views: BufferBuilder<Uint8Array>;
     protected _variadicBuffers: Uint8Array[] = [];
     protected _currentBuffer: BufferBuilder<Uint8Array> | null = null;
@@ -30,7 +34,7 @@ export class BinaryViewBuilder<TNull = any> extends Builder<BinaryView, TNull> {
     protected _currentBufferOffset = 0;
     protected readonly _bufferSize = 32 * 1024 * 1024; // 32MB per buffer as per spec recommendation
 
-    constructor(opts: BuilderOptions<BinaryView, TNull>) {
+    constructor(opts: BuilderOptions<TType, TNull>) {
         super(opts);
         this._views = new BufferBuilder(Uint8Array);
     }
@@ -46,8 +50,8 @@ export class BinaryViewBuilder<TNull = any> extends Builder<BinaryView, TNull> {
         return size;
     }
 
-    public setValue(index: number, value: Uint8Array) {
-        const data = toUint8Array(value);
+    public setValue(index: number, value: TValue) {
+        const data = this.encodeValue(value);
         const length = data.length;
 
         // Ensure views buffer has space up to this index (similar to FixedWidthBuilder)
@@ -100,6 +104,10 @@ export class BinaryViewBuilder<TNull = any> extends Builder<BinaryView, TNull> {
         }
 
         return this;
+    }
+
+    protected encodeValue(value: TValue): Uint8Array {
+        return toUint8Array(value as unknown as Uint8Array);
     }
 
     public setValid(index: number, isValid: boolean) {

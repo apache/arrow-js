@@ -26,7 +26,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORMAT_DIR="${PROJECT_ROOT}/../arrow/format"
 
 if [[ ! -d "${FORMAT_DIR}" ]]; then
-  echo `error: expected FlatBuffers schemas in ${FORMAT_DIR}` >&2
+  echo "error: expected FlatBuffers schemas in ${FORMAT_DIR}" >&2
   exit 1
 fi
 
@@ -46,9 +46,9 @@ schemas=(File Schema Message Tensor SparseTensor)
 for schema in "${schemas[@]}"; do
   cp "${FORMAT_DIR}/${schema}.fbs" "${TMPDIR}/${schema}.fbs"
   sed \
-      -e 's/namespace org.apache.arrow.flatbuf;//g' \
-      -e 's/org\.apache\.arrow\.flatbuf\.//g' \
-      "${FORMAT_DIR}/${schema}.fbs" > "${TMPDIR}/${schema}.fbs"
+    -e 's/namespace org.apache.arrow.flatbuf;//g' \
+    -e 's/org\.apache\.arrow\.flatbuf\.//g' \
+    "${FORMAT_DIR}/${schema}.fbs" >"${TMPDIR}/${schema}.fbs"
 done
 
 flatc --ts --ts-flat-files --ts-omit-entrypoint \
