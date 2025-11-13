@@ -21,12 +21,12 @@ import { BinaryViewBuilder } from './binaryview.js';
 import { encodeUtf8 } from '../util/utf8.js';
 
 /** @ignore */
-export class Utf8ViewBuilder<TNull = any> extends BinaryViewBuilder<Utf8View, string, TNull> {
+export class Utf8ViewBuilder<TNull = any> extends BinaryViewBuilder<Utf8View, TNull> {
     constructor(opts: BuilderOptions<Utf8View, TNull>) {
         super(opts);
     }
 
-    protected encodeValue(value: string): Uint8Array {
+    protected encodeValue(value: Utf8View['TValue']): Uint8Array {
         return encodeUtf8(value);
     }
 }

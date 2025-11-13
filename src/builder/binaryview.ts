@@ -20,11 +20,11 @@ import { Builder, BuilderOptions } from '../builder.js';
 import { BufferBuilder } from './buffer.js';
 import { toUint8Array } from '../util/buffer.js';
 import { makeData } from '../data.js';
+import type { DataProps } from '../data.js';
 
 /** @ignore */
 export class BinaryViewBuilder<
     TType extends BinaryView | Utf8View = BinaryView,
-    TValue = Uint8Array,
     TNull = any
 > extends Builder<TType, TNull> {
     protected _views: BufferBuilder<Uint8Array>;
@@ -50,7 +50,7 @@ export class BinaryViewBuilder<
         return size;
     }
 
-    public setValue(index: number, value: TValue) {
+    public setValue(index: number, value: TType['TValue']) {
         const data = this.encodeValue(value);
         const length = data.length;
 
@@ -106,7 +106,7 @@ export class BinaryViewBuilder<
         return this;
     }
 
-    protected encodeValue(value: TValue): Uint8Array {
+    protected encodeValue(value: TType['TValue']): Uint8Array {
         return toUint8Array(value as unknown as Uint8Array);
     }
 
@@ -161,14 +161,16 @@ export class BinaryViewBuilder<
 
         this.clear();
 
-        return makeData({
+        const props = {
             type,
             length,
             nullCount,
             nullBitmap,
             ['views']: views,
             ['variadicBuffers']: variadicBuffers
-        });
+        };
+
+        return makeData<TType>(props as unknown as DataProps<TType>);
     }
 
     public finish() {
