@@ -26,7 +26,7 @@ export class Utf8ViewBuilder<TNull = any> extends BinaryViewBuilder<Utf8View, TN
         super(opts);
     }
 
-    override public setValue(index: number, value: string) {
-        return super.setValue(index, encodeUtf8(value));
+    public override setValue(index: number, value: Utf8View['TValue']) {
+        return this.writeBinaryValue(index, encodeUtf8(value));
     }
 }

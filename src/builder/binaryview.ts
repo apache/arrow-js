@@ -51,7 +51,10 @@ export class BinaryViewBuilder<
     }
 
     public setValue(index: number, value: TType['TValue']) {
-        const data = this.encodeValue(value);
+        return this.writeBinaryValue(index, this.encodeValue(value));
+    }
+
+    protected writeBinaryValue(index: number, data: Uint8Array) {
         const length = data.length;
 
         // Ensure views buffer has space up to this index (similar to FixedWidthBuilder)
