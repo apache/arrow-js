@@ -26,7 +26,7 @@ export class Utf8ViewBuilder<TNull = any> extends BinaryViewBuilder<Utf8View, TN
         super(opts);
     }
 
-    protected encodeValue(value: Utf8View['TValue']): Uint8Array {
-        return encodeUtf8(value);
+    override public setValue(index: number, value: string) {
+        return super.setValue(index, encodeUtf8(value));
     }
 }
