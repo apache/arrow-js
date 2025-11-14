@@ -37,8 +37,10 @@ export abstract class Visitor {
     public visitFloat(_node: any, ..._args: any[]): any { return null; }
     public visitUtf8(_node: any, ..._args: any[]): any { return null; }
     public visitLargeUtf8(_node: any, ..._args: any[]): any { return null; }
+    public visitUtf8View(_node: any, ..._args: any[]): any { return null; }
     public visitBinary(_node: any, ..._args: any[]): any { return null; }
     public visitLargeBinary(_node: any, ..._args: any[]): any { return null; }
+    public visitBinaryView(_node: any, ..._args: any[]): any { return null; }
     public visitFixedSizeBinary(_node: any, ..._args: any[]): any { return null; }
     public visitDate(_node: any, ..._args: any[]): any { return null; }
     public visitTimestamp(_node: any, ..._args: any[]): any { return null; }
@@ -92,8 +94,10 @@ function getVisitFnByTypeId(visitor: Visitor, dtype: Type, throwIfNotFound = tru
         case Type.Float64: fn = visitor.visitFloat64 || visitor.visitFloat; break;
         case Type.Utf8: fn = visitor.visitUtf8; break;
         case Type.LargeUtf8: fn = visitor.visitLargeUtf8; break;
+        case Type.Utf8View: fn = visitor.visitUtf8View || visitor.visitUtf8; break;
         case Type.Binary: fn = visitor.visitBinary; break;
         case Type.LargeBinary: fn = visitor.visitLargeBinary; break;
+        case Type.BinaryView: fn = visitor.visitBinaryView || visitor.visitBinary; break;
         case Type.FixedSizeBinary: fn = visitor.visitFixedSizeBinary; break;
         case Type.Date: fn = visitor.visitDate; break;
         case Type.DateDay: fn = visitor.visitDateDay || visitor.visitDate; break;
@@ -157,8 +161,10 @@ function inferDType<T extends DataType>(type: T): Type {
             return Type.Float;
         case Type.Binary: return Type.Binary;
         case Type.LargeBinary: return Type.LargeBinary;
+        case Type.BinaryView: return Type.BinaryView;
         case Type.Utf8: return Type.Utf8;
         case Type.LargeUtf8: return Type.LargeUtf8;
+        case Type.Utf8View: return Type.Utf8View;
         case Type.Bool: return Type.Bool;
         case Type.Decimal: return Type.Decimal;
         case Type.Time:

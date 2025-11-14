@@ -28,7 +28,7 @@ import { uint16ToFloat64 } from '../util/math.js';
 import { Type, UnionMode, Precision, DateUnit, TimeUnit, IntervalUnit } from '../enum.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -63,8 +63,10 @@ export interface GetVisitor extends Visitor {
     visitFloat64<T extends Float64>(data: Data<T>, index: number): T['TValue'] | null;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number): T['TValue'] | null;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number): T['TValue'] | null;
     visitBinary<T extends Binary>(data: Data<T>, index: number): T['TValue'] | null;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number): T['TValue'] | null;
+    visitBinaryView<T extends BinaryView>(data: Data<T>, index: number): T['TValue'] | null;
     visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>, index: number): T['TValue'] | null;
     visitDate<T extends Date_>(data: Data<T>, index: number): T['TValue'] | null;
     visitDateDay<T extends DateDay>(data: Data<T>, index: number): T['TValue'] | null;
@@ -109,6 +111,9 @@ function wrapGet<T extends DataType>(fn: (data: Data<T>, _1: any) => any) {
 
 /** @ignore */const epochDaysToMs = (data: Int32Array, index: number) => 86400000 * data[index];
 
+const BINARY_VIEW_SIZE = 16;
+const BINARY_VIEW_INLINE_CAPACITY = 12;
+
 /** @ignore */
 const getNull = <T extends Null>(_data: Data<T>, _index: number): T['TValue'] => null;
 /** @ignore */
@@ -149,9 +154,51 @@ const getFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }: Data<
 /** @ignore */
 const getBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => getVariableWidthBytes(values, valueOffsets, index);
 /** @ignore */
+const getBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number): Uint8Array => {
+    const values = data.values as Uint8Array;
+    if (!values) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const viewOffset = index * BINARY_VIEW_SIZE;
+    const end = viewOffset + BINARY_VIEW_SIZE;
+    if (viewOffset < 0 || end > values.length) {
+        throw new Error(`BinaryView data buffer is too short: expected ${BINARY_VIEW_SIZE} bytes, got ${Math.max(0, values.length - viewOffset)}`);
+    }
+    // Get the 16-byte view struct from the values array
+    const viewStruct = values.subarray(viewOffset, end);
+    if (viewStruct.length < BINARY_VIEW_SIZE) {
+        throw new Error(`BinaryView data buffer is too short: expected ${BINARY_VIEW_SIZE} bytes, got ${viewStruct.length}`);
+    }
+    const view = new DataView(values.buffer, viewStruct.byteOffset, BINARY_VIEW_SIZE);
+    const size = view.getInt32(0, true);
+    if (size <= 0) {
+        return new Uint8Array(0);
+    }
+    if (size <= BINARY_VIEW_INLINE_CAPACITY) {
+        // Inline data is in bytes 4-15 of the view struct
+        return viewStruct.subarray(4, 4 + size);
+    }
+    const bufferIndex = view.getInt32(8, true);
+    const offset = view.getInt32(12, true);
+    const variadicBuffer = data.variadicBuffers?.[bufferIndex];
+    if (!variadicBuffer) {
+        throw new Error(`BinaryView variadic buffer ${bufferIndex} is missing`);
+    }
+    return variadicBuffer.subarray(offset, offset + size);
+};
+/** @ignore */
+const getBinaryViewValue = <T extends BinaryView>(data: Data<T>, index: number): T['TValue'] => {
+    return getBinaryViewBytes(data, index) as T['TValue'];
+};
+/** @ignore */
 const getUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number): T['TValue'] => {
     const bytes = getVariableWidthBytes(values, valueOffsets, index);
     return bytes !== null ? decodeUtf8(bytes) : null as any;
+};
+/** @ignore */
+const getUtf8ViewValue = <T extends Utf8View>(data: Data<T>, index: number): T['TValue'] => {
+    const bytes = getBinaryViewBytes(data, index);
+    return decodeUtf8(bytes);
 };
 
 /* istanbul ignore next */
@@ -332,8 +379,10 @@ GetVisitor.prototype.visitFloat32 = wrapGet(getNumeric);
 GetVisitor.prototype.visitFloat64 = wrapGet(getNumeric);
 GetVisitor.prototype.visitUtf8 = wrapGet(getUtf8);
 GetVisitor.prototype.visitLargeUtf8 = wrapGet(getUtf8);
+GetVisitor.prototype.visitUtf8View = wrapGet(getUtf8ViewValue);
 GetVisitor.prototype.visitBinary = wrapGet(getBinary);
 GetVisitor.prototype.visitLargeBinary = wrapGet(getBinary);
+GetVisitor.prototype.visitBinaryView = wrapGet(getBinaryViewValue);
 GetVisitor.prototype.visitFixedSizeBinary = wrapGet(getFixedSizeBinary);
 GetVisitor.prototype.visitDate = wrapGet(getDate);
 GetVisitor.prototype.visitDateDay = wrapGet(getDateDay);

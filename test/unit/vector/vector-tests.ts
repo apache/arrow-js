@@ -16,7 +16,7 @@
 // under the License.
 
 import {
-    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
+    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, Utf8View, BinaryView, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
 } from 'apache-arrow';
 
 describe(`makeVectorFromArray`, () => {
@@ -253,6 +253,50 @@ describe(`LargeUtf8Vector`, () => {
     basicVectorTests(vector, values, ['abc', '123']);
     describe(`sliced`, () => {
         basicVectorTests(vector.slice(1, 3), values.slice(1, 3), ['foo', 'abc']);
+    });
+});
+
+describe(`Utf8ViewVector`, () => {
+    const values = ['foo', 'bar', 'baz', 'foo bar', 'bar'];
+    const vector = vectorFromArray(values, new Utf8View);
+
+    test(`has utf8View type`, () => {
+        expect(vector.type).toBeInstanceOf(Utf8View);
+    });
+
+    test(`is not memoized`, () => {
+        expect(vector.isMemoized).toBe(false);
+        const memoizedVector = vector.memoize();
+        expect(memoizedVector.isMemoized).toBe(true);
+        const unMemoizedVector = vector.unmemoize();
+        expect(unMemoizedVector.isMemoized).toBe(false);
+    });
+
+    basicVectorTests(vector, values, ['abc', '123']);
+    describe(`sliced`, () => {
+        basicVectorTests(vector.slice(1, 3), values.slice(1, 3), ['foo', 'abc']);
+    });
+});
+
+describe(`BinaryViewVector`, () => {
+    const values = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5]), new Uint8Array([6, 7, 8, 9])];
+    const vector = vectorFromArray(values, new BinaryView);
+
+    test(`has binaryView type`, () => {
+        expect(vector.type).toBeInstanceOf(BinaryView);
+    });
+
+    test(`is not memoized`, () => {
+        expect(vector.isMemoized).toBe(false);
+        const memoizedVector = vector.memoize();
+        expect(memoizedVector.isMemoized).toBe(true);
+        const unMemoizedVector = vector.unmemoize();
+        expect(unMemoizedVector.isMemoized).toBe(false);
+    });
+
+    basicVectorTests(vector, values, [new Uint8Array([10, 11]), new Uint8Array([12])]);
+    describe(`sliced`, () => {
+        basicVectorTests(vector.slice(1, 3), values.slice(1, 3), [new Uint8Array([1, 2]), new Uint8Array([3, 4])]);
     });
 });
 
