@@ -18,7 +18,7 @@
 import { Schema, Field } from '../../schema.js';
 import {
     DataType, Dictionary, TimeBitWidth,
-    Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary,
+    Utf8, LargeUtf8, Binary, LargeBinary, BinaryView, Utf8View, Decimal, FixedSizeBinary,
     List, FixedSizeList, Map_, Struct, Union,
     Bool, Null, Int, Float, Date_, Time, Interval, Timestamp, IntBitWidth, Int32, TKeys, Duration,
 } from '../../type.js';
@@ -41,7 +41,8 @@ export function recordBatchFromJSON(b: any) {
         b['count'],
         fieldNodesFromJSON(b['columns']),
         buffersFromJSON(b['columns']),
-        null
+        null,
+        variadicBufferCountsFromJSON(b['columns'])
     );
 }
 
@@ -83,6 +84,13 @@ function buffersFromJSON(xs: any[], buffers: BufferRegion[] = []): BufferRegion[
         column['TYPE_ID'] && buffers.push(new BufferRegion(buffers.length, column['TYPE_ID'].length));
         column['OFFSET'] && buffers.push(new BufferRegion(buffers.length, column['OFFSET'].length));
         column['DATA'] && buffers.push(new BufferRegion(buffers.length, column['DATA'].length));
+        column['VIEWS'] && buffers.push(new BufferRegion(buffers.length, column['VIEWS'].length));
+        // Handle variadic buffers for view types (BinaryView, Utf8View)
+        if (column['VARIADIC_DATA_BUFFERS']) {
+            for (const buf of column['VARIADIC_DATA_BUFFERS']) {
+                buffers.push(new BufferRegion(buffers.length, buf.length));
+            }
+        }
         buffers = buffersFromJSON(column['children'], buffers);
     }
     return buffers;
@@ -91,6 +99,15 @@ function buffersFromJSON(xs: any[], buffers: BufferRegion[] = []): BufferRegion[
 /** @ignore */
 function nullCountFromJSON(validity: number[]) {
     return (validity || []).reduce((sum, val) => sum + +(val === 0), 0);
+}
+
+/** @ignore */
+function variadicBufferCountsFromJSON(xs: any[]): number[] {
+    return (xs || []).reduce<number[]>((counts, column: any) => [
+        ...counts,
+        ...(column['VARIADIC_DATA_BUFFERS'] ? [column['VARIADIC_DATA_BUFFERS'].length] : []),
+        ...variadicBufferCountsFromJSON(column['children'])
+    ], [] as number[]);
 }
 
 /** @ignore */
@@ -149,8 +166,10 @@ function typeFromJSON(f: any, children?: Field[]): DataType<any> {
         case 'null': return new Null();
         case 'binary': return new Binary();
         case 'largebinary': return new LargeBinary();
+        case 'binaryview': return new BinaryView();
         case 'utf8': return new Utf8();
         case 'largeutf8': return new LargeUtf8();
+        case 'utf8view': return new Utf8View();
         case 'bool': return new Bool();
         case 'list': return new List((children || [])[0]);
         case 'struct': return new Struct(children || []);
