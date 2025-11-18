@@ -57,6 +57,7 @@ export {
     Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
     Decimal,
     List,
+    LargeList,
     Struct, StructRow,
     Union, DenseUnion, SparseUnion,
     Dictionary,
