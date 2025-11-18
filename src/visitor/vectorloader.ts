@@ -44,13 +44,16 @@ export class VectorLoader extends Visitor {
     protected buffersIndex = -1;
     private dictionaries: Map<number, Vector<any>>;
     private readonly metadataVersion: MetadataVersion;
-    constructor(bytes: Uint8Array, nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion = MetadataVersion.V5) {
+    private variadicBufferCounts: number[];
+    private variadicBufferIndex = -1;
+    constructor(bytes: Uint8Array, nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion = MetadataVersion.V5, variadicBufferCounts: number[] = []) {
         super();
         this.bytes = bytes;
         this.nodes = nodes;
         this.buffers = buffers;
         this.dictionaries = dictionaries;
         this.metadataVersion = metadataVersion;
+        this.variadicBufferCounts = variadicBufferCounts;
     }
 
     public visit<T extends DataType>(node: Field<T> | T): Data<T> {
@@ -75,11 +78,23 @@ export class VectorLoader extends Visitor {
     public visitLargeUtf8<T extends type.LargeUtf8>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
     }
+    public visitUtf8View<T extends type.Utf8View>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        const nullBitmap = this.readNullBitmap(type, nullCount);
+        const views = this.readData(type);
+        const variadicBuffers = this.readVariadicBuffers(this.nextVariadicBufferCount());
+        return makeData({ type, length, nullCount, nullBitmap, views, variadicBuffers });
+    }
     public visitBinary<T extends type.Binary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
     }
     public visitLargeBinary<T extends type.LargeBinary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), data: this.readData(type) });
+    }
+    public visitBinaryView<T extends type.BinaryView>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        const nullBitmap = this.readNullBitmap(type, nullCount);
+        const views = this.readData(type);
+        const variadicBuffers = this.readVariadicBuffers(this.nextVariadicBufferCount());
+        return makeData({ type, length, nullCount, nullBitmap, views, variadicBuffers });
     }
     public visitFixedSizeBinary<T extends type.FixedSizeBinary>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), data: this.readData(type) });
@@ -97,6 +112,9 @@ export class VectorLoader extends Visitor {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), data: this.readData(type) });
     }
     public visitList<T extends type.List>(type: T, { length, nullCount } = this.nextFieldNode()) {
+        return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), 'child': this.visit(type.children[0]) });
+    }
+    public visitLargeList<T extends type.LargeList>(type: T, { length, nullCount } = this.nextFieldNode()) {
         return makeData({ type, length, nullCount, nullBitmap: this.readNullBitmap(type, nullCount), valueOffsets: this.readOffsets(type), 'child': this.visit(type.children[0]) });
     }
     public visitStruct<T extends type.Struct>(type: T, { length, nullCount } = this.nextFieldNode()) {
@@ -141,6 +159,12 @@ export class VectorLoader extends Visitor {
     protected readTypeIds<T extends DataType>(type: T, buffer?: BufferRegion) { return this.readData(type, buffer); }
     protected readData<T extends DataType>(_type: T, { length, offset } = this.nextBufferRange()) {
         return this.bytes.subarray(offset, offset + length);
+    }
+    protected readVariadicBuffers(length: number) {
+        return Array.from({ length }, () => this.readData(null as any));
+    }
+    protected nextVariadicBufferCount() {
+        return this.variadicBufferCounts[++this.variadicBufferIndex] ?? 0;
     }
     protected readDictionary<T extends type.Dictionary>(type: T): Vector<T['dictionary']> {
         return this.dictionaries.get(type.id)!;
@@ -208,8 +232,8 @@ function binaryDataFromJSON(values: string[]) {
 
 export class CompressedVectorLoader extends VectorLoader {
     private bodyChunks: Uint8Array[];
-    constructor(bodyChunks: Uint8Array[], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion) {
-        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion);
+    constructor(bodyChunks: Uint8Array[], nodes: FieldNode[], buffers: BufferRegion[], dictionaries: Map<number, Vector<any>>, metadataVersion: MetadataVersion, variadicBufferCounts: number[] = []) {
+        super(new Uint8Array(0), nodes, buffers, dictionaries, metadataVersion, variadicBufferCounts);
         this.bodyChunks = bodyChunks;
     }
     protected readData<T extends DataType>(_type: T, _buffer = this.nextBufferRange()) {
