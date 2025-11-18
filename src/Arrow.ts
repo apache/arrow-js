@@ -107,6 +107,7 @@ import * as util_math_ from './util/math.js';
 import * as util_buffer_ from './util/buffer.js';
 import * as util_vector_ from './util/vector.js';
 import * as util_pretty_ from './util/pretty.js';
+import * as util_decimal_ from './util/decimal.js';
 
 import * as util_interval_ from './util/interval.js';
 export type * from './util/interval.js';
@@ -122,6 +123,7 @@ export const util = {
     ...util_buffer_,
     ...util_vector_,
     ...util_pretty_,
+    ...util_decimal_,
     ...util_interval_,
     compareSchemas,
     compareFields,
