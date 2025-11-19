@@ -274,8 +274,8 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeRecordBatch(batch: RecordBatch<T>) {
-        const { byteLength, nodes, bufferRegions, buffers } = this._assembleRecordBatch(batch);
-        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression);
+        const { byteLength, nodes, bufferRegions, buffers, variadicBufferCounts } = this._assembleRecordBatch(batch);
+        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression, variadicBufferCounts);
         const message = Message.from(recordBatch, byteLength);
         return this
             ._writeDictionaries(batch)
@@ -284,11 +284,11 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _assembleRecordBatch(batch: RecordBatch<T> | Vector) {
-        let { byteLength, nodes, bufferRegions, buffers } = VectorAssembler.assemble(batch);
+        let { byteLength, nodes, bufferRegions, buffers, variadicBufferCounts } = VectorAssembler.assemble(batch);
         if (this._compression != null) {
             ({ byteLength, bufferRegions, buffers } = this._compressBodyBuffers(buffers));
         }
-        return { byteLength, nodes, bufferRegions, buffers };
+        return { byteLength, nodes, bufferRegions, buffers, variadicBufferCounts };
     }
 
     protected _compressBodyBuffers(buffers: ArrayBufferView[]) {
@@ -337,8 +337,8 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     }
 
     protected _writeDictionaryBatch(dictionary: Data, id: number, isDelta = false) {
-        const { byteLength, nodes, bufferRegions, buffers } = this._assembleRecordBatch(new Vector([dictionary]));
-        const recordBatch = new metadata.RecordBatch(dictionary.length, nodes, bufferRegions, this._compression);
+        const { byteLength, nodes, bufferRegions, buffers, variadicBufferCounts } = this._assembleRecordBatch(new Vector([dictionary]));
+        const recordBatch = new metadata.RecordBatch(dictionary.length, nodes, bufferRegions, this._compression, variadicBufferCounts);
         const dictionaryBatch = new metadata.DictionaryBatch(recordBatch, id, isDelta);
         const message = Message.from(dictionaryBatch, byteLength);
         return this

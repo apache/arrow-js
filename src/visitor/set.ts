@@ -26,7 +26,7 @@ import { float64ToUint16 } from '../util/math.js';
 import { Type, UnionMode, Precision, DateUnit, TimeUnit, IntervalUnit } from '../enum.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -61,8 +61,10 @@ export interface SetVisitor extends Visitor {
     visitFloat64<T extends Float64>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUtf8<T extends Utf8>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeUtf8<T extends LargeUtf8>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitUtf8View<T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']): void;
     visitBinary<T extends Binary>(data: Data<T>, index: number, value: T['TValue']): void;
     visitLargeBinary<T extends LargeBinary>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitBinaryView<T extends BinaryView>(data: Data<T>, index: number, value: T['TValue']): void;
     visitFixedSizeBinary<T extends FixedSizeBinary>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDate<T extends Date_>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDateDay<T extends DateDay>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -155,7 +157,63 @@ export const setFixedSizeBinary = <T extends FixedSizeBinary>({ stride, values }
 /** @ignore */
 const setBinary = <T extends Binary | LargeBinary>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, value);
 /** @ignore */
+const ensureWritableVariadicBuffers = (data: Data<BinaryView | Utf8View>): Uint8Array[] => {
+    let buffers = data.variadicBuffers as unknown as Uint8Array[];
+    if (!Array.isArray(buffers) || Object.isFrozen(buffers)) {
+        buffers = Array.from(buffers) as Uint8Array[];
+        (data as any).variadicBuffers = buffers;
+    }
+    return buffers;
+};
+/** @ignore */
+const setBinaryViewBytes = (data: Data<BinaryView | Utf8View>, index: number, bytes: Uint8Array) => {
+    const views = data.values as Uint8Array | undefined;
+    if (!views) {
+        throw new Error('BinaryView data is missing view buffer');
+    }
+    const elementWidth = BinaryView.ELEMENT_WIDTH;
+    const viewOffset = index * elementWidth;
+    const end = viewOffset + elementWidth;
+    if (viewOffset < 0 || end > views.length) {
+        throw new RangeError(`BinaryView index ${index} out of bounds`);
+    }
+
+    views.fill(0, viewOffset, end);
+
+    const view = new DataView(views.buffer, views.byteOffset + viewOffset, elementWidth);
+    const length = bytes.length;
+    view.setInt32(BinaryView.LENGTH_OFFSET, length, true);
+
+    if (length <= BinaryView.INLINE_CAPACITY) {
+        views.set(bytes, viewOffset + BinaryView.INLINE_OFFSET);
+        return;
+    }
+
+    const prefix =
+        (bytes[0] ?? 0) |
+        ((bytes[1] ?? 0) << 8) |
+        ((bytes[2] ?? 0) << 16) |
+        ((bytes[3] ?? 0) << 24);
+    view.setUint32(BinaryView.INLINE_OFFSET, prefix >>> 0, true);
+
+    const buffers = ensureWritableVariadicBuffers(data);
+    const copy = bytes.slice();
+    const bufferIndex = buffers.push(copy) - 1;
+    view.setInt32(BinaryView.BUFFER_INDEX_OFFSET, bufferIndex, true);
+    view.setInt32(BinaryView.BUFFER_OFFSET_OFFSET, 0, true);
+};
+/** @ignore */
+const setBinaryView = <T extends BinaryView>(data: Data<T>, index: number, value: T['TValue']) => {
+    const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+    setBinaryViewBytes(data as unknown as Data<BinaryView | Utf8View>, index, bytes);
+};
+/** @ignore */
 const setUtf8 = <T extends Utf8 | LargeUtf8>({ values, valueOffsets }: Data<T>, index: number, value: T['TValue']) => setVariableWidthBytes(values, valueOffsets, index, encodeUtf8(value));
+/** @ignore */
+const setUtf8View = <T extends Utf8View>(data: Data<T>, index: number, value: T['TValue']) => {
+    const bytes = encodeUtf8(value);
+    setBinaryViewBytes(data as unknown as Data<BinaryView | Utf8View>, index, bytes);
+};
 
 /* istanbul ignore next */
 export const setDate = <T extends Date_>(data: Data<T>, index: number, value: T['TValue']): void => {
@@ -359,8 +417,10 @@ SetVisitor.prototype.visitFloat32 = wrapSet(setFloat);
 SetVisitor.prototype.visitFloat64 = wrapSet(setFloat);
 SetVisitor.prototype.visitUtf8 = wrapSet(setUtf8);
 SetVisitor.prototype.visitLargeUtf8 = wrapSet(setUtf8);
+SetVisitor.prototype.visitUtf8View = wrapSet(setUtf8View);
 SetVisitor.prototype.visitBinary = wrapSet(setBinary);
 SetVisitor.prototype.visitLargeBinary = wrapSet(setBinary);
+SetVisitor.prototype.visitBinaryView = wrapSet(setBinaryView);
 SetVisitor.prototype.visitFixedSizeBinary = wrapSet(setFixedSizeBinary);
 SetVisitor.prototype.visitDate = wrapSet(setDate);
 SetVisitor.prototype.visitDateDay = wrapSet(setDateDay);

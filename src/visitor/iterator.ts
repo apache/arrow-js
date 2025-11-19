@@ -21,7 +21,7 @@ import { Type, Precision } from '../enum.js';
 import { TypeToDataType } from '../interfaces.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, LargeUtf8, Binary, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -57,8 +57,10 @@ export interface IteratorVisitor extends Visitor {
     visitFloat64<T extends Float64>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitUtf8<T extends Utf8>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitLargeUtf8<T extends LargeUtf8>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
+    visitUtf8View<T extends Utf8View>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitBinary<T extends Binary>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitLargeBinary<T extends LargeBinary>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
+    visitBinaryView<T extends BinaryView>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitFixedSizeBinary<T extends FixedSizeBinary>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitDate<T extends Date_>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
     visitDateDay<T extends DateDay>(vector: Vector<T>): IterableIterator<T['TValue'] | null>;
@@ -164,8 +166,10 @@ IteratorVisitor.prototype.visitFloat32 = vectorIterator;
 IteratorVisitor.prototype.visitFloat64 = vectorIterator;
 IteratorVisitor.prototype.visitUtf8 = vectorIterator;
 IteratorVisitor.prototype.visitLargeUtf8 = vectorIterator;
+IteratorVisitor.prototype.visitUtf8View = vectorIterator;
 IteratorVisitor.prototype.visitBinary = vectorIterator;
 IteratorVisitor.prototype.visitLargeBinary = vectorIterator;
+IteratorVisitor.prototype.visitBinaryView = vectorIterator;
 IteratorVisitor.prototype.visitFixedSizeBinary = vectorIterator;
 IteratorVisitor.prototype.visitDate = vectorIterator;
 IteratorVisitor.prototype.visitDateDay = vectorIterator;
