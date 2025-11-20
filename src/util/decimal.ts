@@ -29,7 +29,7 @@ export function isNegativeDecimal(value: Uint32Array): boolean {
     // This follows the Arrow C++ implementation:
     // https://github.com/apache/arrow/blob/main/cpp/src/arrow/util/basic_decimal.h
     const MAX_INT32 = 2 ** 31 - 1;
-    return value[value.length - 1] > MAX_INT32;
+    return value.at(-1)! > MAX_INT32;
 }
 
 /**
@@ -130,7 +130,12 @@ export function toDecimalNumber(value: Uint32Array, scale: number): number {
         return Number(num);
     }
 
-    const divisor = BigInt(10) ** BigInt(scale);
+    // Calculate divisor as 10^scale
+    // Using a loop instead of BigInt exponentiation (**) for ES2015 compatibility
+    let divisor = BigInt(1);
+    for (let i = 0; i < scale; i++) {
+        divisor *= BigInt(10);
+    }
     return Number(num) / Number(divisor);
 }
 
@@ -156,14 +161,14 @@ export function fromDecimalString(str: string, scale: number): Uint32Array {
     // Detect negative
     const negative = str.startsWith('-');
     if (negative) {
-        str = str.substring(1);
+        str = str.slice(1);
     }
 
     // Split on decimal point
     const [wholePart = '0', fracPart = ''] = str.split('.');
 
     // Pad or truncate fractional part to match scale
-    const adjustedFrac = (fracPart + '0'.repeat(scale)).substring(0, scale);
+    const adjustedFrac = (fracPart + '0'.repeat(scale)).slice(0, scale);
     const intStr = wholePart + adjustedFrac;
 
     // Convert string to BigInt
