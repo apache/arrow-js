@@ -15,8 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { BN, bigNumToString } from './bn.js';
-
 /**
  * Determine if a decimal value is negative by checking the sign bit.
  * Follows the two's complement representation used in Arrow decimals.
@@ -71,29 +69,73 @@ export function negateDecimal(value: Uint32Array): Uint32Array {
  * @ignore
  */
 export function toDecimalString(value: Uint32Array, scale: number): string {
-    // Create a copy to avoid modifying the original
-    const valueCopy = new Uint32Array(value);
-    const negative = isNegativeDecimal(valueCopy);
-    const sign = negative ? '-' : '';
+    // Build BigInt from little-endian 4x Uint32 words
+    const toBigIntLE = (words: Uint32Array) => {
+        return (BigInt(words[3]) << BigInt(96)) |
+            (BigInt(words[2]) << BigInt(64)) |
+            (BigInt(words[1]) << BigInt(32)) |
+            BigInt(words[0]);
+    };
 
-    if (negative) {
-        negateDecimal(valueCopy);
+    // Detect sign via MSB of most-significant word
+    const isNegative = (value[3] & 0x80000000) !== 0;
+    const mask128 = (BigInt(1) << BigInt(128)) - BigInt(1);
+
+    let n = toBigIntLE(value);
+
+    // If negative, convert two's complement to magnitude:
+    // magnitude = (~n + 1) & mask128
+    let magnitude: bigint;
+    if (isNegative) {
+        magnitude = ((~n) + BigInt(1)) & mask128;
+    } else {
+        magnitude = n;
     }
 
-    // Convert the magnitude to a string representation
-    const bn = new BN(valueCopy, false);
-    const str = bigNumToString(bn).padStart(Math.max(1, scale + 1), '0');
+    // Magnitude as decimal string
+    const digits = magnitude.toString(10);
 
-    // Handle scale == 0: return the whole number
+    // Special-case: zero
+    if (magnitude === BigInt(0)) {
+        if (scale === 0) {
+            return '0';
+        }
+        // Tests expect "0.0" for zero with any positive scale
+        return '0.0';
+    }
+
     if (scale === 0) {
-        return `${sign}${str}`;
+        const res = digits;
+        return isNegative ? '-' + res : res;
     }
 
-    // Split into whole and decimal parts
-    const wholePart = str.slice(0, -scale) || '0';
-    const decimalPart = str.slice(-scale).replace(/0+$/, '') || '0';
+    // Ensure we have at least scale digits for fractional part
+    let integerPart: string;
+    let fracPart: string;
+    if (digits.length <= scale) {
+        integerPart = '0';
+        fracPart = digits.padStart(scale, '0');
+    } else {
+        const split = digits.length - scale;
+        integerPart = digits.slice(0, split);
+        fracPart = digits.slice(split);
+    }
 
-    return `${sign}${wholePart}.${decimalPart}`;
+    // Trim trailing zeros in fractional part
+    fracPart = fracPart.replace(/0+$/, '');
+
+    let result: string;
+    if (fracPart === '') {
+        // No fractional digits left => return integer only
+        result = integerPart;
+    } else {
+        result = integerPart + '.' + fracPart;
+    }
+
+    if (isNegative) {
+        result = '-' + result;
+    }
+    return result;
 }
 
 /**
