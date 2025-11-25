@@ -81,16 +81,11 @@ export function toDecimalString(value: Uint32Array, scale: number): string {
     const isNegative = (value[3] & 0x80000000) !== 0;
     const mask128 = (BigInt(1) << BigInt(128)) - BigInt(1);
 
-    let n = toBigIntLE(value);
+    const n = toBigIntLE(value);
 
     // If negative, convert two's complement to magnitude:
     // magnitude = (~n + 1) & mask128
-    let magnitude: bigint;
-    if (isNegative) {
-        magnitude = ((~n) + BigInt(1)) & mask128;
-    } else {
-        magnitude = n;
-    }
+    const magnitude: bigint = isNegative ? (((~n) + BigInt(1)) & mask128) : n;
 
     // Magnitude as decimal string
     const digits = magnitude.toString(10);
@@ -124,18 +119,8 @@ export function toDecimalString(value: Uint32Array, scale: number): string {
     // Trim trailing zeros in fractional part
     fracPart = fracPart.replace(/0+$/, '');
 
-    let result: string;
-    if (fracPart === '') {
-        // No fractional digits left => return integer only
-        result = integerPart;
-    } else {
-        result = integerPart + '.' + fracPart;
-    }
-
-    if (isNegative) {
-        result = '-' + result;
-    }
-    return result;
+    const result = fracPart === '' ? integerPart : integerPart + '.' + fracPart;
+    return isNegative ? '-' + result : result;
 }
 
 /**
