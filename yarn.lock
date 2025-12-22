@@ -1551,10 +1551,10 @@
   resolved "https://registry.yarnpkg.com/@types/json-schema/-/json-schema-7.0.15.tgz#596a1747233694d50f6ad8a7869fcb6f56cf5841"
   integrity sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==
 
-"@types/lz4js@0.2.1":
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/@types/lz4js/-/lz4js-0.2.1.tgz#44214fe6b28187ff36eee03afc2b344cbd886b3e"
-  integrity sha512-aAnbA4uKPNqZqu0XK1QAwKP0Wskb4Oa7ZFqxW5CMIyGgqYQKFgBxTfK3m3KODXoOLv5t14VregzgrEak13uGQA==
+"@types/lz4js@0.2.2":
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/@types/lz4js/-/lz4js-0.2.2.tgz#a4267ec03ea7297994278f27af1d09fe7f369876"
+  integrity sha512-pqXfoJ2AwllcLTf1Nia0+HT1KHj8z4wWo3bBP6vn7Aen5ySywBqrh/u1TyBwWxuKDS+mPzVHkPbHivqZEfk6pA==
 
 "@types/minimatch@^5.1.2":
   version "5.1.2"
