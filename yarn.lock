@@ -2878,10 +2878,10 @@ escape-string-regexp@^4.0.0:
   resolved "https://registry.yarnpkg.com/escape-string-regexp/-/escape-string-regexp-4.0.0.tgz#14ba83a5d373e3d311e5afca29cf5bfad965bf34"
   integrity sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==
 
-eslint-plugin-jest@29.0.1:
-  version "29.0.1"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-jest/-/eslint-plugin-jest-29.0.1.tgz#0f72a81349409d20742208260c9a6cb9efed4df5"
-  integrity sha512-EE44T0OSMCeXhDrrdsbKAhprobKkPtJTbQz5yEktysNpHeDZTAL1SfDTNKmcFfJkY6yrQLtTKZALrD3j/Gpmiw==
+eslint-plugin-jest@29.9.0:
+  version "29.9.0"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-jest/-/eslint-plugin-jest-29.9.0.tgz#80c3b4a7ef70927016127b5d67792403d1ddfb4d"
+  integrity sha512-1H2VNoEkJEO3CzfoSvAIBRaiywXmLU7FesYct/yI4YPnzkM91bNFBMVKqNjT2C7mPGvKAkCQV14oi5rgFCqPdQ==
   dependencies:
     "@typescript-eslint/utils" "^8.0.0"
 
