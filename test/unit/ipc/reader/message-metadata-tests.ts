@@ -15,20 +15,20 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { tableFromIPC, RecordBatch } from 'apache-arrow';
 
 // Path to the test file with message-level metadata
 // Use process.cwd() since tests are run from project root
-const testFilePath = resolve(process.cwd(), 'test/data/test_message_metadata.arrow');
+const testFilePath = path.resolve(process.cwd(), 'test/data/test_message_metadata.arrow');
 
 describe('RecordBatch message metadata', () => {
     const buffer = readFileSync(testFilePath);
     const table = tableFromIPC(buffer);
 
     test('should read RecordBatch metadata from IPC file', () => {
-        expect(table.batches.length).toBe(3);
+        expect(table.batches).toHaveLength(3);
 
         for (let i = 0; i < table.batches.length; i++) {
             const batch = table.batches[i];

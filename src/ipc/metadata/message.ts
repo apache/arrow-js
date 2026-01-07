@@ -99,22 +99,35 @@ export class Message<T extends MessageHeader = any> {
         } else if (message.isDictionaryBatch()) {
             headerOffset = DictionaryBatch.encode(b, message.header() as DictionaryBatch);
         }
+
+        // Encode custom metadata if present (must be done before startMessage)
+        const customMetadataOffset = !(message.metadata && message.metadata.size > 0) ? -1 :
+            _Message.createCustomMetadataVector(b, [...message.metadata].map(([k, v]) => {
+                const key = b.createString(`${k}`);
+                const val = b.createString(`${v}`);
+                _KeyValue.startKeyValue(b);
+                _KeyValue.addKey(b, key);
+                _KeyValue.addValue(b, val);
+                return _KeyValue.endKeyValue(b);
+            }));
+
         _Message.startMessage(b);
         _Message.addVersion(b, MetadataVersion.V5);
         _Message.addHeader(b, headerOffset);
         _Message.addHeaderType(b, message.headerType);
         _Message.addBodyLength(b, BigInt(message.bodyLength));
+        if (customMetadataOffset !== -1) { _Message.addCustomMetadata(b, customMetadataOffset); }
         _Message.finishMessageBuffer(b, _Message.endMessage(b));
         return b.asUint8Array();
     }
 
     /** @nocollapse */
-    public static from(header: Schema | RecordBatch | DictionaryBatch, bodyLength = 0) {
+    public static from(header: Schema | RecordBatch | DictionaryBatch, bodyLength = 0, metadata?: Map<string, string>) {
         if (header instanceof Schema) {
             return new Message(0, MetadataVersion.V5, MessageHeader.Schema, header);
         }
         if (header instanceof RecordBatch) {
-            return new Message(bodyLength, MetadataVersion.V5, MessageHeader.RecordBatch, header);
+            return new Message(bodyLength, MetadataVersion.V5, MessageHeader.RecordBatch, header, metadata);
         }
         if (header instanceof DictionaryBatch) {
             return new Message(bodyLength, MetadataVersion.V5, MessageHeader.DictionaryBatch, header);
