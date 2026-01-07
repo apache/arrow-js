@@ -82,7 +82,8 @@ export class Message<T extends MessageHeader = any> {
         const bodyLength: bigint = _message.bodyLength()!;
         const version: MetadataVersion = _message.version();
         const headerType: MessageHeader = _message.headerType();
-        const message = new Message(bodyLength, version, headerType);
+        const metadata = decodeMessageCustomMetadata(_message);
+        const message = new Message(bodyLength, version, headerType, undefined, metadata);
         message._createHeader = decodeMessageHeader(_message, headerType);
         return message;
     }
@@ -126,24 +127,27 @@ export class Message<T extends MessageHeader = any> {
     protected _bodyLength: number;
     protected _version: MetadataVersion;
     protected _compression: BodyCompression | null;
+    protected _metadata: Map<string, string>;
     public get type() { return this.headerType; }
     public get version() { return this._version; }
     public get headerType() { return this._headerType; }
     public get compression() { return this._compression; }
     public get bodyLength() { return this._bodyLength; }
+    public get metadata() { return this._metadata; }
     declare protected _createHeader: MessageHeaderDecoder;
     public header() { return this._createHeader<T>(); }
     public isSchema(): this is Message<MessageHeader.Schema> { return this.headerType === MessageHeader.Schema; }
     public isRecordBatch(): this is Message<MessageHeader.RecordBatch> { return this.headerType === MessageHeader.RecordBatch; }
     public isDictionaryBatch(): this is Message<MessageHeader.DictionaryBatch> { return this.headerType === MessageHeader.DictionaryBatch; }
 
-    constructor(bodyLength: bigint | number, version: MetadataVersion, headerType: T, header?: any) {
+    constructor(bodyLength: bigint | number, version: MetadataVersion, headerType: T, header?: any, metadata?: Map<string, string>) {
         this._version = version;
         this._headerType = headerType;
         this.body = new Uint8Array(0);
         this._compression = header?.compression;
         header && (this._createHeader = () => header);
         this._bodyLength = bigIntToNumber(bodyLength);
+        this._metadata = metadata || new Map();
     }
 }
 
@@ -463,6 +467,17 @@ function decodeCustomMetadata(parent?: _Schema | _Field | null) {
             if ((entry = parent.customMetadata(i)) && (key = entry.key()) != null) {
                 data.set(key, entry.value()!);
             }
+        }
+    }
+    return data;
+}
+
+/** @ignore */
+function decodeMessageCustomMetadata(message: _Message) {
+    const data = new Map<string, string>();
+    for (let entry, key, i = -1, n = Math.trunc(message.customMetadataLength()); ++i < n;) {
+        if ((entry = message.customMetadata(i)) && (key = entry.key()) != null) {
+            data.set(key, entry.value()!);
         }
     }
     return data;

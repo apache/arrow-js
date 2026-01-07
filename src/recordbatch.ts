@@ -47,9 +47,10 @@ export interface RecordBatch<T extends TypeMap = any> {
 export class RecordBatch<T extends TypeMap = any> {
 
     constructor(columns: { [P in keyof T]: Data<T[P]> });
-    constructor(schema: Schema<T>, data?: Data<Struct<T>>);
+    constructor(schema: Schema<T>, data?: Data<Struct<T>>, metadata?: Map<string, string>);
     constructor(...args: any[]) {
         switch (args.length) {
+            case 3:
             case 2: {
                 [this.schema] = args;
                 if (!(this.schema instanceof Schema)) {
@@ -60,7 +61,8 @@ export class RecordBatch<T extends TypeMap = any> {
                         nullCount: 0,
                         type: new Struct<T>(this.schema.fields),
                         children: this.schema.fields.map((f) => makeData({ type: f.type, nullCount: 0 }))
-                    })
+                    }),
+                    this._metadata = new Map()
                 ] = args;
                 if (!(this.data instanceof Data)) {
                     throw new TypeError('RecordBatch constructor expects a [Schema, Data] pair.');
@@ -84,6 +86,7 @@ export class RecordBatch<T extends TypeMap = any> {
                 const schema = new Schema<T>(fields);
                 const data = makeData({ type: new Struct<T>(fields), length, children, nullCount: 0 });
                 [this.schema, this.data] = ensureSameLengthData<T>(schema, data.children as Data<T[keyof T]>[], length);
+                this._metadata = new Map();
                 break;
             }
             default: throw new TypeError('RecordBatch constructor expects an Object mapping names to child Data, or a [Schema, Data] pair.');
@@ -91,9 +94,15 @@ export class RecordBatch<T extends TypeMap = any> {
     }
 
     protected _dictionaries?: Map<number, Vector>;
+    protected _metadata: Map<string, string>;
 
     public readonly schema: Schema<T>;
     public readonly data: Data<Struct<T>>;
+
+    /**
+     * Custom metadata for this RecordBatch.
+     */
+    public get metadata() { return this._metadata; }
 
     public get dictionaries() {
         return this._dictionaries || (this._dictionaries = collectDictionaries(this.schema.fields, this.data.children));
@@ -188,7 +197,7 @@ export class RecordBatch<T extends TypeMap = any> {
      */
     public slice(begin?: number, end?: number): RecordBatch<T> {
         const [slice] = new Vector([this.data]).slice(begin, end).data;
-        return new RecordBatch(this.schema, slice);
+        return new RecordBatch(this.schema, slice, this._metadata);
     }
 
     /**
@@ -240,7 +249,7 @@ export class RecordBatch<T extends TypeMap = any> {
             schema = new Schema(fields, new Map(this.schema.metadata));
             data = makeData({ type: new Struct<T>(fields), children });
         }
-        return new RecordBatch(schema, data);
+        return new RecordBatch(schema, data, this._metadata);
     }
 
     /**
@@ -259,7 +268,7 @@ export class RecordBatch<T extends TypeMap = any> {
                 children[index] = this.data.children[index] as Data<T[K]>;
             }
         }
-        return new RecordBatch(schema, makeData({ type, length: this.numRows, children }));
+        return new RecordBatch(schema, makeData({ type, length: this.numRows, children }), this._metadata);
     }
 
     /**
@@ -272,7 +281,7 @@ export class RecordBatch<T extends TypeMap = any> {
         const schema = this.schema.selectAt<K>(columnIndices);
         const children = columnIndices.map((i) => this.data.children[i]).filter(Boolean);
         const subset = makeData({ type: new Struct(schema.fields), length: this.numRows, children });
-        return new RecordBatch<{ [P in keyof K]: K[P] }>(schema, subset);
+        return new RecordBatch<{ [P in keyof K]: K[P] }>(schema, subset, this._metadata);
     }
 
     // Initialize this static property via an IIFE so bundlers don't tree-shake
@@ -347,9 +356,9 @@ function collectDictionaries(fields: Field[], children: readonly Data[], diction
  * @private
  */
 export class _InternalEmptyPlaceholderRecordBatch<T extends TypeMap = any> extends RecordBatch<T> {
-    constructor(schema: Schema<T>) {
+    constructor(schema: Schema<T>, metadata?: Map<string, string>) {
         const children = schema.fields.map((f) => makeData({ type: f.type }));
         const data = makeData({ type: new Struct<T>(schema.fields), nullCount: 0, children });
-        super(schema, data);
+        super(schema, data, metadata || new Map());
     }
 }
