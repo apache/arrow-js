@@ -69,6 +69,17 @@ export class Schema<T extends TypeMap = any> {
         return new Schema<K>(fields, this.metadata);
     }
 
+    /**
+     * Create a new Schema with replaced metadata.
+     *
+     * @param metadata Replacement metadata entries. Pass `null` to clear.
+     */
+    public withMetadata(metadata?: Map<string, string> | Record<string, string> | null): Schema<T> {
+        if (metadata === undefined) { return this; }
+        const next = metadata === null ? new Map<string, string>() : toMetadataMap(metadata);
+        return new Schema<T>(this.fields, next, this.dictionaries, this.metadataVersion);
+    }
+
     public assign<R extends TypeMap = any>(schema: Schema<R>): Schema<T & R>;
     public assign<R extends TypeMap = any>(...fields: (Field<R[keyof R]> | Field<R[keyof R]>[])[]): Schema<T & R>;
     public assign<R extends TypeMap = any>(...args: (Schema<R> | Field<R[keyof R]> | Field<R[keyof R]>[])[]) {
@@ -143,6 +154,18 @@ export class Field<T extends DataType = any> {
             : ({ name = this.name, type = this.type, nullable = this.nullable, metadata = this.metadata } = args[0]);
         return Field.new<R>(name, type, nullable, metadata);
     }
+
+    /**
+     * Create a new Field with replaced metadata. Accepts either a Map or a plain object.
+     * Pass `null` to clear existing metadata.
+     *
+     * @param metadata Replacement metadata entries.
+     */
+    public withMetadata(metadata?: Map<string, string> | Record<string, string> | null): Field<T> {
+        if (metadata === undefined) { return this; }
+        const next = metadata === null ? new Map<string, string>() : toMetadataMap(metadata);
+        return new Field<T>(this.name, this.type, this.nullable, next);
+    }
 }
 
 // Add these here so they're picked up by the externs creator
@@ -155,6 +178,13 @@ export class Field<T extends DataType = any> {
 /** @ignore */
 function mergeMaps<TKey, TVal>(m1?: Map<TKey, TVal> | null, m2?: Map<TKey, TVal> | null): Map<TKey, TVal> {
     return new Map([...(m1 || new Map()), ...(m2 || new Map())]);
+}
+
+/** @ignore */
+function toMetadataMap(metadata: Map<string, string> | Record<string, string>) {
+    return metadata instanceof Map
+        ? new Map(metadata)
+        : new Map(Object.entries(metadata));
 }
 
 /** @ignore */
