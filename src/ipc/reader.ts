@@ -358,7 +358,7 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
         return this;
     }
 
-    protected _loadRecordBatch(header: metadata.RecordBatch, body: Uint8Array): RecordBatch<T> {
+    protected _loadRecordBatch(header: metadata.RecordBatch, body: Uint8Array, messageMetadata?: Map<string, string>): RecordBatch<T> {
         let children: Data<any>[];
         if (header.compression != null) {
             const codec = compressionRegistry.get(header.compression.type);
@@ -379,7 +379,7 @@ abstract class RecordBatchReaderImpl<T extends TypeMap = any> implements RecordB
         }
 
         const data = makeData({ type: new Struct(this.schema.fields), length: header.length, children });
-        return new RecordBatch(this.schema, data);
+        return new RecordBatch(this.schema, data, messageMetadata);
     }
 
     protected _loadDictionaryBatch(header: metadata.DictionaryBatch, body: Uint8Array) {
@@ -512,7 +512,7 @@ class RecordBatchStreamReaderImpl<T extends TypeMap = any> extends RecordBatchRe
                 this._recordBatchIndex++;
                 const header = message.header();
                 const buffer = reader.readMessageBody(message.bodyLength);
-                const recordBatch = this._loadRecordBatch(header, buffer);
+                const recordBatch = this._loadRecordBatch(header, buffer, message.metadata);
                 return { done: false, value: recordBatch };
             } else if (message.isDictionaryBatch()) {
                 this._dictionaryIndex++;
@@ -587,7 +587,7 @@ class AsyncRecordBatchStreamReaderImpl<T extends TypeMap = any> extends RecordBa
                 this._recordBatchIndex++;
                 const header = message.header();
                 const buffer = await reader.readMessageBody(message.bodyLength);
-                const recordBatch = this._loadRecordBatch(header, buffer);
+                const recordBatch = this._loadRecordBatch(header, buffer, message.metadata);
                 return { done: false, value: recordBatch };
             } else if (message.isDictionaryBatch()) {
                 this._dictionaryIndex++;
@@ -640,7 +640,7 @@ class RecordBatchFileReaderImpl<T extends TypeMap = any> extends RecordBatchStre
             if (message?.isRecordBatch()) {
                 const header = message.header();
                 const buffer = this._reader.readMessageBody(message.bodyLength);
-                const recordBatch = this._loadRecordBatch(header, buffer);
+                const recordBatch = this._loadRecordBatch(header, buffer, message.metadata);
                 return recordBatch;
             }
         }
@@ -714,7 +714,7 @@ class AsyncRecordBatchFileReaderImpl<T extends TypeMap = any> extends AsyncRecor
             if (message?.isRecordBatch()) {
                 const header = message.header();
                 const buffer = await this._reader.readMessageBody(message.bodyLength);
-                const recordBatch = this._loadRecordBatch(header, buffer);
+                const recordBatch = this._loadRecordBatch(header, buffer, message.metadata);
                 return recordBatch;
             }
         }
