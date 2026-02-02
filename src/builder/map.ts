@@ -32,9 +32,9 @@ export class MapBuilder<K extends DataType = any, V extends DataType = any, TNul
     }
 
     public setValue(index: number, value: MapValueExt<K, V>) {
-        const row = (value instanceof Map ? value : new Map(Object.entries(value))) as MapValue<K, V>;
+        const row = (value instanceof Map ? value : new Map(Object.entries(value))) as unknown as MapValue<K, V>;
         const pending = this._pending || (this._pending = new Map() as MapValues<K, V>);
-        const current = pending.get(index) as Map<K, V> | undefined;
+        const current = pending.get(index);
         current && (this._pendingLength -= current.size);
         this._pendingLength += row.size;
         pending.set(index, row);
