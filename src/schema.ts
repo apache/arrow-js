@@ -18,7 +18,31 @@
 import { MetadataVersion } from './enum.js';
 import { DataType, TypeMap } from './type.js';
 
+/** @ignore */
+const kSchemaSymbol = Symbol.for('apache-arrow/Schema');
+/** @ignore */
+const kFieldSymbol = Symbol.for('apache-arrow/Field');
+
 export class Schema<T extends TypeMap = any> {
+
+    /**
+     * Check if an object is an instance of Schema.
+     * This works across different instances of the Arrow library.
+     */
+    static isSchema(x: any): x is Schema {
+        return x?.[kSchemaSymbol] === true;
+    }
+
+    /**
+     * Custom instanceof handler to work across different Arrow library instances.
+     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
+     */
+    static [Symbol.hasInstance](x: any): x is Schema {
+        return Schema.isSchema(x);
+    }
+
+    /** @internal */
+    declare public readonly [kSchemaSymbol]: true;
 
     public readonly fields: Field<T[keyof T]>[];
     public readonly metadata: Map<string, string>;
@@ -102,8 +126,28 @@ export class Schema<T extends TypeMap = any> {
 (Schema.prototype as any).fields = <any>null;
 (Schema.prototype as any).metadata = <any>null;
 (Schema.prototype as any).dictionaries = <any>null;
+(Schema.prototype as any)[kSchemaSymbol] = true;
 
 export class Field<T extends DataType = any> {
+
+    /**
+     * Check if an object is an instance of Field.
+     * This works across different instances of the Arrow library.
+     */
+    static isField(x: any): x is Field {
+        return x?.[kFieldSymbol] === true;
+    }
+
+    /**
+     * Custom instanceof handler to work across different Arrow library instances.
+     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
+     */
+    static [Symbol.hasInstance](x: any): x is Field {
+        return Field.isField(x);
+    }
+
+    /** @internal */
+    declare public readonly [kFieldSymbol]: true;
 
     public static new<T extends DataType = any>(props: { name: string | number; type: T; nullable?: boolean; metadata?: Map<string, string> | null }): Field<T>;
     public static new<T extends DataType = any>(name: string | number | Field<T>, type: T, nullable?: boolean, metadata?: Map<string, string> | null): Field<T>;
@@ -151,6 +195,7 @@ export class Field<T extends DataType = any> {
 (Field.prototype as any).name = null;
 (Field.prototype as any).nullable = null;
 (Field.prototype as any).metadata = null;
+(Field.prototype as any)[kFieldSymbol] = true;
 
 /** @ignore */
 function mergeMaps<TKey, TVal>(m1?: Map<TKey, TVal> | null, m2?: Map<TKey, TVal> | null): Map<TKey, TVal> {

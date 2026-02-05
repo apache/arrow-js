@@ -45,6 +45,9 @@ import { ArrayDataType, BigIntArray, TypedArray, TypedArrayDataType } from './in
 import { RecordBatch, _InternalEmptyPlaceholderRecordBatch } from './recordbatch.js';
 
 /** @ignore */
+const kTableSymbol = Symbol.for('apache-arrow/Table');
+
+/** @ignore */
 export interface Table<T extends TypeMap = any> {
     ///
     // Virtual properties for the TypeScript compiler.
@@ -66,6 +69,25 @@ export interface Table<T extends TypeMap = any> {
  * {@link tableFromIPC}.
  */
 export class Table<T extends TypeMap = any> {
+
+    /**
+     * Check if an object is an instance of Table.
+     * This works across different instances of the Arrow library.
+     */
+    static isTable(x: any): x is Table {
+        return x?.[kTableSymbol] === true;
+    }
+
+    /**
+     * Custom instanceof handler to work across different Arrow library instances.
+     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
+     */
+    static [Symbol.hasInstance](x: any): x is Table {
+        return Table.isTable(x);
+    }
+
+    /** @internal */
+    declare public readonly [kTableSymbol]: true;
 
     constructor();
     constructor(batches: Iterable<RecordBatch<T>>);
@@ -387,6 +409,7 @@ export class Table<T extends TypeMap = any> {
         (proto as any)._offsets = new Uint32Array([0]);
         (proto as any)._nullCount = -1;
         (proto as any)[Symbol.isConcatSpreadable] = true;
+        (proto as any)[kTableSymbol] = true;
         (proto as any)['isValid'] = wrapChunkedCall1(isChunkedValid);
         (proto as any)['get'] = wrapChunkedCall1(getVisitor.getVisitFn(Type.Struct));
         (proto as any)['set'] = wrapChunkedCall2(setVisitor.getVisitFn(Type.Struct));
