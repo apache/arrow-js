@@ -29,6 +29,20 @@ import { ArrowJSON, ArrowJSONLike, ITERATOR_DONE, FileHandle } from '../io/inter
 /** @ignore */ const invalidMessageMetadata = (expected: number, actual: number) => `Expected to read ${expected} metadata bytes, but only read ${actual}.`;
 /** @ignore */ const invalidMessageBodyLength = (expected: number, actual: number) => `Expected to read ${expected} bytes for message body, but only read ${actual}.`;
 
+/**
+ * Maximum allowed metadata length (256 MB). This is a safeguard against corrupted
+ * files that could cause the reader to hang or consume excessive memory.
+ * @ignore
+ */
+const MAX_METADATA_LENGTH = 256 * 1024 * 1024;
+
+/**
+ * Maximum allowed message body length (2 GB). This is a safeguard against corrupted
+ * files that could cause the reader to hang or consume excessive memory.
+ * @ignore
+ */
+const MAX_BODY_LENGTH = 2 * 1024 * 1024 * 1024;
+
 /** @ignore */
 export class MessageReader implements IterableIterator<Message> {
     protected source: ByteStream;
@@ -59,6 +73,9 @@ export class MessageReader implements IterableIterator<Message> {
     }
     public readMessageBody(bodyLength: number): Uint8Array {
         if (bodyLength <= 0) { return new Uint8Array(0); }
+        if (bodyLength > MAX_BODY_LENGTH) {
+            throw new Error(`Message body length ${bodyLength} exceeds maximum allowed size of ${MAX_BODY_LENGTH} bytes. The file may be corrupted.`);
+        }
         const buf = toUint8Array(this.source.read(bodyLength));
         if (buf.byteLength < bodyLength) {
             throw new Error(invalidMessageBodyLength(bodyLength, buf.byteLength));
@@ -81,6 +98,10 @@ export class MessageReader implements IterableIterator<Message> {
         const buf = this.source.read(PADDING);
         const bb = buf && new ByteBuffer(buf);
         const len = bb?.readInt32(0) || 0;
+        // Guard against corrupted files with unreasonable metadata lengths
+        if (len < 0 || len > MAX_METADATA_LENGTH) {
+            throw new Error(`Invalid metadata length ${len}. The file may be corrupted.`);
+        }
         return { done: len === 0, value: len };
     }
     protected readMetadata(metadataLength: number): IteratorResult<Message> {
@@ -128,6 +149,9 @@ export class AsyncMessageReader implements AsyncIterableIterator<Message> {
     }
     public async readMessageBody(bodyLength: number): Promise<Uint8Array> {
         if (bodyLength <= 0) { return new Uint8Array(0); }
+        if (bodyLength > MAX_BODY_LENGTH) {
+            throw new Error(`Message body length ${bodyLength} exceeds maximum allowed size of ${MAX_BODY_LENGTH} bytes. The file may be corrupted.`);
+        }
         const buf = toUint8Array(await this.source.read(bodyLength));
         if (buf.byteLength < bodyLength) {
             throw new Error(invalidMessageBodyLength(bodyLength, buf.byteLength));
@@ -150,6 +174,10 @@ export class AsyncMessageReader implements AsyncIterableIterator<Message> {
         const buf = await this.source.read(PADDING);
         const bb = buf && new ByteBuffer(buf);
         const len = bb?.readInt32(0) || 0;
+        // Guard against corrupted files with unreasonable metadata lengths
+        if (len < 0 || len > MAX_METADATA_LENGTH) {
+            throw new Error(`Invalid metadata length ${len}. The file may be corrupted.`);
+        }
         return { done: len === 0, value: len };
     }
     protected async readMetadata(metadataLength: number): Promise<IteratorResult<Message>> {
