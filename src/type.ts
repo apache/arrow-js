@@ -58,17 +58,13 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
     /**
      * Check if an object is an instance of DataType.
      * This works across different instances of the Arrow library.
+     * 
+     * Note: We intentionally do NOT implement Symbol.hasInstance here because
+     * it would break instanceof checks for subclasses like Struct, Dictionary, etc.
+     * Use DataType.isDataType() for cross-library type checking instead.
      */
     static isDataType(x: any): x is DataType {
         return x?.[kDataTypeSymbol] === true;
-    }
-
-    /**
-     * Custom instanceof handler to work across different Arrow library instances.
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
-     */
-    static [Symbol.hasInstance](x: any): x is DataType {
-        return DataType.isDataType(x);
     }
 
     /** @internal */
