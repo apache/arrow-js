@@ -126,7 +126,7 @@ export class Table<T extends TypeMap = any> {
                     return x.batches;
                 } else if (x instanceof Data) {
                     if (x.type instanceof Struct) {
-                        return [new RecordBatch(new Schema(x.type.children), x)];
+                        return [new RecordBatch(new Schema(x.type.children), x as Data<Struct<any>>)];
                     }
                 } else if (Array.isArray(x)) {
                     return x.flatMap(v => unwrap(v));
