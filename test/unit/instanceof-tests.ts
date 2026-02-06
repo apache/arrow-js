@@ -51,7 +51,7 @@ describe('Cross-library instanceof support', () => {
 
         test('Schema.isSchema() returns false for non-Schema values', () => {
             expect(Schema.isSchema(null)).toBe(false);
-            expect(Schema.isSchema(undefined)).toBe(false);
+            expect(Schema.isSchema()).toBe(false);
             expect(Schema.isSchema({})).toBe(false);
             expect(Schema.isSchema({ fields: [] })).toBe(false);
             expect(Schema.isSchema('Schema')).toBe(false);
@@ -59,7 +59,7 @@ describe('Cross-library instanceof support', () => {
 
         test('isArrowSchema() returns false for non-Schema values', () => {
             expect(isArrowSchema(null)).toBe(false);
-            expect(isArrowSchema(undefined)).toBe(false);
+            expect(isArrowSchema()).toBe(false);
             expect(isArrowSchema({})).toBe(false);
         });
     });
@@ -81,14 +81,14 @@ describe('Cross-library instanceof support', () => {
 
         test('Field.isField() returns false for non-Field values', () => {
             expect(Field.isField(null)).toBe(false);
-            expect(Field.isField(undefined)).toBe(false);
+            expect(Field.isField()).toBe(false);
             expect(Field.isField({})).toBe(false);
             expect(Field.isField({ name: 'test', type: new Int32() })).toBe(false);
         });
 
         test('isArrowField() returns false for non-Field values', () => {
             expect(isArrowField(null)).toBe(false);
-            expect(isArrowField(undefined)).toBe(false);
+            expect(isArrowField()).toBe(false);
             expect(isArrowField({})).toBe(false);
         });
     });
@@ -112,14 +112,14 @@ describe('Cross-library instanceof support', () => {
 
         test('DataType.isDataType() returns false for non-DataType values', () => {
             expect(DataType.isDataType(null)).toBe(false);
-            expect(DataType.isDataType(undefined)).toBe(false);
+            expect(DataType.isDataType()).toBe(false);
             expect(DataType.isDataType({})).toBe(false);
             expect(DataType.isDataType({ typeId: 0 })).toBe(false);
         });
 
         test('isArrowDataType() returns false for non-DataType values', () => {
             expect(isArrowDataType(null)).toBe(false);
-            expect(isArrowDataType(undefined)).toBe(false);
+            expect(isArrowDataType()).toBe(false);
             expect(isArrowDataType({})).toBe(false);
         });
     });
@@ -141,14 +141,14 @@ describe('Cross-library instanceof support', () => {
 
         test('Data.isData() returns false for non-Data values', () => {
             expect(Data.isData(null)).toBe(false);
-            expect(Data.isData(undefined)).toBe(false);
+            expect(Data.isData()).toBe(false);
             expect(Data.isData({})).toBe(false);
             expect(Data.isData({ type: new Int32(), length: 5 })).toBe(false);
         });
 
         test('isArrowData() returns false for non-Data values', () => {
             expect(isArrowData(null)).toBe(false);
-            expect(isArrowData(undefined)).toBe(false);
+            expect(isArrowData()).toBe(false);
             expect(isArrowData({})).toBe(false);
         });
     });
@@ -170,14 +170,14 @@ describe('Cross-library instanceof support', () => {
 
         test('Vector.isVector() returns false for non-Vector values', () => {
             expect(Vector.isVector(null)).toBe(false);
-            expect(Vector.isVector(undefined)).toBe(false);
+            expect(Vector.isVector()).toBe(false);
             expect(Vector.isVector({})).toBe(false);
             expect(Vector.isVector([1, 2, 3])).toBe(false);
         });
 
         test('isArrowVector() returns false for non-Vector values', () => {
             expect(isArrowVector(null)).toBe(false);
-            expect(isArrowVector(undefined)).toBe(false);
+            expect(isArrowVector()).toBe(false);
             expect(isArrowVector({})).toBe(false);
         });
     });
@@ -206,14 +206,14 @@ describe('Cross-library instanceof support', () => {
 
         test('RecordBatch.isRecordBatch() returns false for non-RecordBatch values', () => {
             expect(RecordBatch.isRecordBatch(null)).toBe(false);
-            expect(RecordBatch.isRecordBatch(undefined)).toBe(false);
+            expect(RecordBatch.isRecordBatch()).toBe(false);
             expect(RecordBatch.isRecordBatch({})).toBe(false);
             expect(RecordBatch.isRecordBatch({ schema, numRows: 3 })).toBe(false);
         });
 
         test('isArrowRecordBatch() returns false for non-RecordBatch values', () => {
             expect(isArrowRecordBatch(null)).toBe(false);
-            expect(isArrowRecordBatch(undefined)).toBe(false);
+            expect(isArrowRecordBatch()).toBe(false);
             expect(isArrowRecordBatch({})).toBe(false);
         });
     });
@@ -238,14 +238,14 @@ describe('Cross-library instanceof support', () => {
 
         test('Table.isTable() returns false for non-Table values', () => {
             expect(Table.isTable(null)).toBe(false);
-            expect(Table.isTable(undefined)).toBe(false);
+            expect(Table.isTable()).toBe(false);
             expect(Table.isTable({})).toBe(false);
             expect(Table.isTable({ schema: new Schema([]), batches: [] })).toBe(false);
         });
 
         test('isArrowTable() returns false for non-Table values', () => {
             expect(isArrowTable(null)).toBe(false);
-            expect(isArrowTable(undefined)).toBe(false);
+            expect(isArrowTable()).toBe(false);
             expect(isArrowTable({})).toBe(false);
         });
     });
