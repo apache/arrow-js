@@ -79,7 +79,7 @@
     "eslint-plugin-jest": "29.9.0",
     "eslint-plugin-unicorn": "59.0.1",
     "glob": "13.0.0",
-    "google-closure-compiler": "20251001.0.0",
+    "google-closure-compiler": "20260128.0.0",
     "gulp": "5.0.1",
     "gulp-esbuild": "0.14.1",
     "gulp-json-transform": "0.5.0",
