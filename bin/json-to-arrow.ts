@@ -21,8 +21,7 @@ import * as fs from 'node:fs';
 import * as Path from 'node:path';
 import commandLineArgs from 'command-line-args';
 import { finished as eos } from 'node:stream/promises';
-// @ts-ignore
-import { parse as bignumJSONParse } from 'json-bignum';
+import { parseArrowJSON } from '../src/util/json.ts';
 import { RecordBatchReader, RecordBatchFileWriter, RecordBatchStreamWriter } from '../index.ts';
 
 const argv = commandLineArgs(cliOpts(), { partial: true });
@@ -41,7 +40,7 @@ const arrowPaths = [...(argv.arrow || [])];
             ? RecordBatchFileWriter
             : RecordBatchStreamWriter;
 
-        const reader = RecordBatchReader.from(bignumJSONParse(
+        const reader = RecordBatchReader.from(parseArrowJSON(
             await fs.promises.readFile(Path.resolve(path), 'utf8')));
 
         const jsonToArrow = reader

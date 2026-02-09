@@ -16,6 +16,7 @@
 // under the License.
 
 import { IntervalMonthDayNano, IntervalMonthDayNanoObject, Vector, makeData, util } from 'apache-arrow';
+import { parseArrowJSON } from 'apache-arrow/util/json';
 
 const { toIntervalMonthDayNanoInt32Array, toIntervalMonthDayNanoObjects } = util;
 
@@ -93,6 +94,22 @@ describe(`MonthDayNanoIntervalVector`, () => {
             expect(toIntervalMonthDayNanoObjects(vec.get(0), false)).toStrictEqual([{
                 ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT,
                 nanoseconds: BigInt(sample),
+            }]);
+        }
+    });
+
+    test(`Unsafe integer nanoseconds parsed from JSON preserve exact values`, () => {
+        const samples = [
+            '6684525287992311000',
+            '-390122861233460600'
+        ];
+        for (const sample of samples) {
+            const parsed = parseArrowJSON(`{"nanoseconds":${sample}}`);
+            expect(parsed.nanoseconds.constructor?.name).toBe('BigNumber');
+            const array = toIntervalMonthDayNanoInt32Array([parsed]);
+            expect(toIntervalMonthDayNanoObjects(array, false)).toStrictEqual([{
+                ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT,
+                nanoseconds: BigInt(sample)
             }]);
         }
     });

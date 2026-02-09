@@ -22,8 +22,7 @@ import * as Path from 'node:path';
 import { glob } from 'glob';
 import { zip } from 'ix/iterable/zip';
 import commandLineArgs from 'command-line-args';
-// @ts-ignore
-import { parse as bignumJSONParse } from 'json-bignum';
+import { parseArrowJSON } from '../src/util/json.ts';
 
 import {
     Table,
@@ -138,7 +137,7 @@ async function validate(jsonPath: string, arrowPath: string) {
     ]);
 
     const arrowData = files[0];
-    const jsonData = bignumJSONParse(files[1]);
+    const jsonData = parseArrowJSON(files[1]);
 
     process.stdout.write(`\n`);
     process.stdout.write(` json: ${jsonPath}\n`);
