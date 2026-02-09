@@ -77,4 +77,23 @@ describe(`MonthDayNanoIntervalVector`, () => {
         expect(vec.get(0)).toStrictEqual(array);
         expect(toIntervalMonthDayNanoObjects(vec.get(0), false)).toStrictEqual([{ ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT, ...obj }]);
     });
+
+    test(`Unsafe integer nanoseconds parsed as numbers roundtrip correctly`, () => {
+        const samples = [
+            '-390122861233460600',
+            '6684525287992311000'
+        ];
+        for (const sample of samples) {
+            const nanoseconds = Number.parseFloat(sample);
+            expect(`${nanoseconds}`).toBe(sample);
+            const obj: Partial<IntervalMonthDayNanoObject> = { nanoseconds };
+            const array = toIntervalMonthDayNanoInt32Array([obj]);
+            const vec = makeIntervalMonthDayNanoVector(array);
+            expect(vec.type).toBeInstanceOf(IntervalMonthDayNano);
+            expect(toIntervalMonthDayNanoObjects(vec.get(0), false)).toStrictEqual([{
+                ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT,
+                nanoseconds: BigInt(sample),
+            }]);
+        }
+    });
 });
