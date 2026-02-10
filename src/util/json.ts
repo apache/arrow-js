@@ -16,27 +16,13 @@
 // under the License.
 
 // @ts-ignore
-import { parse as bignumJSONParse, BigNumber } from 'json-bignum';
+import jsonBigInt from 'json-bigint';
+
+const parseJSON = jsonBigInt({ useNativeBigInt: true }).parse;
 
 /** @ignore */
 export function parseArrowJSON(source: string): any {
-    return normalizeUnsafeIntegers(bignumJSONParse(source));
-}
-
-function normalizeUnsafeIntegers(value: any): any {
-    if (typeof value === 'number') {
-        if (Number.isInteger(value) && !Number.isSafeInteger(value)) {
-            return new BigNumber(`${value}`);
-        }
-        return value;
-    }
-    if (Array.isArray(value)) {
-        return value.map((item) => normalizeUnsafeIntegers(item));
-    }
-    if (value && typeof value === 'object' && !(value instanceof BigNumber)) {
-        for (const key of Object.keys(value)) {
-            value[key] = normalizeUnsafeIntegers(value[key]);
-        }
-    }
-    return value;
+    // Preserve exact integer literals beyond the IEEE-754 safe range (e.g.
+    // Int64 values and IntervalMonthDayNano nanoseconds) as BigInt.
+    return parseJSON(source);
 }
