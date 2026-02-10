@@ -29,21 +29,8 @@ export class Schema<T extends TypeMap = any> {
      * Check if an object is an instance of Schema.
      * This works across different instances of the Arrow library.
      */
-    static isSchema(x: any): x is Schema {
+    /** @nocollapse */ static isSchema(x: any): x is Schema {
         return x?.[kSchemaSymbol] === true;
-    }
-
-    /**
-     * Custom instanceof handler to work across different Arrow library instances.
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
-     */
-    static [Symbol.hasInstance](instance: any): instance is Schema {
-        // Preserve native prototype-chain instanceof for this class and subclasses
-        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
-            return true;
-        }
-        // Cross-library marker check (only for Schema itself, not subclasses)
-        return this === Schema && Schema.isSchema(instance);
     }
 
     /** @internal */
@@ -133,27 +120,21 @@ export class Schema<T extends TypeMap = any> {
 (Schema.prototype as any).dictionaries = <any>null;
 (Schema.prototype as any)[kSchemaSymbol] = true;
 
+Object.defineProperty(Schema, Symbol.hasInstance, {
+    value: function isSchemaInstance(instance: any): instance is Schema {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Schema && Schema.isSchema(instance));
+    },
+});
+
 export class Field<T extends DataType = any> {
 
     /**
      * Check if an object is an instance of Field.
      * This works across different instances of the Arrow library.
      */
-    static isField(x: any): x is Field {
+    /** @nocollapse */ static isField(x: any): x is Field {
         return x?.[kFieldSymbol] === true;
-    }
-
-    /**
-     * Custom instanceof handler to work across different Arrow library instances.
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
-     */
-    static [Symbol.hasInstance](instance: any): instance is Field {
-        // Preserve native prototype-chain instanceof for this class and subclasses
-        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
-            return true;
-        }
-        // Cross-library marker check (only for Field itself, not subclasses)
-        return this === Field && Field.isField(instance);
     }
 
     /** @internal */
@@ -206,6 +187,13 @@ export class Field<T extends DataType = any> {
 (Field.prototype as any).nullable = null;
 (Field.prototype as any).metadata = null;
 (Field.prototype as any)[kFieldSymbol] = true;
+
+Object.defineProperty(Field, Symbol.hasInstance, {
+    value: function isFieldInstance(instance: any): instance is Field {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Field && Field.isField(instance));
+    },
+});
 
 /** @ignore */
 function mergeMaps<TKey, TVal>(m1?: Map<TKey, TVal> | null, m2?: Map<TKey, TVal> | null): Map<TKey, TVal> {

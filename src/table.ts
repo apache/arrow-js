@@ -74,21 +74,8 @@ export class Table<T extends TypeMap = any> {
      * Check if an object is an instance of Table.
      * This works across different instances of the Arrow library.
      */
-    static isTable(x: any): x is Table {
+    /** @nocollapse */ static isTable(x: any): x is Table {
         return x?.[kTableSymbol] === true;
-    }
-
-    /**
-     * Custom instanceof handler to work across different Arrow library instances.
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
-     */
-    static [Symbol.hasInstance](instance: any): instance is Table {
-        // Preserve native prototype-chain instanceof for this class and subclasses
-        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
-            return true;
-        }
-        // Cross-library marker check (only for Table itself, not subclasses)
-        return this === Table && Table.isTable(instance);
     }
 
     /** @internal */
@@ -422,6 +409,13 @@ export class Table<T extends TypeMap = any> {
         return 'Table';
     })(Table.prototype);
 }
+
+Object.defineProperty(Table, Symbol.hasInstance, {
+    value: function isTableInstance(instance: any): instance is Table {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Table && Table.isTable(instance));
+    },
+});
 
 
 type VectorsMap<T extends TypeMap> = { [P in keyof T]: Vector<T[P]> };

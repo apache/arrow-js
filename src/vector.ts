@@ -70,21 +70,8 @@ export class Vector<T extends DataType = any> {
      * Check if an object is an instance of Vector.
      * This works across different instances of the Arrow library.
      */
-    static isVector(x: any): x is Vector {
+    /** @nocollapse */ static isVector(x: any): x is Vector {
         return x?.[kVectorSymbol] === true;
-    }
-
-    /**
-     * Custom instanceof handler to work across different Arrow library instances.
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
-     */
-    static [Symbol.hasInstance](instance: any): instance is Vector {
-        // Preserve native prototype-chain instanceof for this class and subclasses
-        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
-            return true;
-        }
-        // Cross-library marker check (only for Vector itself, not subclasses)
-        return this === Vector && Vector.isVector(instance);
     }
 
     /** @internal */
@@ -406,6 +393,13 @@ export class Vector<T extends DataType = any> {
         return 'Vector';
     })(Vector.prototype);
 }
+
+Object.defineProperty(Vector, Symbol.hasInstance, {
+    value: function isVectorInstance(instance: any): instance is Vector {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Vector && Vector.isVector(instance));
+    },
+});
 
 class MemoizedVector<T extends DataType = any> extends Vector<T> {
 

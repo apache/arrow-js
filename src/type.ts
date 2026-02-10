@@ -62,6 +62,7 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
      * Note: We intentionally do NOT implement Symbol.hasInstance here because
      * it would break instanceof checks for subclasses like Struct, Dictionary, etc.
      * Use DataType.isDataType() for cross-library type checking instead.
+     * @nocollapse
      */
     static isDataType(x: any): x is DataType {
         return x?.[kDataTypeSymbol] === true;

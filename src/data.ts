@@ -60,21 +60,8 @@ export class Data<T extends DataType = DataType> {
      * Check if an object is an instance of Data.
      * This works across different instances of the Arrow library.
      */
-    static isData(x: any): x is Data {
+    /** @nocollapse */ static isData(x: any): x is Data {
         return x?.[kDataSymbol] === true;
-    }
-
-    /**
-     * Custom instanceof handler to work across different Arrow library instances.
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
-     */
-    static [Symbol.hasInstance](instance: any): instance is Data {
-        // Preserve native prototype-chain instanceof for this class and subclasses
-        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
-            return true;
-        }
-        // Cross-library marker check (only for Data itself, not subclasses)
-        return this === Data && Data.isData(instance);
     }
 
     /** @internal */
@@ -319,6 +306,13 @@ export class Data<T extends DataType = DataType> {
 
 (Data.prototype as any).children = Object.freeze([]);
 (Data.prototype as any)[kDataSymbol] = true;
+
+Object.defineProperty(Data, Symbol.hasInstance, {
+    value: function isDataInstance(instance: any): instance is Data {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Data && Data.isData(instance));
+    },
+});
 
 import {
     Dictionary,
