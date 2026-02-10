@@ -78,8 +78,13 @@ export class Vector<T extends DataType = any> {
      * Custom instanceof handler to work across different Arrow library instances.
      * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
      */
-    static [Symbol.hasInstance](x: any): x is Vector {
-        return Vector.isVector(x);
+    static [Symbol.hasInstance](instance: any): instance is Vector {
+        // Preserve native prototype-chain instanceof for this class and subclasses
+        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
+            return true;
+        }
+        // Cross-library marker check (only for Vector itself, not subclasses)
+        return this === Vector && Vector.isVector(instance);
     }
 
     /** @internal */

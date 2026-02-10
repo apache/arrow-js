@@ -82,8 +82,13 @@ export class Table<T extends TypeMap = any> {
      * Custom instanceof handler to work across different Arrow library instances.
      * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
      */
-    static [Symbol.hasInstance](x: any): x is Table {
-        return Table.isTable(x);
+    static [Symbol.hasInstance](instance: any): instance is Table {
+        // Preserve native prototype-chain instanceof for this class and subclasses
+        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
+            return true;
+        }
+        // Cross-library marker check (only for Table itself, not subclasses)
+        return this === Table && Table.isTable(instance);
     }
 
     /** @internal */

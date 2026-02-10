@@ -61,8 +61,13 @@ export class RecordBatch<T extends TypeMap = any> {
      * Custom instanceof handler to work across different Arrow library instances.
      * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
      */
-    static [Symbol.hasInstance](x: any): x is RecordBatch {
-        return RecordBatch.isRecordBatch(x);
+    static [Symbol.hasInstance](instance: any): instance is RecordBatch {
+        // Preserve native prototype-chain instanceof for this class and subclasses
+        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
+            return true;
+        }
+        // Cross-library marker check (only for RecordBatch itself, not subclasses)
+        return this === RecordBatch && RecordBatch.isRecordBatch(instance);
     }
 
     /** @internal */

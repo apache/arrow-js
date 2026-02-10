@@ -37,8 +37,13 @@ export class Schema<T extends TypeMap = any> {
      * Custom instanceof handler to work across different Arrow library instances.
      * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
      */
-    static [Symbol.hasInstance](x: any): x is Schema {
-        return Schema.isSchema(x);
+    static [Symbol.hasInstance](instance: any): instance is Schema {
+        // Preserve native prototype-chain instanceof for this class and subclasses
+        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
+            return true;
+        }
+        // Cross-library marker check (only for Schema itself, not subclasses)
+        return this === Schema && Schema.isSchema(instance);
     }
 
     /** @internal */
@@ -142,8 +147,13 @@ export class Field<T extends DataType = any> {
      * Custom instanceof handler to work across different Arrow library instances.
      * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/hasInstance
      */
-    static [Symbol.hasInstance](x: any): x is Field {
-        return Field.isField(x);
+    static [Symbol.hasInstance](instance: any): instance is Field {
+        // Preserve native prototype-chain instanceof for this class and subclasses
+        if (Function.prototype[Symbol.hasInstance].call(this, instance)) {
+            return true;
+        }
+        // Cross-library marker check (only for Field itself, not subclasses)
+        return this === Field && Field.isField(instance);
     }
 
     /** @internal */
