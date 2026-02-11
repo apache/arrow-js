@@ -46,11 +46,7 @@ export function toIntervalMonthDayNanoInt32Array(objects: Partial<IntervalMonthD
         data[ai++] = interval['days'] ?? 0;
         const nanoseconds = interval['nanoseconds'];
         if (nanoseconds) {
-            // Avoid BigInt(number) for unsafe integers, which can embed
-            // IEEE-754 rounding before conversion.
-            const ns = typeof nanoseconds === 'number'
-                ? BigInt(`${nanoseconds}`)
-                : BigInt(nanoseconds);
+            const ns = BigInt(nanoseconds);
             // Convert to unsigned 32-bit integers to avoid precision loss
             data[ai++] = Number(ns & BigInt(0xFFFFFFFF)) >>> 0;
             data[ai++] = Number(ns >> BigInt(32)) >>> 0;
