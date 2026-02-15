@@ -98,14 +98,17 @@ describe(`MonthDayNanoIntervalVector`, () => {
         }
     });
 
-    test(`Unsafe integer nanoseconds parsed from JSON preserve exact values`, () => {
+    test(`Integer nanoseconds parsed from JSON preserve exact values`, () => {
         const samples = [
+            '42',
+            '9007199254740991',
+            '9007199254740992',
             '6684525287992311000',
+            '-9007199254740992',
             '-390122861233460600'
         ];
         for (const sample of samples) {
             const parsed = parseArrowJSON(`{"nanoseconds":${sample}}`);
-            expect(typeof parsed.nanoseconds).toBe('bigint');
             const array = toIntervalMonthDayNanoInt32Array([parsed]);
             const vec = makeIntervalMonthDayNanoVector(array);
             expect(vec.type).toBeInstanceOf(IntervalMonthDayNano);

@@ -15,14 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// @ts-ignore
-import jsonBigInt from 'json-bigint';
-
-const parseJSON = jsonBigInt({ useNativeBigInt: true }).parse;
+import { JSONParse } from 'json-with-bigint';
 
 /** @ignore */
 export function parseArrowJSON(source: string): any {
     // Preserve exact integer literals beyond the IEEE-754 safe range (e.g.
     // Int64 values and IntervalMonthDayNano nanoseconds) as BigInt.
-    return parseJSON(source);
+    return JSONParse(source);
 }
