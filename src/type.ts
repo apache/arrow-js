@@ -35,6 +35,9 @@ export type IntBitWidth = 8 | 16 | 32 | 64;
 /** @ignore */
 export type IsSigned = { 'true': true; 'false': false };
 
+/** @ignore */
+const kDataTypeSymbol = Symbol.for('apache-arrow/DataType');
+
 export interface DataType<TType extends Type = Type, TChildren extends TypeMap = any> {
     readonly TType: TType;
     readonly TArray: any;
@@ -51,6 +54,22 @@ export interface DataType<TType extends Type = Type, TChildren extends TypeMap =
  * the logical types that Arrow can represent.
  */
 export abstract class DataType<TType extends Type = Type, TChildren extends TypeMap = any> {
+
+    /**
+     * Check if an object is an instance of DataType.
+     * This works across different instances of the Arrow library.
+     * 
+     * Note: We intentionally do NOT implement Symbol.hasInstance here because
+     * it would break instanceof checks for subclasses like Struct, Dictionary, etc.
+     * Use DataType.isDataType() for cross-library type checking instead.
+     * @nocollapse
+     */
+    static isDataType(x: any): x is DataType {
+        return x?.[kDataTypeSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kDataTypeSymbol]: true;
 
     declare public [Symbol.toStringTag]: string;
 
@@ -93,6 +112,7 @@ export abstract class DataType<TType extends Type = Type, TChildren extends Type
         (<any>proto).children = null;
         (<any>proto).ArrayType = Array;
         (<any>proto).OffsetArrayType = Int32Array;
+        (<any>proto)[kDataTypeSymbol] = true;
         return proto[Symbol.toStringTag] = 'DataType';
     })(DataType.prototype);
 }

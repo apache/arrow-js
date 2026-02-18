@@ -40,6 +40,9 @@ import { instance as iteratorVisitor } from './visitor/iterator.js';
 // @ts-ignore
 import type { vectorFromArray } from './factories.js';
 
+/** @ignore */
+const kVectorSymbol = Symbol.for('apache-arrow/Vector');
+
 export interface Vector<T extends DataType = any> {
     ///
     // Virtual properties for the TypeScript compiler.
@@ -62,6 +65,17 @@ const vectorPrototypesByTypeId = {} as { [typeId: number]: any };
  * Array-like data structure. Use the convenience method {@link makeVector} and {@link vectorFromArray} to create vectors.
  */
 export class Vector<T extends DataType = any> {
+
+    /**
+     * Check if an object is an instance of Vector.
+     * This works across different instances of the Arrow library.
+     */
+    /** @nocollapse */ static isVector(x: any): x is Vector {
+        return x?.[kVectorSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kVectorSymbol]: true;
 
     constructor(input: readonly (Data<T> | Vector<T>)[]) {
         const data: Data<T>[] = input[0] instanceof Vector
@@ -356,6 +370,7 @@ export class Vector<T extends DataType = any> {
         (proto as any).numChildren = 0;
         (proto as any)._offsets = new Uint32Array([0]);
         (proto as any)[Symbol.isConcatSpreadable] = true;
+        (proto as any)[kVectorSymbol] = true;
 
         const typeIds: Type[] = Object.keys(Type)
             .map((T: any) => Type[T] as any)
@@ -378,6 +393,13 @@ export class Vector<T extends DataType = any> {
         return 'Vector';
     })(Vector.prototype);
 }
+
+Object.defineProperty(Vector, Symbol.hasInstance, {
+    value: function isVectorInstance(instance: any): instance is Vector {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Vector && Vector.isVector(instance));
+    },
+});
 
 class MemoizedVector<T extends DataType = any> extends Vector<T> {
 

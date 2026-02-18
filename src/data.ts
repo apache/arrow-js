@@ -42,6 +42,9 @@ export interface Buffers<T extends DataType> {
 }
 
 /** @ignore */
+const kDataSymbol = Symbol.for('apache-arrow/Data');
+
+/** @ignore */
 export interface Data<T extends DataType = DataType> {
     readonly TType: T['TType'];
     readonly TArray: T['TArray'];
@@ -52,6 +55,17 @@ export interface Data<T extends DataType = DataType> {
  * Data structure underlying {@link Vector}s. Use the convenience method {@link makeData}.
  */
 export class Data<T extends DataType = DataType> {
+
+    /**
+     * Check if an object is an instance of Data.
+     * This works across different instances of the Arrow library.
+     */
+    /** @nocollapse */ static isData(x: any): x is Data {
+        return x?.[kDataSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kDataSymbol]: true;
 
     declare public readonly type: T;
     declare public readonly length: number;
@@ -291,6 +305,14 @@ export class Data<T extends DataType = DataType> {
 }
 
 (Data.prototype as any).children = Object.freeze([]);
+(Data.prototype as any)[kDataSymbol] = true;
+
+Object.defineProperty(Data, Symbol.hasInstance, {
+    value: function isDataInstance(instance: any): instance is Data {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Data && Data.isData(instance));
+    },
+});
 
 import {
     Dictionary,

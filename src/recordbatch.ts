@@ -28,6 +28,9 @@ import { instance as indexOfVisitor } from './visitor/indexof.js';
 import { instance as iteratorVisitor } from './visitor/iterator.js';
 
 /** @ignore */
+const kRecordBatchSymbol = Symbol.for('apache-arrow/RecordBatch');
+
+/** @ignore */
 export interface RecordBatch<T extends TypeMap = any> {
     ///
     // Virtual properties for the TypeScript compiler.
@@ -45,6 +48,17 @@ export interface RecordBatch<T extends TypeMap = any> {
 
 /** @ignore */
 export class RecordBatch<T extends TypeMap = any> {
+
+    /**
+     * Check if an object is an instance of RecordBatch.
+     * This works across different instances of the Arrow library.
+     */
+    /** @nocollapse */ static isRecordBatch(x: any): x is RecordBatch {
+        return x?.[kRecordBatchSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kRecordBatchSymbol]: true;
 
     constructor(columns: { [P in keyof T]: Data<T[P]> });
     constructor(schema: Schema<T>, data?: Data<Struct<T>>);
@@ -280,9 +294,17 @@ export class RecordBatch<T extends TypeMap = any> {
     protected static [Symbol.toStringTag] = ((proto: RecordBatch) => {
         (proto as any)._nullCount = -1;
         (proto as any)[Symbol.isConcatSpreadable] = true;
+        (proto as any)[kRecordBatchSymbol] = true;
         return 'RecordBatch';
     })(RecordBatch.prototype);
 }
+
+Object.defineProperty(RecordBatch, Symbol.hasInstance, {
+    value: function isRecordBatchInstance(instance: any): instance is RecordBatch {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === RecordBatch && RecordBatch.isRecordBatch(instance));
+    },
+});
 
 
 /** @ignore */

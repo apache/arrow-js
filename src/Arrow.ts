@@ -102,6 +102,16 @@ export { Message } from './ipc/metadata/message.js';
 export { RecordBatch } from './recordbatch.js';
 export type { ArrowJSONLike, FileHandle, Readable, Writable, ReadableWritable, ReadableDOMStreamOptions } from './io/interfaces.js';
 
+export {
+    isArrowSchema,
+    isArrowField,
+    isArrowDataType,
+    isArrowData,
+    isArrowVector,
+    isArrowRecordBatch,
+    isArrowTable,
+} from './util/typecheck.js';
+
 import * as util_bn_ from './util/bn.js';
 import * as util_int_ from './util/int.js';
 import * as util_bit_ from './util/bit.js';
@@ -112,6 +122,8 @@ import * as util_pretty_ from './util/pretty.js';
 
 import * as util_interval_ from './util/interval.js';
 export type * from './util/interval.js';
+
+import * as util_typecheck_ from './util/typecheck.js';
 
 import { compareSchemas, compareFields, compareTypes } from './visitor/typecomparator.js';
 
@@ -125,6 +137,7 @@ export const util = {
     ...util_vector_,
     ...util_pretty_,
     ...util_interval_,
+    ...util_typecheck_,
     compareSchemas,
     compareFields,
     compareTypes,

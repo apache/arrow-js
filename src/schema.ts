@@ -18,7 +18,23 @@
 import { MetadataVersion } from './enum.js';
 import { DataType, TypeMap } from './type.js';
 
+/** @ignore */
+const kSchemaSymbol = Symbol.for('apache-arrow/Schema');
+/** @ignore */
+const kFieldSymbol = Symbol.for('apache-arrow/Field');
+
 export class Schema<T extends TypeMap = any> {
+
+    /**
+     * Check if an object is an instance of Schema.
+     * This works across different instances of the Arrow library.
+     */
+    /** @nocollapse */ static isSchema(x: any): x is Schema {
+        return x?.[kSchemaSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kSchemaSymbol]: true;
 
     public readonly fields: Field<T[keyof T]>[];
     public readonly metadata: Map<string, string>;
@@ -102,8 +118,27 @@ export class Schema<T extends TypeMap = any> {
 (Schema.prototype as any).fields = <any>null;
 (Schema.prototype as any).metadata = <any>null;
 (Schema.prototype as any).dictionaries = <any>null;
+(Schema.prototype as any)[kSchemaSymbol] = true;
+
+Object.defineProperty(Schema, Symbol.hasInstance, {
+    value: function isSchemaInstance(instance: any): instance is Schema {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Schema && Schema.isSchema(instance));
+    },
+});
 
 export class Field<T extends DataType = any> {
+
+    /**
+     * Check if an object is an instance of Field.
+     * This works across different instances of the Arrow library.
+     */
+    /** @nocollapse */ static isField(x: any): x is Field {
+        return x?.[kFieldSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kFieldSymbol]: true;
 
     public static new<T extends DataType = any>(props: { name: string | number; type: T; nullable?: boolean; metadata?: Map<string, string> | null }): Field<T>;
     public static new<T extends DataType = any>(name: string | number | Field<T>, type: T, nullable?: boolean, metadata?: Map<string, string> | null): Field<T>;
@@ -151,6 +186,14 @@ export class Field<T extends DataType = any> {
 (Field.prototype as any).name = null;
 (Field.prototype as any).nullable = null;
 (Field.prototype as any).metadata = null;
+(Field.prototype as any)[kFieldSymbol] = true;
+
+Object.defineProperty(Field, Symbol.hasInstance, {
+    value: function isFieldInstance(instance: any): instance is Field {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Field && Field.isField(instance));
+    },
+});
 
 /** @ignore */
 function mergeMaps<TKey, TVal>(m1?: Map<TKey, TVal> | null, m2?: Map<TKey, TVal> | null): Map<TKey, TVal> {

@@ -45,6 +45,9 @@ import { ArrayDataType, BigIntArray, TypedArray, TypedArrayDataType } from './in
 import { RecordBatch, _InternalEmptyPlaceholderRecordBatch } from './recordbatch.js';
 
 /** @ignore */
+const kTableSymbol = Symbol.for('apache-arrow/Table');
+
+/** @ignore */
 export interface Table<T extends TypeMap = any> {
     ///
     // Virtual properties for the TypeScript compiler.
@@ -66,6 +69,17 @@ export interface Table<T extends TypeMap = any> {
  * {@link tableFromIPC}.
  */
 export class Table<T extends TypeMap = any> {
+
+    /**
+     * Check if an object is an instance of Table.
+     * This works across different instances of the Arrow library.
+     */
+    /** @nocollapse */ static isTable(x: any): x is Table {
+        return x?.[kTableSymbol] === true;
+    }
+
+    /** @internal */
+    declare public readonly [kTableSymbol]: true;
 
     constructor();
     constructor(batches: Iterable<RecordBatch<T>>);
@@ -104,7 +118,7 @@ export class Table<T extends TypeMap = any> {
                     return x.batches;
                 } else if (x instanceof Data) {
                     if (x.type instanceof Struct) {
-                        return [new RecordBatch(new Schema(x.type.children), x)];
+                        return [new RecordBatch(new Schema(x.type.children), x as Data<Struct<any>>)];
                     }
                 } else if (Array.isArray(x)) {
                     return x.flatMap(v => unwrap(v));
@@ -387,6 +401,7 @@ export class Table<T extends TypeMap = any> {
         (proto as any)._offsets = new Uint32Array([0]);
         (proto as any)._nullCount = -1;
         (proto as any)[Symbol.isConcatSpreadable] = true;
+        (proto as any)[kTableSymbol] = true;
         (proto as any)['isValid'] = wrapChunkedCall1(isChunkedValid);
         (proto as any)['get'] = wrapChunkedCall1(getVisitor.getVisitFn(Type.Struct));
         (proto as any)['set'] = wrapChunkedCall2(setVisitor.getVisitFn(Type.Struct));
@@ -394,6 +409,13 @@ export class Table<T extends TypeMap = any> {
         return 'Table';
     })(Table.prototype);
 }
+
+Object.defineProperty(Table, Symbol.hasInstance, {
+    value: function isTableInstance(instance: any): instance is Table {
+        return Function.prototype[Symbol.hasInstance].call(this, instance)
+            || (this === Table && Table.isTable(instance));
+    },
+});
 
 
 type VectorsMap<T extends TypeMap> = { [P in keyof T]: Vector<T[P]> };

@@ -77,7 +77,14 @@ export {
     RecordBatch,
     util,
     Builder, makeBuilder, builderThroughIterable, builderThroughAsyncIterable,
-    compressionRegistry, CompressionType
+    compressionRegistry, CompressionType,
+    isArrowSchema,
+    isArrowField,
+    isArrowDataType,
+    isArrowData,
+    isArrowVector,
+    isArrowRecordBatch,
+    isArrowTable
 } from './Arrow.js';
 
 export {
