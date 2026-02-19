@@ -185,18 +185,10 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
         return this;
     }
 
-    /**
-     * Write a RecordBatch to the stream with optional custom metadata.
-     * @param payload The RecordBatch, Table, or iterable of RecordBatches to write
-     * @param customMetadata Optional custom metadata to attach to the message (only used when payload is a single RecordBatch)
-     */
-    public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null, customMetadata?: Map<string, string>): void;
+    public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null): void;
     // Overload for UnderlyingSink compatibility (used by DOM streams)
     public write(chunk: RecordBatch<T>, controller: WritableStreamDefaultController): void;
-    public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null, customMetadataOrController?: Map<string, string> | WritableStreamDefaultController) {
-        // Determine if second argument is customMetadata (Map) or controller (WritableStreamDefaultController)
-        const customMetadata = customMetadataOrController instanceof Map ? customMetadataOrController : undefined;
-
+    public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null) {
         let schema: Schema<T> | null = null;
 
         if (!this._sink) {
@@ -218,7 +210,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
 
         if (payload instanceof RecordBatch) {
             if (!(payload instanceof _InternalEmptyPlaceholderRecordBatch)) {
-                this._writeRecordBatch(payload, customMetadata);
+                this._writeRecordBatch(payload);
             }
         } else if (payload instanceof Table) {
             this.writeAll(payload.batches);
@@ -284,12 +276,10 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
         return nBytes > 0 ? this._write(new Uint8Array(nBytes)) : this;
     }
 
-    protected _writeRecordBatch(batch: RecordBatch<T>, customMetadata?: Map<string, string>) {
+    protected _writeRecordBatch(batch: RecordBatch<T>) {
         const { byteLength, nodes, bufferRegions, buffers, variadicBufferCounts } = this._assembleRecordBatch(batch);
-        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression, variadicBufferCounts);
-        // Merge batch.metadata with customMetadata (customMetadata takes precedence)
-        const mergedMetadata = mergeMetadata(batch.metadata, customMetadata);
-        const message = Message.from(recordBatch, byteLength, mergedMetadata);
+        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression, variadicBufferCounts, batch.metadata);
+        const message = Message.from(recordBatch, byteLength);
         return this
             ._writeDictionaries(batch)
             ._writeMessage(message)
@@ -603,12 +593,3 @@ function recordBatchToJSON(records: RecordBatch) {
     }, null, 2);
 }
 
-/** @ignore */
-function mergeMetadata(base?: Map<string, string>, override?: Map<string, string>): Map<string, string> | undefined {
-    if (!base?.size && !override?.size) { return undefined; }
-    const merged = new Map(base);
-    if (override) {
-        for (const [k, v] of override) { merged.set(k, v); }
-    }
-    return merged;
-}

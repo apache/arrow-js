@@ -122,12 +122,12 @@ export class Message<T extends MessageHeader = any> {
     }
 
     /** @nocollapse */
-    public static from(header: Schema | RecordBatch | DictionaryBatch, bodyLength = 0, metadata?: Map<string, string>) {
+    public static from(header: Schema | RecordBatch | DictionaryBatch, bodyLength = 0) {
         if (header instanceof Schema) {
             return new Message(0, MetadataVersion.V5, MessageHeader.Schema, header);
         }
         if (header instanceof RecordBatch) {
-            return new Message(bodyLength, MetadataVersion.V5, MessageHeader.RecordBatch, header, metadata);
+            return new Message(bodyLength, MetadataVersion.V5, MessageHeader.RecordBatch, header, header.metadata);
         }
         if (header instanceof DictionaryBatch) {
             return new Message(bodyLength, MetadataVersion.V5, MessageHeader.DictionaryBatch, header);
@@ -174,23 +174,27 @@ export class RecordBatch {
     protected _buffers: BufferRegion[];
     protected _compression: BodyCompression | null;
     protected _variadicBufferCounts: number[];
+    protected _metadata: Map<string, string>;
     public get nodes() { return this._nodes; }
     public get length() { return this._length; }
     public get buffers() { return this._buffers; }
     public get compression() { return this._compression; }
     public get variadicBufferCounts() { return this._variadicBufferCounts; }
+    public get metadata() { return this._metadata; }
     constructor(
         length: bigint | number,
         nodes: FieldNode[],
         buffers: BufferRegion[],
         compression: BodyCompression | null,
-        variadicBufferCounts: number[] = []
+        variadicBufferCounts: number[] = [],
+        metadata?: Map<string, string>
     ) {
         this._nodes = nodes;
         this._buffers = buffers;
         this._length = bigIntToNumber(length);
         this._compression = compression;
         this._variadicBufferCounts = variadicBufferCounts;
+        this._metadata = metadata || new Map();
     }
 }
 

@@ -50,10 +50,11 @@ describe('RecordBatch message metadata writing', () => {
     describe('Stream format round-trip', () => {
         test('should write and read metadata via RecordBatchStreamWriter', () => {
             const batch = createTestBatch();
-            const metadata = new Map([['batch_id', '123'], ['source', 'test']]);
+            batch.metadata.set('batch_id', '123');
+            batch.metadata.set('source', 'test');
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
             const buffer = writer.toUint8Array(true);
 
@@ -82,10 +83,11 @@ describe('RecordBatch message metadata writing', () => {
     describe('File format round-trip', () => {
         test('should write and read metadata via RecordBatchFileWriter', () => {
             const batch = createTestBatch();
-            const metadata = new Map([['format', 'file'], ['version', '1.0']]);
+            batch.metadata.set('format', 'file');
+            batch.metadata.set('version', '1.0');
 
             const writer = new RecordBatchFileWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
             const buffer = writer.toUint8Array(true);
 
@@ -101,12 +103,20 @@ describe('RecordBatch message metadata writing', () => {
             const writer = new RecordBatchStreamWriter();
 
             const batch1 = createTestBatch();
-            const batch2 = createTestBatch();
-            const batch3 = createTestBatch();
+            batch1.metadata.set('batch_index', '0');
+            batch1.metadata.set('tag', 'first');
 
-            writer.write(batch1, new Map([['batch_index', '0'], ['tag', 'first']]));
-            writer.write(batch2, new Map([['batch_index', '1'], ['tag', 'middle']]));
-            writer.write(batch3, new Map([['batch_index', '2'], ['tag', 'last']]));
+            const batch2 = createTestBatch();
+            batch2.metadata.set('batch_index', '1');
+            batch2.metadata.set('tag', 'middle');
+
+            const batch3 = createTestBatch();
+            batch3.metadata.set('batch_index', '2');
+            batch3.metadata.set('tag', 'last');
+
+            writer.write(batch1);
+            writer.write(batch2);
+            writer.write(batch3);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -123,10 +133,10 @@ describe('RecordBatch message metadata writing', () => {
     describe('Metadata preservation through operations', () => {
         test('should preserve metadata through slice after round-trip', () => {
             const batch = createTestBatch();
-            const metadata = new Map([['key', 'value']]);
+            batch.metadata.set('key', 'value');
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -137,10 +147,10 @@ describe('RecordBatch message metadata writing', () => {
 
         test('should preserve metadata through selectAt after round-trip', () => {
             const batch = createTestBatch();
-            const metadata = new Map([['preserved', 'yes']]);
+            batch.metadata.set('preserved', 'yes');
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -150,21 +160,8 @@ describe('RecordBatch message metadata writing', () => {
         });
     });
 
-    describe('Merge behavior', () => {
-        test('should use customMetadata parameter when batch has no metadata', () => {
-            const batch = createTestBatch();
-            const metadata = new Map([['from_param', 'value']]);
-
-            const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
-            writer.finish();
-
-            const table = tableFromIPC(writer.toUint8Array(true));
-            expect(table.batches[0].metadata.get('from_param')).toBe('value');
-        });
-
-        test('should use batch.metadata when no customMetadata parameter provided', () => {
-            // Create a batch with existing metadata
+    describe('Metadata from constructor', () => {
+        test('should use metadata passed to RecordBatch constructor', () => {
             const schema = new Schema([new Field('id', new Int32())]);
             const idData = makeData({ type: new Int32(), data: new Int32Array([1, 2, 3]) });
             const structData = makeData({
@@ -173,51 +170,23 @@ describe('RecordBatch message metadata writing', () => {
                 nullCount: 0,
                 children: [idData]
             });
-            const batchWithMetadata = new RecordBatch(schema, structData, new Map([['from_batch', 'value']]));
+            const batch = new RecordBatch(schema, structData, new Map([['from_batch', 'value']]));
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batchWithMetadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
             expect(table.batches[0].metadata.get('from_batch')).toBe('value');
-        });
-
-        test('should merge batch.metadata and customMetadata with customMetadata taking precedence', () => {
-            // Create a batch with existing metadata
-            const schema = new Schema([new Field('id', new Int32())]);
-            const idData = makeData({ type: new Int32(), data: new Int32Array([1, 2, 3]) });
-            const structData = makeData({
-                type: new Struct(schema.fields),
-                length: 3,
-                nullCount: 0,
-                children: [idData]
-            });
-            const batchWithMetadata = new RecordBatch(
-                schema,
-                structData,
-                new Map([['key1', 'from_batch'], ['shared_key', 'batch_value']])
-            );
-
-            const writer = new RecordBatchStreamWriter();
-            writer.write(batchWithMetadata, new Map([['key2', 'from_param'], ['shared_key', 'param_value']]));
-            writer.finish();
-
-            const table = tableFromIPC(writer.toUint8Array(true));
-            expect(table.batches[0].metadata.get('key1')).toBe('from_batch');
-            expect(table.batches[0].metadata.get('key2')).toBe('from_param');
-            // customMetadata should override batch.metadata for shared keys
-            expect(table.batches[0].metadata.get('shared_key')).toBe('param_value');
         });
     });
 
     describe('Edge cases', () => {
         test('should handle empty metadata map', () => {
             const batch = createTestBatch();
-            const metadata = new Map<string, string>();
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -226,14 +195,12 @@ describe('RecordBatch message metadata writing', () => {
 
         test('should handle unicode keys and values', () => {
             const batch = createTestBatch();
-            const metadata = new Map([
-                ['日本語キー', 'Japanese key'],
-                ['emoji', '🎉🚀💻'],
-                ['mixed', 'Hello 世界 مرحبا']
-            ]);
+            batch.metadata.set('日本語キー', 'Japanese key');
+            batch.metadata.set('emoji', '🎉🚀💻');
+            batch.metadata.set('mixed', 'Hello 世界 مرحبا');
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -244,10 +211,11 @@ describe('RecordBatch message metadata writing', () => {
 
         test('should handle empty string values', () => {
             const batch = createTestBatch();
-            const metadata = new Map([['empty_value', ''], ['normal', 'value']]);
+            batch.metadata.set('empty_value', '');
+            batch.metadata.set('normal', 'value');
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -258,10 +226,10 @@ describe('RecordBatch message metadata writing', () => {
         test('should handle JSON string as metadata value', () => {
             const batch = createTestBatch();
             const jsonValue = JSON.stringify({ nested: { data: [1, 2, 3] }, flag: true });
-            const metadata = new Map([['json_data', jsonValue]]);
+            batch.metadata.set('json_data', jsonValue);
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
@@ -274,10 +242,10 @@ describe('RecordBatch message metadata writing', () => {
         test('should handle long metadata values', () => {
             const batch = createTestBatch();
             const longValue = 'x'.repeat(10000);
-            const metadata = new Map([['long_value', longValue]]);
+            batch.metadata.set('long_value', longValue);
 
             const writer = new RecordBatchStreamWriter();
-            writer.write(batch, metadata);
+            writer.write(batch);
             writer.finish();
 
             const table = tableFromIPC(writer.toUint8Array(true));
