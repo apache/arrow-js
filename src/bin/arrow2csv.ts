@@ -25,8 +25,7 @@ import { Schema, RecordBatch, RecordBatchReader, AsyncByteQueue, util } from '..
 
 import * as commandLineUsage from 'command-line-usage';
 import * as commandLineArgs from 'command-line-args';
-// @ts-ignore
-import { parse as bignumJSONParse } from 'json-bignum';
+import { parseArrowJSON } from '../util/json.js';
 
 const argv = commandLineArgs(cliOpts(), { partial: true });
 const files = argv.help ? [] : [...(argv.file || []), ...(argv._unknown || [])].filter(Boolean);
@@ -114,7 +113,7 @@ async function* recordBatchReaders(createSourceStream: () => NodeJS.ReadableStre
         if (source instanceof fs.ReadStream) { source.close(); }
         // If the data in the `json` ByteQueue parses to JSON, then assume it's Arrow JSON from a file or stdin
         try {
-            for await (reader of RecordBatchReader.readAll(bignumJSONParse(await json.toString()))) {
+            for await (reader of RecordBatchReader.readAll(parseArrowJSON(await json.toString()))) {
                 reader && (yield reader);
             }
         } catch { readers = null; }

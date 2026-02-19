@@ -16,6 +16,7 @@
 // under the License.
 
 import { IntervalMonthDayNano, IntervalMonthDayNanoObject, Vector, makeData, util } from 'apache-arrow';
+import { parseArrowJSON } from '../../../src/util/json.js';
 
 const { toIntervalMonthDayNanoInt32Array, toIntervalMonthDayNanoObjects } = util;
 
@@ -76,5 +77,46 @@ describe(`MonthDayNanoIntervalVector`, () => {
         expect(vec.type).toBeInstanceOf(IntervalMonthDayNano);
         expect(vec.get(0)).toStrictEqual(array);
         expect(toIntervalMonthDayNanoObjects(vec.get(0), false)).toStrictEqual([{ ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT, ...obj }]);
+    });
+
+    test(`Unsafe integer nanoseconds represented as bigint roundtrip correctly`, () => {
+        const samples = [
+            '-390122861233460600',
+            '6684525287992311000'
+        ];
+        for (const sample of samples) {
+            const nanoseconds = BigInt(sample);
+            const obj: Partial<IntervalMonthDayNanoObject> = { nanoseconds };
+            const array = toIntervalMonthDayNanoInt32Array([obj]);
+            const vec = makeIntervalMonthDayNanoVector(array);
+            expect(vec.type).toBeInstanceOf(IntervalMonthDayNano);
+            expect(vec.get(0)).toStrictEqual(array);
+            expect(toIntervalMonthDayNanoObjects(vec.get(0), false)).toStrictEqual([{
+                ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT,
+                nanoseconds,
+            }]);
+        }
+    });
+
+    test(`Integer nanoseconds parsed from JSON preserve exact values`, () => {
+        const samples = [
+            '42',
+            '9007199254740991',
+            '9007199254740992',
+            '6684525287992311000',
+            '-9007199254740992',
+            '-390122861233460600'
+        ];
+        for (const sample of samples) {
+            const parsed = parseArrowJSON(`{"nanoseconds":${sample}}`);
+            const array = toIntervalMonthDayNanoInt32Array([parsed]);
+            const vec = makeIntervalMonthDayNanoVector(array);
+            expect(vec.type).toBeInstanceOf(IntervalMonthDayNano);
+            expect(vec.get(0)).toStrictEqual(array);
+            expect(toIntervalMonthDayNanoObjects(array, false)).toStrictEqual([{
+                ...EMPTY_INTERVAL_MONTH_DAY_NANO_OBJECT,
+                nanoseconds: BigInt(sample)
+            }]);
+        }
     });
 });
