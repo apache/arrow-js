@@ -185,6 +185,9 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
         return this;
     }
 
+    public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null): void;
+    // Overload for UnderlyingSink compatibility (used by DOM streams)
+    public write(chunk: RecordBatch<T>, controller: WritableStreamDefaultController): void;
     public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null) {
         let schema: Schema<T> | null = null;
 
@@ -275,7 +278,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
 
     protected _writeRecordBatch(batch: RecordBatch<T>) {
         const { byteLength, nodes, bufferRegions, buffers, variadicBufferCounts } = this._assembleRecordBatch(batch);
-        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression, variadicBufferCounts);
+        const recordBatch = new metadata.RecordBatch(batch.numRows, nodes, bufferRegions, this._compression, variadicBufferCounts, batch.metadata);
         const message = Message.from(recordBatch, byteLength);
         return this
             ._writeDictionaries(batch)
@@ -589,3 +592,4 @@ function recordBatchToJSON(records: RecordBatch) {
         'columns': columns
     }, null, 2);
 }
+

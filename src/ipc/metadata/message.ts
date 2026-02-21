@@ -82,7 +82,8 @@ export class Message<T extends MessageHeader = any> {
         const bodyLength: bigint = _message.bodyLength()!;
         const version: MetadataVersion = _message.version();
         const headerType: MessageHeader = _message.headerType();
-        const message = new Message(bodyLength, version, headerType);
+        const metadata = decodeMessageCustomMetadata(_message);
+        const message = new Message(bodyLength, version, headerType, undefined, metadata);
         message._createHeader = decodeMessageHeader(_message, headerType);
         return message;
     }
@@ -98,11 +99,24 @@ export class Message<T extends MessageHeader = any> {
         } else if (message.isDictionaryBatch()) {
             headerOffset = DictionaryBatch.encode(b, message.header() as DictionaryBatch);
         }
+
+        // Encode custom metadata if present (must be done before startMessage)
+        const customMetadataOffset = !(message.metadata && message.metadata.size > 0) ? -1 :
+            _Message.createCustomMetadataVector(b, [...message.metadata].map(([k, v]) => {
+                const key = b.createString(`${k}`);
+                const val = b.createString(`${v}`);
+                _KeyValue.startKeyValue(b);
+                _KeyValue.addKey(b, key);
+                _KeyValue.addValue(b, val);
+                return _KeyValue.endKeyValue(b);
+            }));
+
         _Message.startMessage(b);
         _Message.addVersion(b, MetadataVersion.V5);
         _Message.addHeader(b, headerOffset);
         _Message.addHeaderType(b, message.headerType);
         _Message.addBodyLength(b, BigInt(message.bodyLength));
+        if (customMetadataOffset !== -1) { _Message.addCustomMetadata(b, customMetadataOffset); }
         _Message.finishMessageBuffer(b, _Message.endMessage(b));
         return b.asUint8Array();
     }
@@ -113,7 +127,7 @@ export class Message<T extends MessageHeader = any> {
             return new Message(0, MetadataVersion.V5, MessageHeader.Schema, header);
         }
         if (header instanceof RecordBatch) {
-            return new Message(bodyLength, MetadataVersion.V5, MessageHeader.RecordBatch, header);
+            return new Message(bodyLength, MetadataVersion.V5, MessageHeader.RecordBatch, header, header.metadata);
         }
         if (header instanceof DictionaryBatch) {
             return new Message(bodyLength, MetadataVersion.V5, MessageHeader.DictionaryBatch, header);
@@ -126,24 +140,27 @@ export class Message<T extends MessageHeader = any> {
     protected _bodyLength: number;
     protected _version: MetadataVersion;
     protected _compression: BodyCompression | null;
+    protected _metadata: Map<string, string>;
     public get type() { return this.headerType; }
     public get version() { return this._version; }
     public get headerType() { return this._headerType; }
     public get compression() { return this._compression; }
     public get bodyLength() { return this._bodyLength; }
+    public get metadata() { return this._metadata; }
     declare protected _createHeader: MessageHeaderDecoder;
     public header() { return this._createHeader<T>(); }
     public isSchema(): this is Message<MessageHeader.Schema> { return this.headerType === MessageHeader.Schema; }
     public isRecordBatch(): this is Message<MessageHeader.RecordBatch> { return this.headerType === MessageHeader.RecordBatch; }
     public isDictionaryBatch(): this is Message<MessageHeader.DictionaryBatch> { return this.headerType === MessageHeader.DictionaryBatch; }
 
-    constructor(bodyLength: bigint | number, version: MetadataVersion, headerType: T, header?: any) {
+    constructor(bodyLength: bigint | number, version: MetadataVersion, headerType: T, header?: any, metadata?: Map<string, string>) {
         this._version = version;
         this._headerType = headerType;
         this.body = new Uint8Array(0);
         this._compression = header?.compression;
         header && (this._createHeader = () => header);
         this._bodyLength = bigIntToNumber(bodyLength);
+        this._metadata = metadata || new Map();
     }
 }
 
@@ -157,23 +174,27 @@ export class RecordBatch {
     protected _buffers: BufferRegion[];
     protected _compression: BodyCompression | null;
     protected _variadicBufferCounts: number[];
+    protected _metadata: Map<string, string>;
     public get nodes() { return this._nodes; }
     public get length() { return this._length; }
     public get buffers() { return this._buffers; }
     public get compression() { return this._compression; }
     public get variadicBufferCounts() { return this._variadicBufferCounts; }
+    public get metadata() { return this._metadata; }
     constructor(
         length: bigint | number,
         nodes: FieldNode[],
         buffers: BufferRegion[],
         compression: BodyCompression | null,
-        variadicBufferCounts: number[] = []
+        variadicBufferCounts: number[] = [],
+        metadata?: Map<string, string>
     ) {
         this._nodes = nodes;
         this._buffers = buffers;
         this._length = bigIntToNumber(length);
         this._compression = compression;
         this._variadicBufferCounts = variadicBufferCounts;
+        this._metadata = metadata || new Map();
     }
 }
 
@@ -463,6 +484,17 @@ function decodeCustomMetadata(parent?: _Schema | _Field | null) {
             if ((entry = parent.customMetadata(i)) && (key = entry.key()) != null) {
                 data.set(key, entry.value()!);
             }
+        }
+    }
+    return data;
+}
+
+/** @ignore */
+function decodeMessageCustomMetadata(message: _Message) {
+    const data = new Map<string, string>();
+    for (let entry, key, i = -1, n = Math.trunc(message.customMetadataLength()); ++i < n;) {
+        if ((entry = message.customMetadata(i)) && (key = entry.key()) != null) {
+            data.set(key, entry.value()!);
         }
     }
     return data;
