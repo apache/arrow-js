@@ -50,7 +50,8 @@ export class StructRow<T extends TypeMap = any> {
         const keys = parent.type.children;
         const json = {} as { [P in string & keyof T]: T[P]['TValue'] };
         for (let j = -1, n = keys.length; ++j < n;) {
-            json[keys[j].name as string & keyof T] = getVisitor.visit(parent.children[j], i);
+            const fieldName = keys[j].name as string & keyof T;
+            json[fieldName] = getVisitor.visit(parent.children[j], i);
         }
         return json;
     }
