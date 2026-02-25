@@ -74,10 +74,9 @@ export class Schema<T extends TypeMap = any> {
      *
      * @param metadata Replacement metadata entries. Pass `null` to clear.
      */
-    public withMetadata(metadata?: Map<string, string> | Record<string, string> | null): Schema<T> {
-        if (metadata === undefined) { return this; }
+    public withMetadata(metadata: Map<string, string> | Record<string, string> | null): Schema<T> {
         const next = metadata === null ? new Map<string, string>() : toMetadataMap(metadata);
-        return new Schema<T>(this.fields, next, this.dictionaries, this.metadataVersion);
+        return new Schema<T>(this.fields, next, undefined, this.metadataVersion);
     }
 
     public assign<R extends TypeMap = any>(schema: Schema<R>): Schema<T & R>;
@@ -161,8 +160,7 @@ export class Field<T extends DataType = any> {
      *
      * @param metadata Replacement metadata entries.
      */
-    public withMetadata(metadata?: Map<string, string> | Record<string, string> | null): Field<T> {
-        if (metadata === undefined) { return this; }
+    public withMetadata(metadata: Map<string, string> | Record<string, string> | null): Field<T> {
         const next = metadata === null ? new Map<string, string>() : toMetadataMap(metadata);
         return new Field<T>(this.name, this.type, this.nullable, next);
     }
