@@ -74,7 +74,7 @@ export {
     tableFromIPC, tableToIPC,
     MessageReader, AsyncMessageReader, JSONMessageReader,
     Message,
-    RecordBatch,
+    RecordBatch, recordBatchFromArrays,
     util,
     Builder, makeBuilder, builderThroughIterable, builderThroughAsyncIterable,
     compressionRegistry, CompressionType,

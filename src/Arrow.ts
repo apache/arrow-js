@@ -99,7 +99,7 @@ export { compressionRegistry } from './ipc/compression/registry.js';
 export type { Codec } from './ipc/compression/registry.js';
 export { MessageReader, AsyncMessageReader, JSONMessageReader } from './ipc/message.js';
 export { Message } from './ipc/metadata/message.js';
-export { RecordBatch } from './recordbatch.js';
+export { RecordBatch, recordBatchFromArrays } from './recordbatch.js';
 export type { ArrowJSONLike, FileHandle, Readable, Writable, ReadableWritable, ReadableDOMStreamOptions } from './io/interfaces.js';
 
 export {
