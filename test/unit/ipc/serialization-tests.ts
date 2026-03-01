@@ -19,8 +19,8 @@ import '../../jest-extensions.js';
 import * as generate from '../../generate-test-data.js';
 
 import {
-    Table, Schema, Field, DataType, TypeMap, Dictionary, Int32, Float32, Uint8, Utf8, Null,
-    makeVector,
+    Table, Schema, Field, DataType, TypeMap, Dictionary, Int32, Float32, Uint8, Utf8, Null, Bool,
+    makeVector, vectorFromArray,
     tableFromIPC, tableToIPC, RecordBatchReader, RecordBatchStreamWriter
 } from 'apache-arrow';
 
@@ -119,6 +119,53 @@ describe('tableToIPC()', () => {
         expect(source.numCols).toBe(1);
         const result = deepCopy(source);
         expect(result).toEqualTable(source);
+    });
+
+    test(`single-row fully-null Bool column round-trips`, () => {
+        const source = new Table({
+            a: vectorFromArray([null], new Bool()),
+        });
+        const buffer = tableToIPC(source);
+        const result = tableFromIPC(buffer);
+        expect(result.numRows).toBe(1);
+        expect(result.getChild('a')!.get(0)).toBeNull();
+    });
+
+    test(`fully-null Bool column round-trips through IPC file format`, () => {
+        const source = new Table({
+            a: vectorFromArray([null, null], new Bool()),
+        });
+        const buffer = tableToIPC(source, 'file');
+        const result = tableFromIPC(buffer);
+        expect(result.numRows).toBe(2);
+        expect(result.getChild('a')!.get(0)).toBeNull();
+        expect(result.getChild('a')!.get(1)).toBeNull();
+    });
+
+    test(`fully-null Bool column with length > 8 round-trips through serialization`, () => {
+        const source = new Table({
+            a: vectorFromArray(new Array(10).fill(null), new Bool()),
+        });
+        const buffer = tableToIPC(source);
+        const result = tableFromIPC(buffer);
+        expect(result.numRows).toBe(10);
+        for (let i = 0; i < 10; i++) {
+            expect(result.getChild('a')!.get(i)).toBeNull();
+        }
+    });
+
+    test(`mixed table with normal column and fully-null Bool column round-trips through serialization`, () => {
+        const source = new Table({
+            a: makeVector(new Int32Array([1, 2, 3])),
+            b: vectorFromArray([null, null, null], new Bool()),
+        });
+        const buffer = tableToIPC(source);
+        const result = tableFromIPC(buffer);
+        expect(result.numRows).toBe(3);
+        expect(result.getChild('a')!.toArray()).toEqual(new Int32Array([1, 2, 3]));
+        for (let i = 0; i < 3; i++) {
+            expect(result.getChild('b')!.get(i)).toBeNull();
+        }
     });
 
     const chunkLengths = [] as number[];

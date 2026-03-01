@@ -186,8 +186,8 @@ function assembleBoolVector<T extends Bool>(this: VectorAssembler, data: Data<T>
     // Bool vector is a special case of FlatVector, as its data buffer needs to stay packed
     let values: Uint8Array;
     if (data.nullCount >= data.length) {
-        // If all values are null, just insert a placeholder empty data buffer (fastest path)
-        return addBuffer.call(this, new Uint8Array(0));
+        // If all values are null, write a zero-filled data buffer of the correct byte length
+        return addBuffer.call(this, new Uint8Array((data.length + 7) >> 3));
     } else if ((values = data.values) instanceof Uint8Array) {
         // If values is already a Uint8Array, slice the bitmap (fast path)
         return addBuffer.call(this, truncateBitmap(data.offset, data.length, values));
