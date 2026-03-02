@@ -45,14 +45,14 @@ jobs:
       # ESLint
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          cache: yarn
+          cache: npm
           node-version: 20
       - name: Install ESLint dependencies
         run: |
-          yarn install
+          npm ci
       - name: Run ESLint
         run: |
-          yarn run lint:ci
+          npm run lint:ci
 
       # pre-commit
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -82,7 +82,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: .docker
-          key: jest-docker-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'yarn.lock') }}
+          key: jest-docker-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'package-lock.json') }}
           restore-keys: jest-docker-
       - name: Run
         run: |
@@ -102,7 +102,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: .jest-cache
-          key: jest-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'yarn.lock') }}
+          key: jest-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'package-lock.json') }}
           restore-keys: jest-${{ runner.os }}-
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
@@ -128,7 +128,7 @@ jobs:
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: .jest-cache
-          key: jest-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'yarn.lock') }}
+          key: jest-${{ runner.os }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'package-lock.json') }}
           restore-keys: jest-${{ runner.os }}-
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:

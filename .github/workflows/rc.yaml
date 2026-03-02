@@ -102,14 +102,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          cache: yarn
+          cache: npm
           node-version: 20
       - name: Install dependencies
         run: |
-          yarn install
+          npm ci
       - name: Build
         run: |
-          yarn doc
+          npm run doc
       - name: Package
         run: |
           id="apache-arrow-js-docs-${VERSION}"
@@ -165,14 +165,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          cache: yarn
+          cache: npm
           node-version: 20
       - name: Install dependencies
         run: |
-          yarn install
+          npm ci
       - name: Build
         run: |
-          yarn gulp build
+          npm run build
 
           shopt -s globstar
           for package_json in targets/**/package.json; do

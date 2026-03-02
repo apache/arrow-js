@@ -23,7 +23,7 @@ source_dir="${1}"
 
 pushd "${source_dir}"
 
-yarn test
-yarn test:bundle
+npm test
+npm run test:bundle
 
 popd
