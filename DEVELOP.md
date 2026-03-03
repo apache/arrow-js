@@ -44,11 +44,11 @@ it on GitHub issues, or email the mailing list
 
 ## The package.json scripts
 
-We use [yarn](https://yarnpkg.com/) to install dependencies and run scrips.
+We use [npm](https://www.npmjs.com/) to install dependencies and run scripts.
 
-* `yarn clean` - cleans targets
-* `yarn build` - cleans and compiles all targets
-* `yarn test` - executes tests against built targets
+* `npm run clean` - cleans targets
+* `npm run build` - cleans and compiles all targets
+* `npm test` - executes tests against built targets
 
 These scripts accept argument lists of targets × modules:
 
@@ -57,32 +57,32 @@ These scripts accept argument lists of targets × modules:
 
 Examples:
 
-* `yarn build` -- builds all ES targets in all module formats
-* `yarn build -t es5 -m all` -- builds the ES5 target in all module formats
-* `yarn build -t all -m cjs` -- builds all ES targets in the CommonJS module format
-* `yarn build -t es5 -t es2015 -m all` -- builds the ES5 and ES2015 targets in all module formats
-* `yarn build -t es5 -m cjs -m esm` -- builds the ES5 target in CommonJS and ESModules module formats
+* `npm run build` -- builds all ES targets in all module formats
+* `npm run build -- -t es5 -m all` -- builds the ES5 target in all module formats
+* `npm run build -- -t all -m cjs` -- builds all ES targets in the CommonJS module format
+* `npm run build -- -t es5 -t es2015 -m all` -- builds the ES5 and ES2015 targets in all module formats
+* `npm run build -- -t es5 -m cjs -m esm` -- builds the ES5 target in CommonJS and ESModules module formats
 
 This argument configuration also applies to `clean` and `test` scripts.
 
 To run tests on the bundles, you need to build them first.
-To run tests directly on the sources without bundling, use the `src` target (e.g. `yarn test -t src`).
+To run tests directly on the sources without bundling, use the `src` target (e.g. `npm run test -- -t src`).
 
-* `yarn doc`
+* `npm run doc`
 
-Compiles the documentation with [Typedoc](https://typedoc.org/). Use `yarn doc --watch` to automatically rebuild when the docs change.
+Compiles the documentation with [Typedoc](https://typedoc.org/). Use `npm run doc -- --watch` to automatically rebuild when the docs change.
 
 ## Running the Performance Benchmarks
 
-You can run the benchmarks with `yarn perf`. To print the results to stderr as JSON, add the `--json` flag (e.g. `yarn perf --json 2> perf.json`).
+You can run the benchmarks with `npm run perf`. To print the results to stderr as JSON, add the `--json` flag (e.g. `npm run perf -- --json 2> perf.json`).
 
-You can change the target you want to test by changing the imports in `perf/index.ts`. Note that you need to compile the bundles with `yarn build` before you can import them.
+You can change the target you want to test by changing the imports in `perf/index.ts`. Note that you need to compile the bundles with `npm run build` before you can import them.
 
 ## Testing Bundling
 
-The bundles use `apache-arrow` so make sure to build it with `yarn build -t apache-arrow`. To bundle with a variety of bundlers, run `yarn test:bundle` or `yarn gulp bundle`.
+The bundles use `apache-arrow` so make sure to build it with `npm run build -- -t apache-arrow`. To bundle with a variety of bundlers, run `npm run test:bundle` or `npx gulp bundle`.
 
-Run `yarn gulp bundle:webpack:analyze` to open [Webpack Bundle Analyzer](https://github.com/webpack-contrib/webpack-bundle-analyzer).
+Run `npx gulp bundle:webpack:analyze` to open [Webpack Bundle Analyzer](https://github.com/webpack-contrib/webpack-bundle-analyzer).
 
 ## Updating the Arrow format flatbuffers generated code
 
@@ -110,7 +110,7 @@ Run `yarn gulp bundle:webpack:analyze` to open [Webpack Bundle Analyzer](https:/
 
 3. Add `.js` to the imports. In VSCode, you can search for `^(import [^';]* from '(\./|(\.\./)+)[^';.]*)';` and replace with `$1.js';`.
 
-4. Execute `yarn lint` from the `js` directory to fix the linting errors
+4. Execute `npm run lint` from the `js` directory to fix the linting errors
 
 ## How to preview documentation on your fork repository
 

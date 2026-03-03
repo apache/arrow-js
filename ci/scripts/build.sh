@@ -25,16 +25,16 @@ source_dir="${1}"
 
 pushd "${source_dir}"
 
-yarn --immutable
-yarn build
+npm ci
+npm run build
 
 if [ "${BUILD_DOCS_JS}" = "ON" ]; then
   # If upstream is defined, use it as remote.
   # Otherwise use origin which could be a fork on PRs.
   if [[ "$(git config --get remote.upstream.url)" =~ https://github.com/apache/arrow-js ]]; then
-    yarn doc --gitRemote upstream
+    npm run doc -- --gitRemote upstream
   elif [[ "$(basename -s .git "$(git config --get remote.origin.url)")" == "arrow-js" ]]; then
-    yarn doc
+    npm run doc
   else
     echo "Failed to build docs because the remote is not set correctly. Please set the origin or upstream remote to https://github.com/apache/arrow-js.git."
     exit 0

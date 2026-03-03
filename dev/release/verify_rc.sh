@@ -172,7 +172,7 @@ test_package_distributions() {
     mkdir -p "$(dirname "${destination}")"
     mv package "${destination}"
   done
-  yarn test
+  npm test
 }
 
 github_actions_group_end

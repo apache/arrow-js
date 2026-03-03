@@ -52,7 +52,7 @@ jspm_packages/
 .npm
 
 # JS package manager files
-package-lock.json
+yarn.lock
 
 # Optional eslint cache
 .eslintcache
@@ -62,9 +62,6 @@ package-lock.json
 
 # Output of 'npm pack'
 *.tgz
-
-# Yarn Integrity file
-.yarn-integrity
 
 # compilation targets
 doc

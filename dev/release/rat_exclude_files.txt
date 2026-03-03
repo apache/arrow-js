@@ -17,4 +17,4 @@
 
 .github/pull_request_template.md
 src/fb/*.ts
-yarn.lock
+package-lock.json
