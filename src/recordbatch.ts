@@ -261,7 +261,7 @@ export class RecordBatch<T extends TypeMap = any> {
             const field = fields[index].clone({ type: child.type });
             [fields[index], children[index]] = [field, child.data[0]];
             schema = new Schema(fields, new Map(this.schema.metadata));
-            data = makeData({ type: new Struct<T>(fields), children });
+            data = makeData({ type: new Struct<T>(fields), length: data.length, children });
         }
         return new RecordBatch(schema, data, this._metadata);
     }
@@ -380,7 +380,7 @@ function collectDictionaries(fields: Field[], children: readonly Data[], diction
 export class _InternalEmptyPlaceholderRecordBatch<T extends TypeMap = any> extends RecordBatch<T> {
     constructor(schema: Schema<T>, metadata?: Map<string, string>) {
         const children = schema.fields.map((f) => makeData({ type: f.type }));
-        const data = makeData({ type: new Struct<T>(schema.fields), nullCount: 0, children });
+        const data = makeData({ type: new Struct<T>(schema.fields), length: 0, nullCount: 0, children });
         super(schema, data, metadata || new Map());
     }
 }
