@@ -205,6 +205,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
 
         if (schema && !compareSchemas(schema, this._schema)) {
             if (this._started && this._autoDestroy) {
+                this.close();
                 throw new Error(
                     `RecordBatch schema does not match the writer's schema.\n` +
                     `  Expected: ${this._schema}\n` +
