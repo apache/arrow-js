@@ -193,7 +193,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null) {
         let schema: Schema<T> | null = null;
 
-        if (!this._sink) {
+        if (this.closed) {
             throw new Error(`RecordBatchWriter is closed`);
         } else if (payload == null) {
             return this.finish() && undefined;
