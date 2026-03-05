@@ -79,7 +79,7 @@ export class RecordBatch<T extends TypeMap = any> {
                 if (!(this.data instanceof Data)) {
                     throw new TypeError('RecordBatch constructor expects a [Schema, Data] pair.');
                 }
-                [this.schema, this.data] = ensureSameLengthData<T>(this.schema, this.data.children as Data<T[keyof T]>[]);
+                [this.schema, this.data] = ensureSameLengthData<T>(this.schema, this.data.children as Data<T[keyof T]>[], this.data.length);
                 break;
             }
             case 1: {
