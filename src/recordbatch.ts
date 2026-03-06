@@ -21,6 +21,8 @@ import { Vector } from './vector.js';
 import { Schema, Field } from './schema.js';
 import { DataType, Struct, Null, TypeMap } from './type.js';
 import { wrapIndex } from './util/vector.js';
+import { vectorFromArray } from './factories.js';
+import { ArrayDataType, BigIntArray, TypedArray } from './interfaces.js';
 
 import { instance as getVisitor } from './visitor/get.js';
 import { instance as setVisitor } from './visitor/set.js';
@@ -315,6 +317,61 @@ Object.defineProperty(RecordBatch, Symbol.hasInstance, {
     },
 });
 
+/**
+ * Creates a new RecordBatch from an object of typed arrays or JavaScript arrays.
+ *
+ * @example
+ * ```ts
+ * const batch = recordBatchFromArrays({
+ *   a: [1, 2, 3],
+ *   b: new Int8Array([1, 2, 3]),
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * const schema = new Schema([
+ *   new Field('a', new Int32),
+ *   new Field('b', new Utf8),
+ * ]);
+ * const batch = recordBatchFromArrays({ a: [1, 2, 3], b: ['x', 'y', 'z'] }, schema);
+ * ```
+ *
+ * @param input An object mapping column names to typed arrays or JavaScript arrays.
+ * @param schema Optional schema to control column types, ordering, nullability, and metadata.
+ * @returns A new RecordBatch.
+ */
+export function recordBatchFromArrays<T extends TypeMap>(
+    input: Record<string, TypedArray | BigIntArray | readonly unknown[]>,
+    schema: Schema<T>
+): RecordBatch<T>;
+export function recordBatchFromArrays<I extends Record<string | number | symbol, TypedArray | BigIntArray | readonly unknown[]>>(
+    input: I
+): RecordBatch<{ [P in keyof I]: ArrayDataType<I[P]> }>;
+export function recordBatchFromArrays(
+    input: Record<string, TypedArray | BigIntArray | readonly unknown[]>,
+    schema?: Schema
+): RecordBatch {
+    if (schema) {
+        const children: Data[] = [];
+        for (const field of schema.fields) {
+            const col = input[field.name];
+            if (col === undefined) {
+                throw new TypeError(
+                    `Schema field "${field.name}" not found in input. ` +
+                    `Available keys: [${Object.keys(input).join(', ')}]`
+                );
+            }
+            children.push(vectorFromArray(col as any, field.type).data[0]);
+        }
+        return new RecordBatch(schema, makeData({ type: new Struct(schema.fields), children }));
+    }
+    const dataMap: Record<string, Data> = {};
+    for (const [key, col] of Object.entries(input)) {
+        dataMap[key] = vectorFromArray(col).data[0];
+    }
+    return new RecordBatch(dataMap as any);
+}
 
 /** @ignore */
 function ensureSameLengthData<T extends TypeMap = any>(
