@@ -46,7 +46,7 @@ jobs:
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
           cache: npm
-          node-version: 20
+          node-version: 24
       - name: Install ESLint dependencies
         run: |
           npm ci
@@ -71,19 +71,24 @@ jobs:
           pre-commit run --show-diff-on-failure --color=always --all-files
 
   docker:
-    name: Debian Node.js 20
+    name: Debian Node.js ${{ matrix.node }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 24]
     env:
       DOCKER_VOLUME_PREFIX: .docker/
+      NODE: ${{ matrix.node }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Cache
         uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: .docker
-          key: jest-docker-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'package-lock.json') }}
-          restore-keys: jest-docker-
+          key: jest-docker-${{ matrix.node }}-${{ hashFiles('src/**/*.ts', 'test/**/*.ts', 'package-lock.json') }}
+          restore-keys: jest-docker-${{ matrix.node }}-
       - name: Run
         run: |
           docker compose run debian
@@ -95,7 +100,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20]
+        node: [20, 24]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Cache
@@ -121,7 +126,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [20]
+        node: [20, 24]
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Cache
