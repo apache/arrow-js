@@ -18,7 +18,7 @@
 import '../../jest-extensions.js';
 import { arange } from '../utils.js';
 
-import { RecordBatch, makeVector } from 'apache-arrow';
+import { RecordBatch, makeVector, recordBatchFromArrays, Schema, Field, Int32, Float32, Float64, Utf8, Dictionary } from 'apache-arrow';
 
 function numsRecordBatch(i32Len: number, f32Len: number) {
     return new RecordBatch({
@@ -128,5 +128,100 @@ describe(`RecordBatch`, () => {
             expect(f32sBatch.numCols).toBe(1);
             expect(f32sBatch.numRows).toBe(45);
         });
+    });
+});
+
+describe(`recordBatchFromArrays()`, () => {
+    test(`creates a RecordBatch from typed arrays and JavaScript arrays`, () => {
+        const batch = recordBatchFromArrays({
+            a: new Float32Array([1, 2, 3]),
+            b: [4, 5, 6],
+            c: ['x', 'y', 'z'],
+        });
+
+        expect(batch.numRows).toBe(3);
+        expect(batch.numCols).toBe(3);
+        expect(batch.getChild('a')!.type).toBeInstanceOf(Float32);
+        expect(batch.getChild('b')!.type).toBeInstanceOf(Float64);
+        expect(batch.getChild('c')!.type).toBeInstanceOf(Dictionary);
+    });
+
+    test(`schema overrides type inference`, () => {
+        const schema = new Schema([
+            new Field('a', new Int32),
+            new Field('b', new Utf8),
+        ]);
+        const batch = recordBatchFromArrays({ a: [1, 2, 3], b: ['x', 'y', 'z'] }, schema);
+
+        expect(batch.numRows).toBe(3);
+        expect(batch.getChild('a')!.type).toBeInstanceOf(Int32);
+        expect(batch.getChild('b')!.type).toBeInstanceOf(Utf8);
+        expect(batch.getChild('a')!.toArray()).toEqual(new Int32Array([1, 2, 3]));
+    });
+
+    test(`schema coerces TypedArray type`, () => {
+        const schema = new Schema([new Field('a', new Int32)]);
+        const batch = recordBatchFromArrays({ a: new Float32Array([1, 2, 3]) }, schema);
+        expect(batch.getChild('a')!.type).toBeInstanceOf(Int32);
+        expect(batch.getChild('a')!.toArray()).toEqual(new Int32Array([1, 2, 3]));
+    });
+
+    test(`preserves schema metadata`, () => {
+        const schema = new Schema(
+            [new Field('a', new Int32)],
+            new Map([['source', 'test']])
+        );
+        const batch = recordBatchFromArrays({ a: [1, 2, 3] }, schema);
+        expect(batch.schema.metadata.get('source')).toBe('test');
+    });
+
+    test(`throws on missing schema field`, () => {
+        const schema = new Schema([new Field('c', new Int32)]);
+        expect(() => recordBatchFromArrays({ a: [1] }, schema)).toThrow(TypeError);
+        expect(() => recordBatchFromArrays({ a: [1] }, schema)).toThrow(/Schema field "c" not found in input/);
+    });
+
+    test(`handles different length columns via ensureSameLengthData`, () => {
+        const schema = new Schema([
+            new Field('a', new Int32),
+            new Field('b', new Int32),
+        ]);
+        const batch = recordBatchFromArrays({ a: [1, 2, 3], b: [4, 5] }, schema);
+        expect(batch.numRows).toBe(3);
+        expect(batch.getChild('a')!).toHaveLength(3);
+        expect(batch.getChild('b')!).toHaveLength(3);
+        expect(batch.getChild('b')!.nullCount).toBe(1);
+    });
+
+    test(`preserves field ordering from schema`, () => {
+        const schema = new Schema([
+            new Field('b', new Float64),
+            new Field('a', new Int32),
+        ]);
+        const batch = recordBatchFromArrays({ a: [1, 2, 3], b: [4.0, 5.0, 6.0] }, schema);
+        expect(batch.schema.fields[0].name).toBe('b');
+        expect(batch.schema.fields[1].name).toBe('a');
+        expect(batch.getChild('b')!.type).toBeInstanceOf(Float64);
+        expect(batch.getChild('a')!.type).toBeInstanceOf(Int32);
+    });
+
+    test(`handles empty arrays`, () => {
+        const schema = new Schema([new Field('a', new Int32)]);
+        const batch = recordBatchFromArrays({ a: new Int32Array(0) }, schema);
+        expect(batch.numRows).toBe(0);
+        expect(batch.numCols).toBe(1);
+        expect(batch.getChild('a')!.type).toBeInstanceOf(Int32);
+    });
+
+    test(`basic creation without schema infers types`, () => {
+        const batch = recordBatchFromArrays({
+            f32: new Float32Array([1, 2]),
+            nums: [1, 2, 3],
+            strs: ['a', 'b'],
+        });
+
+        expect(batch.getChild('f32')!.type).toBeInstanceOf(Float32);
+        expect(batch.getChild('nums')!.type).toBeInstanceOf(Float64);
+        expect(batch.getChild('strs')!.type).toBeInstanceOf(Dictionary);
     });
 });
