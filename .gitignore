@@ -94,3 +94,5 @@ dev/release/rat.xml
 
 # Release
 dev/release/.env
+bench_stats.json
+__pycache__/
