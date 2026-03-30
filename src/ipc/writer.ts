@@ -43,7 +43,12 @@ import * as flatbuffers from 'flatbuffers';
 
 export interface RecordBatchStreamWriterOptions {
     /**
-     *
+     * Whether to automatically close the writer when `finish()` is called.
+     * When true (default), the writer closes after a single stream of batches.
+     * When false, calling `finish()` resets the writer, allowing multiple
+     * streams with different schemas to be written to the same sink.
+     * When true, writing a batch with a schema that differs from the writer's
+     * current schema throws an error.
      */
     autoDestroy?: boolean;
     /**
@@ -191,7 +196,7 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     public write(payload?: Table<T> | RecordBatch<T> | Iterable<RecordBatch<T>> | null) {
         let schema: Schema<T> | null = null;
 
-        if (!this._sink) {
+        if (this.closed) {
             throw new Error(`RecordBatchWriter is closed`);
         } else if (payload == null) {
             return this.finish() && undefined;
@@ -203,7 +208,12 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
 
         if (schema && !compareSchemas(schema, this._schema)) {
             if (this._started && this._autoDestroy) {
-                return this.close();
+                this.close();
+                throw new Error(
+                    `RecordBatch schema does not match the writer's schema.\n` +
+                    `  Expected: ${this._schema}\n` +
+                    `  Received: ${schema}`
+                );
             }
             this.reset(this._sink, schema);
         }
