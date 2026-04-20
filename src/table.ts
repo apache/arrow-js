@@ -44,6 +44,7 @@ import { clampRange, wrapIndex } from './util/vector.js';
 import { ArrayDataType, BigIntArray, TypedArray, TypedArrayDataType } from './interfaces.js';
 import { RecordBatch, _InternalEmptyPlaceholderRecordBatch } from './recordbatch.js';
 
+
 /** @ignore */
 const kTableSymbol = Symbol.for('apache-arrow/Table');
 
