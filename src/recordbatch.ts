@@ -46,7 +46,11 @@ export interface RecordBatch<T extends TypeMap = any> {
     [Symbol.isConcatSpreadable]: true;
 }
 
-/** @ignore */
+/**
+ * A RecordBatch is a collection of equal-length columns conforming to a
+ * particular {@link Schema}. A {@link Table} is composed of one or more
+ * RecordBatches.
+ */
 export class RecordBatch<T extends TypeMap = any> {
 
     /**
