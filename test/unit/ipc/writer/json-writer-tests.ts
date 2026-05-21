@@ -24,7 +24,9 @@ import {
     ArrowJSONLike,
     RecordBatchJSONWriter,
     RecordBatchReader,
-    Table
+    Table,
+    tableFromIPC,
+    tableToIPC,
 } from 'apache-arrow';
 
 describe('RecordBatchJSONWriter', () => {
@@ -38,12 +40,16 @@ describe('RecordBatchJSONWriter', () => {
 
 function testJSONWriter(table: Table, name: string) {
     describe(`should write the Arrow IPC JSON format (${name})`, () => {
-        test(`Table`, validateTable.bind(0, table));
+        test(`Table`, validateJSONWriter.bind(0, table));
     });
 }
 
-async function validateTable(source: Table) {
-    const writer = RecordBatchJSONWriter.writeAll(source);
+async function validateJSONWriter(source: Table) {
+    // Route through binary IPC so the JSON writer sees realistic typed-array
+    // views with byteOffset > 0 (as `tableFromIPC` produces), not just fresh
+    // allocations from the generator.
+    const loaded = tableFromIPC(tableToIPC(source, 'stream'));
+    const writer = RecordBatchJSONWriter.writeAll(loaded);
     const string = await writer.toString();
     const json = JSON.parse(string) as ArrowJSONLike;
     const result = new Table(RecordBatchReader.from(json));
