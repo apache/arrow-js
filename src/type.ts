@@ -625,7 +625,21 @@ export interface LargeList<T extends DataType = any> extends DataType<Type.Large
     OffsetArrayType: BigIntArrayConstructor<BigInt64Array>;
 }
 
-/** @ignore */
+/**
+ * Like `List`, but with 64-bit value offsets — use this when a list column's
+ * cumulative child-element count would exceed `List`'s 32-bit offset ceiling
+ * of `2^31 - 1`. Otherwise prefer `List`.
+ *
+ * Values round-trip losslessly through Arrow IPC at any 64-bit offset magnitude.
+ * In-process JavaScript APIs (`.get(i)`, slicing, builders) narrow offsets to a
+ * JS `number` and are therefore bounded by `Number.MAX_SAFE_INTEGER`
+ * (`2^53 - 1`, about 9×10^15) cumulative child elements per column. If an
+ * operation would cross that ceiling, it throws a `TypeError` rather than
+ * silently returning data at a truncated index. This matches the behavior of
+ * `LargeUtf8` and `LargeBinary`.
+ *
+ * @ignore
+ */
 export class LargeList<T extends DataType = any> extends DataType<Type.LargeList, { [0]: T }> {
     constructor(child: Field<T>) {
         super(Type.LargeList);
