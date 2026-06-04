@@ -21,7 +21,7 @@ import * as fs from 'node:fs';
 import * as Path from 'node:path';
 import { glob } from 'glob';
 import { zip } from 'ix/iterable/zip';
-import commandLineArgs from 'command-line-args';
+import { parseCliArgs, formatUsage } from '../src/bin/cli.ts';
 import { parseArrowJSON } from '../src/util/json.ts';
 
 import {
@@ -35,7 +35,7 @@ import {
 } from '../index.ts';
 
 const { createElementComparator } = util;
-const argv = commandLineArgs(cliOpts(), { partial: true });
+const { values: argv, positionals } = parseCliArgs(cliOpts(), process.argv.slice(2));
 
 const exists = async (p: string) => {
     try {
@@ -47,9 +47,9 @@ const exists = async (p: string) => {
 
     if (!argv.mode) { return print_usage(); }
 
-    const mode = argv.mode.toUpperCase();
-    let jsonPaths = [...(argv.json || [])];
-    let arrowPaths = [...(argv.arrow || [])];
+    const mode = (argv.mode as string).toUpperCase();
+    let jsonPaths = [...(argv.json as string[] | undefined ?? [])];
+    let arrowPaths = [...(argv.arrow as string[] | undefined ?? [])];
 
     if (mode === 'VALIDATE' && jsonPaths.length === 0) {
         [jsonPaths, arrowPaths] = await loadLocalJSONAndArrowPathsForDebugging(jsonPaths, arrowPaths);
@@ -104,7 +104,7 @@ function cliOpts() {
 }
 
 function print_usage() {
-    console.log(require('command-line-usage')([
+    console.log(formatUsage([
         {
             header: 'integration',
             content: 'Script for running Arrow integration tests'
@@ -121,6 +121,7 @@ function print_usage() {
                 ...cliOpts(),
                 {
                     name: 'help',
+                    type: Boolean,
                     description: 'Print this usage guide.'
                 }
             ]

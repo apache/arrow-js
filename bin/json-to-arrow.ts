@@ -19,14 +19,14 @@
 
 import * as fs from 'node:fs';
 import * as Path from 'node:path';
-import commandLineArgs from 'command-line-args';
+import { parseCliArgs, formatUsage } from '../src/bin/cli.ts';
 import { finished as eos } from 'node:stream/promises';
 import { parseArrowJSON } from '../src/util/json.ts';
 import { RecordBatchReader, RecordBatchFileWriter, RecordBatchStreamWriter } from '../index.ts';
 
-const argv = commandLineArgs(cliOpts(), { partial: true });
-const jsonPaths = [...(argv.json || [])];
-const arrowPaths = [...(argv.arrow || [])];
+const { values: argv } = parseCliArgs(cliOpts(), process.argv.slice(2));
+const jsonPaths = [...(argv.json as string[] | undefined ?? [])];
+const arrowPaths = [...(argv.arrow as string[] | undefined ?? [])];
 
 (async () => {
 
@@ -81,7 +81,7 @@ function cliOpts() {
 }
 
 function print_usage() {
-    console.log(require('command-line-usage')([
+    console.log(formatUsage([
         {
             header: 'json-to-arrow',
             content: 'Script for converting a JSON Arrow file to a binary Arrow file'
@@ -98,6 +98,7 @@ function print_usage() {
                 ...cliOpts(),
                 {
                     name: 'help',
+                    type: Boolean,
                     description: 'Print this usage guide.'
                 }
             ]
