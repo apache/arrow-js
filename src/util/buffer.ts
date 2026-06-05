@@ -218,8 +218,9 @@ export function rebaseValueOffsets(offset: number, length: number, valueOffsets:
     // shifted by the start offset, such that the new start offset is 0
     if (offset !== 0) {
         valueOffsets = valueOffsets.slice(0, length);
+        const delta = typeof valueOffsets[0] === 'bigint' ? BigInt(offset) : offset;
         for (let i = -1, n = valueOffsets.length; ++i < n;) {
-            valueOffsets[i] += offset;
+            valueOffsets[i] += delta;
         }
     }
     return valueOffsets.subarray(0, length);

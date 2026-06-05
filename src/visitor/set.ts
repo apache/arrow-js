@@ -26,7 +26,7 @@ import { float64ToUint16 } from '../util/math.js';
 import { Type, UnionMode, Precision, DateUnit, TimeUnit, IntervalUnit } from '../enum.js';
 import {
     DataType, Dictionary,
-    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, FixedSizeList, Map_, Struct,
+    Bool, Null, Utf8, Utf8View, LargeUtf8, Binary, BinaryView, LargeBinary, Decimal, FixedSizeBinary, List, LargeList, FixedSizeList, Map_, Struct,
     Float, Float16, Float32, Float64,
     Int, Uint8, Uint16, Uint32, Uint64, Int8, Int16, Int32, Int64,
     Date_, DateDay, DateMillisecond,
@@ -81,6 +81,7 @@ export interface SetVisitor extends Visitor {
     visitTimeNanosecond<T extends TimeNanosecond>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDecimal<T extends Decimal>(data: Data<T>, index: number, value: T['TValue']): void;
     visitList<T extends List>(data: Data<T>, index: number, value: T['TValue']): void;
+    visitLargeList<T extends LargeList>(data: Data<T>, index: number, value: T['TValue']): void;
     visitStruct<T extends Struct>(data: Data<T>, index: number, value: T['TValue']): void;
     visitUnion<T extends Union>(data: Data<T>, index: number, value: T['TValue']): void;
     visitDenseUnion<T extends DenseUnion>(data: Data<T>, index: number, value: T['TValue']): void;
@@ -264,16 +265,18 @@ export const setTime = <T extends Time>(data: Data<T>, index: number, value: T['
 export const setDecimal = <T extends Decimal>({ values, stride }: Data<T>, index: number, value: T['TValue']): void => { values.set(value.subarray(0, stride), stride * index); };
 
 /** @ignore */
-const setList = <T extends List>(data: Data<T>, index: number, value: T['TValue']): void => {
+const setList = <T extends List | LargeList>(data: Data<T>, index: number, value: T['TValue']): void => {
     const values = data.children[0];
     const valueOffsets = data.valueOffsets;
     const set = instance.getVisitFn(values);
+    const begin = bigIntToNumber(valueOffsets[index]);
+    const end = bigIntToNumber(valueOffsets[index + 1]);
     if (Array.isArray(value)) {
-        for (let idx = -1, itr = valueOffsets[index], end = valueOffsets[index + 1]; itr < end;) {
+        for (let idx = -1, itr = begin; itr < end;) {
             set(values, itr++, value[++idx]);
         }
     } else {
-        for (let idx = -1, itr = valueOffsets[index], end = valueOffsets[index + 1]; itr < end;) {
+        for (let idx = -1, itr = begin; itr < end;) {
             set(values, itr++, value.get(++idx));
         }
     }
@@ -437,6 +440,7 @@ SetVisitor.prototype.visitTimeMicrosecond = wrapSet(setTimeMicrosecond);
 SetVisitor.prototype.visitTimeNanosecond = wrapSet(setTimeNanosecond);
 SetVisitor.prototype.visitDecimal = wrapSet(setDecimal);
 SetVisitor.prototype.visitList = wrapSet(setList);
+SetVisitor.prototype.visitLargeList = wrapSet(setList);
 SetVisitor.prototype.visitStruct = wrapSet(setStruct);
 SetVisitor.prototype.visitUnion = wrapSet(setUnion);
 SetVisitor.prototype.visitDenseUnion = wrapSet(setDenseUnion);

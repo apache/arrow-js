@@ -45,6 +45,7 @@ export {
     Time, TimeSecond, TimeMillisecond, TimeMicrosecond, TimeNanosecond,
     Decimal,
     List,
+    LargeList,
     Struct,
     Union, DenseUnion, SparseUnion,
     Dictionary,
@@ -85,6 +86,7 @@ export { BinaryBuilder } from './builder/binary.js';
 export { BinaryViewBuilder } from './builder/binaryview.js';
 export { LargeBinaryBuilder } from './builder/largebinary.js';
 export { ListBuilder } from './builder/list.js';
+export { LargeListBuilder } from './builder/largelist.js';
 export { FixedSizeListBuilder } from './builder/fixedsizelist.js';
 export { MapBuilder } from './builder/map.js';
 export { StructBuilder } from './builder/struct.js';
