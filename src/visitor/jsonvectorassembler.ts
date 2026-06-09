@@ -207,8 +207,8 @@ function* binaryToString(vector: Vector<Binary> | Vector<LargeBinary> | Vector<F
 }
 
 /** @ignore */
-function* bigNumsToStrings(values: BigUint64Array | BigInt64Array | Uint32Array | Int32Array | IntArray, stride: number) {
-    const u32s = new Uint32Array(values.buffer);
+export function* bigNumsToStrings(values: BigUint64Array | BigInt64Array | Uint32Array | Int32Array | IntArray, stride: number) {
+    const u32s = new Uint32Array(values.buffer, values.byteOffset, values.byteLength / Uint32Array.BYTES_PER_ELEMENT);
     for (let i = -1, n = u32s.length / stride; ++i < n;) {
         yield `${BN.new(u32s.subarray((i + 0) * stride, (i + 1) * stride), false)}`;
     }
