@@ -15,18 +15,50 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import args from 'command-line-args';
-export const argv = args([
-    { name: `all`, type: Boolean },
-    { name: 'verbose', alias: `v`, type: Boolean },
-    { name: `target`, type: String, defaultValue: `` },
-    { name: `module`, type: String, defaultValue: `` },
-    { name: `coverage`, type: Boolean, defaultValue: false },
-    { name: `tests`, type: String, multiple: true, defaultValue: [`test/unit/`] },
-    { name: `targets`, alias: `t`, type: String, multiple: true, defaultValue: [] },
-    { name: `modules`, alias: `m`, type: String, multiple: true, defaultValue: [] },
-], { partial: true });
+import { parseArgs } from 'node:util';
 
+const options = {
+    all: { type: 'boolean' },
+    verbose: { type: 'boolean', short: 'v' },
+    target: { type: 'string', default: '' },
+    module: { type: 'string', default: '' },
+    coverage: { type: 'boolean', default: false },
+    tests: { type: 'string', multiple: true, default: ['test/unit/'] },
+    targets: { type: 'string', short: 't', multiple: true, default: [] },
+    modules: { type: 'string', short: 'm', multiple: true, default: [] },
+};
+
+const { values, tokens } = parseArgs({
+    options,
+    args: process.argv.slice(2),
+    strict: false,
+    allowPositionals: true,
+    tokens: true,
+});
+
+// Rebuild the `_unknown` array that command-line-args' `{ partial: true }` mode
+// used to produce. gulp/test-task.js forwards _unknown to Jest, so any flag or
+// positional we don't recognise here (e.g. `--testNamePattern foo`, `--bail`)
+// needs to round-trip through with its original raw form preserved. parseArgs
+// only flags positionals as such; unknown options land in `values` and need to
+// be reconstructed from the token stream.
+const knownNames = new Set(Object.keys(options));
+const unknown = [];
+for (const tok of tokens) {
+    if (tok.kind === 'positional') {
+        unknown.push(tok.value);
+    } else if (tok.kind === 'option' && !knownNames.has(tok.name)) {
+        unknown.push(tok.rawName);
+        // `--foo=bar` parses to a single token with `inlineValue: true`; the
+        // separate-arg form `--foo bar` puts `bar` in a following positional
+        // token, which we'll pick up on the next loop iteration.
+        if (tok.inlineValue) unknown.push(tok.value);
+        delete values[tok.name];
+    }
+}
+values._unknown = unknown;
+
+export const argv = values;
 export const { targets, modules } = argv;
 
 if (argv.target === `src`) {

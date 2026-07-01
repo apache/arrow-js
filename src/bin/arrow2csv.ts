@@ -23,12 +23,13 @@ import * as fs from 'node:fs';
 import * as stream from 'node:stream';
 import { Schema, RecordBatch, RecordBatchReader, AsyncByteQueue, util } from '../Arrow.js';
 
-import * as commandLineUsage from 'command-line-usage';
-import * as commandLineArgs from 'command-line-args';
+import { parseCliArgs, formatUsage } from './cli.js';
 import { parseArrowJSON } from '../util/json.js';
 
-const argv = commandLineArgs(cliOpts(), { partial: true });
-const files = argv.help ? [] : [...(argv.file || []), ...(argv._unknown || [])].filter(Boolean);
+const { values: argv, positionals } = parseCliArgs(cliOpts(), process.argv.slice(2));
+const files = argv.help
+    ? []
+    : [...(argv.file as string[] | undefined ?? []), ...positionals].filter(Boolean);
 
 const state = { ...argv, closed: false, maxColWidths: [10] };
 
@@ -301,7 +302,7 @@ function cliOpts() {
 }
 
 function print_usage() {
-    console.log(commandLineUsage([
+    console.log(formatUsage([
         {
             header: 'arrow2csv',
             content: 'Print a CSV from an Arrow file'

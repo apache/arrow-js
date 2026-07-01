@@ -24,6 +24,6 @@ const env = { ...process.env, TS_NODE_TRANSPILE_ONLY: `true` };
 
 require('child_process').spawn(`node`, [
     `--import`,
-    `@swc-node/register/esm-register`
+    `@swc-node/register/esm-register`,
     arrow2csv, ...process.argv.slice(2)
 ], { cwd: here, env, stdio: `inherit` });
