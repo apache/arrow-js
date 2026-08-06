@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { Field, Schema } from './schema.js';
+import { AnonymousField, Field, Schema } from './schema.js';
 import * as dtypes from './type.js';
 import { Data, DataProps } from './data.js';
 import { BuilderType, JavaScriptDataType } from './interfaces.js';
@@ -270,3 +270,16 @@ export function builderThroughAsyncIterable<T extends dtypes.DataType = any, TNu
         }
     } as ThroughAsyncIterable<T, TNull>;
 }
+
+/**
+ * Helper factory to create a type-safe anonymous field.
+ * @param type The type of the field
+ * @param nullable Whether the field is nullable
+ * @param metadata Optional metadata for the field
+ * @returns An anonymous field to be used in a [FieldDictionary]{@link FieldDictionary}
+ */
+export const anonymousField = <T extends dtypes.DataType>(
+    type: T,
+    nullable?: boolean,
+    metadata?: Map<string, string>
+) => ({ type, nullable, metadata }) as AnonymousField<T>;
