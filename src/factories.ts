@@ -104,6 +104,30 @@ export function tableFromJSON<T extends Record<string, unknown>>(array: T[]): Ta
 }
 
 /** @ignore */
+// Like compareTypes, but ignores Dictionary IDs — which are auto-incremented on
+// every construction, so two separately-inferred Dictionary types for the same
+// data will always have different IDs even though they are structurally identical.
+// Recurses through List children and Struct field types for the same reason.
+function compareTypesForInference(a: dtypes.DataType, b: dtypes.DataType): boolean {
+    if (dtypes.DataType.isDictionary(a) && dtypes.DataType.isDictionary(b)) {
+        return a.isOrdered === b.isOrdered
+            && compareTypes(a.indices, b.indices)
+            && compareTypes(a.dictionary, b.dictionary);
+    }
+    if (dtypes.DataType.isList(a) && dtypes.DataType.isList(b)) {
+        return compareTypesForInference(a.children[0].type, b.children[0].type);
+    }
+    if (dtypes.DataType.isStruct(a) && dtypes.DataType.isStruct(b)) {
+        return a.children.length === b.children.length
+            && a.children.every((f, i) =>
+                f.name === b.children[i].name
+                && compareTypesForInference(f.type, b.children[i].type)
+            );
+    }
+    return compareTypes(a, b);
+}
+
+/** @ignore */
 function inferType<T extends readonly unknown[]>(values: T): JavaScriptArrayDataType<T>;
 function inferType(value: readonly unknown[]): dtypes.DataType {
     if (value.length === 0) { return new dtypes.Null; }
@@ -149,7 +173,7 @@ function inferType(value: readonly unknown[]): dtypes.DataType {
     } else if (arraysCount + nullsCount === value.length) {
         const array = value as Array<unknown>[];
         const childType = inferType(array[array.findIndex((ary) => ary != null)]);
-        if (array.every((ary) => ary == null || compareTypes(childType, inferType(ary)))) {
+        if (array.every((ary) => ary == null || compareTypesForInference(childType, inferType(ary)))) {
             return new dtypes.List(new Field('', childType, true));
         }
     } else if (objectsCount + nullsCount === value.length) {
