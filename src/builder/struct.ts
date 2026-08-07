@@ -22,8 +22,22 @@ import { Builder } from '../builder.js';
 import { Struct, TypeMap } from '../type.js';
 
 /** @ignore */
+type StructValue<T extends TypeMap = any> = Struct<T>['TValue'] | { [P in keyof T]: T[P]['TValue'] };
+
+/** @ignore */
 export class StructBuilder<T extends TypeMap = any, TNull = any> extends Builder<Struct<T>, TNull> {
-    public setValue(index: number, value: Struct<T>['TValue']) {
+    public append(value: StructValue<T> | TNull) {
+        return this.set(this.length, value as any);
+    }
+
+    public set(index: number, value: StructValue<T> | TNull) {
+        if (this.setValid(index, this.isValid(value as any))) {
+            this.setValue(index, value as StructValue<T>);
+        }
+        return this;
+    }
+
+    public setValue(index: number, value: StructValue<T>) {
         const { children, type } = this;
         switch (Array.isArray(value) || value.constructor) {
             case true: return type.children.forEach((_, i) => children[i].set(index, value[i]));
