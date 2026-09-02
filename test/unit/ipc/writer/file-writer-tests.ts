@@ -24,7 +24,6 @@ import { validateRecordBatchIterator } from '../validate.js';
 
 import {
     builderThroughIterable,
-    Codec,
     compressionRegistry,
     CompressionType,
     Dictionary,
@@ -33,43 +32,16 @@ import {
     RecordBatchFileWriter,
     RecordBatchReader,
     Table,
+    tableFromArrays,
     Uint32,
     Vector
 } from 'apache-arrow';
-import * as lz4js from 'lz4js';
 
-export async function registerCompressionCodecs(): Promise<void> {
-    if (compressionRegistry.get(CompressionType.LZ4_FRAME) === null) {
-        const lz4Codec: Codec = {
-            encode(data: Uint8Array): Uint8Array {
-                return lz4js.compress(data);
-            },
-            decode(data: Uint8Array): Uint8Array {
-                return lz4js.decompress(data);
-            }
-        };
-        compressionRegistry.set(CompressionType.LZ4_FRAME, lz4Codec);
-    }
-
-    if (compressionRegistry.get(CompressionType.ZSTD) === null) {
-        const { ZstdCodec } = await import('zstd-codec');
-        await new Promise<void>((resolve) => {
-            ZstdCodec.run((zstd: any) => {
-                const simple = new zstd.Simple();
-                const zstdCodec: Codec = {
-                    encode(data: Uint8Array): Uint8Array {
-                        return simple.compress(data);
-                    },
-                    decode(data: Uint8Array): Uint8Array {
-                        return simple.decompress(data);
-                    }
-                };
-                compressionRegistry.set(CompressionType.ZSTD, zstdCodec);
-                resolve();
-            });
-        });
-    }
-}
+import {
+    extractCompressedPrefixes,
+    FILE_FORMAT_HEADER_LENGTH,
+    registerCompressionCodecs,
+} from './compression-codecs.js';
 
 describe('RecordBatchFileWriter', () => {
     for (const table of generateRandomTables([10, 20, 30])) {
@@ -89,6 +61,30 @@ describe('RecordBatchFileWriter', () => {
         const testName = `[${table.schema.fields.join(', ')}] - ${CompressionType[compressionType]} compressed`;
         testFileWriter(table, testName, { compressionType });
     }
+
+    describe('compressed body buffer length prefix', () => {
+        for (const compressionType of compressionTypes) {
+            it(`writes the uncompressed length for ${CompressionType[compressionType]}`, async () => {
+                // Highly compressible data so most buffers take the compressed branch.
+                const fixture = tableFromArrays({
+                    id: Int32Array.from({ length: 1000 }, (_, i) => i),
+                    label: Array.from({ length: 1000 }, () => 'a highly compressible value'),
+                });
+
+                const bytes = await RecordBatchFileWriter.writeAll(fixture, { compressionType }).toUint8Array();
+                const prefixes = extractCompressedPrefixes(
+                    bytes.subarray(FILE_FORMAT_HEADER_LENGTH),
+                    compressionRegistry.get(compressionType)!,
+                );
+
+                // Guard against a vacuous pass — the fixture must exercise the branch.
+                expect(prefixes.length).toBeGreaterThan(0);
+                for (const { prefix, decompressedLength } of prefixes) {
+                    expect(prefix).toBe(decompressedLength);
+                }
+            });
+        }
+    });
 
     it('should throw if attempting to write replacement dictionary batches', async () => {
         const type = new Dictionary<Uint32, Int32>(new Uint32, new Int32, 0);
