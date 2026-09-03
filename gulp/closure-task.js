@@ -215,6 +215,10 @@ Encoding[2] = function() {};
 Encoding.UTF8_BYTES = function() {};
 /** @type {?} */
 Encoding.UTF16_STRING = function() {};
+
+var RecordBatchWriterOptions = function() {};
+/** @type {?} */
+RecordBatchWriterOptions.prototype.compressionType;
 `);
 }
 
