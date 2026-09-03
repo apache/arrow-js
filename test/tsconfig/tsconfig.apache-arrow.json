@@ -3,6 +3,6 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "target": "ESNext",
-    "module": "CommonJS"
+    "module": "NodeNext"
   }
 }
