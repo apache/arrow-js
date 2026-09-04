@@ -71,7 +71,7 @@
     "del-cli": "7.0.0",
     "esbuild": "0.28.1",
     "esbuild-plugin-alias": "0.2.1",
-    "eslint": "9.39.2",
+    "eslint": "10.6.0",
     "eslint-plugin-jest": "29.15.0",
     "eslint-plugin-unicorn": "59.0.1",
     "glob": "13.0.0",
