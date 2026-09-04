@@ -318,7 +318,11 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
             const isCompressionEffective = compressed.length < byteBuf.length;
 
             const finalBuffer = isCompressionEffective ? compressed : byteBuf;
-            const byteLength = isCompressionEffective ? finalBuffer.length : LENGTH_NO_COMPRESSED_DATA;
+            // Per the Arrow columnar format spec, the 8-byte prefix on a
+            // compressed body buffer holds the *uncompressed* length so that
+            // readers can size the decompression destination buffer. When the
+            // buffer was left uncompressed, the prefix is LENGTH_NO_COMPRESSED_DATA (-1).
+            const byteLength = isCompressionEffective ? byteBuf.length : LENGTH_NO_COMPRESSED_DATA;
 
             const lengthPrefix = new flatbuffers.ByteBuffer(new Uint8Array(COMPRESS_LENGTH_PREFIX));
             lengthPrefix.writeInt64(0, BigInt(byteLength));
