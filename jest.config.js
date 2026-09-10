@@ -57,6 +57,5 @@ export default {
     },
     transformIgnorePatterns: [
         "/targets/(es5|es2015|esnext|apache-arrow)/",
-        "/node_modules/(?!@openpgp/web-stream-tools)/",
     ],
 };
