@@ -60,7 +60,6 @@
     "@swc/core": "1.15.32",
     "@swc/helpers": "^0.5.11",
     "@types/benchmark": "2.1.5",
-    "@types/glob": "8.1.0",
     "@types/jest": "30.0.0",
     "@types/lz4js": "0.2.2",
     "@types/multistream": "4.1.3",
