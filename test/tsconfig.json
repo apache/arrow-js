@@ -4,6 +4,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "rootDir": "../",
     "allowJs": true,
     "declaration": false,
