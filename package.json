@@ -88,7 +88,7 @@
     "jest": "30.3.0",
     "jest-silent-reporter": "0.6.0",
     "lz4js": "0.2.0",
-    "memfs": "4.56.10",
+    "memfs": "4.75.0",
     "mkdirp": "3.0.1",
     "multistream": "4.1.0",
     "regenerator-runtime": "0.14.1",
