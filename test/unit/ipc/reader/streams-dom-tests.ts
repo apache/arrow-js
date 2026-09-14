@@ -25,6 +25,27 @@ import {
     Table
 } from 'apache-arrow';
 
+// Concatenates multiple ReadableStreams into a single stream
+function concatStream<T>(streams: ReadableStream<T>[]): ReadableStream<T> {
+    return new ReadableStream({
+        async start(controller) {
+            for (const stream of streams) {
+                const reader = stream.getReader();
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        controller.enqueue(value);
+                    }
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+            controller.close();
+        }
+    });
+}
+
 (() => {
     if (process.env.TEST_DOM_STREAMS !== 'true') {
         return test('not testing DOM streams because process.env.TEST_DOM_STREAMS !== "true"', () => { });
@@ -101,9 +122,6 @@ import {
     }
 
     it('readAll() should pipe to separate WhatWG WritableStreams', async () => {
-        // @ts-ignore
-        const { concatStream } = await import('@openpgp/web-stream-tools');
-
         expect.hasAssertions();
 
         const tables = [...generateRandomTables([10, 20, 30])];
@@ -141,9 +159,6 @@ import {
     });
 
     it('should not close the underlying WhatWG ReadableStream when reading multiple tables to completion', async () => {
-        // @ts-ignore
-        const { concatStream } = await import('@openpgp/web-stream-tools');
-
         expect.hasAssertions();
 
         const tables = [...generateRandomTables([10, 20, 30])];
@@ -174,9 +189,6 @@ import {
     });
 
     it('should close the underlying WhatWG ReadableStream when reading multiple tables and we break early', async () => {
-        // @ts-ignore
-        const { concatStream } = await import('@openpgp/web-stream-tools');
-
         expect.hasAssertions();
 
         const tables = [...generateRandomTables([10, 20, 30])];
