@@ -62,7 +62,7 @@
     "@types/benchmark": "2.1.5",
     "@types/jest": "30.0.0",
     "@types/lz4js": "0.2.2",
-    "@types/multistream": "4.1.3",
+    "@types/multistream": "4.1.4",
     "async-done": "2.0.0",
     "benny": "3.7.1",
     "cross-env": "10.0.0",
