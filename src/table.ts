@@ -454,15 +454,48 @@ export function makeTable<I extends Record<string | number | symbol, TypedArray>
  * })
  * ```
  *
- * @param input Input an object of typed arrays or JavaScript arrays.
+ * @example
+ * ```ts
+ * const schema = new Schema([
+ *   new Field('a', new Int32),
+ *   new Field('b', new Utf8),
+ * ]);
+ * const table = tableFromArrays({ a: [1, 2, 3], b: ['x', 'y', 'z'] }, schema);
+ * ```
+ *
+ * @param input An object mapping column names to typed arrays or JavaScript arrays.
+ * @param schema Optional schema to control column types, ordering, nullability, and metadata.
  * @returns A new Table.
  */
-export function tableFromArrays<I extends Record<string | number | symbol, TypedArray | BigIntArray | readonly unknown[]>>(input: I): Table<{ [P in keyof I]: ArrayDataType<I[P]> }> {
-    type T = { [P in keyof I]: ArrayDataType<I[P]> };
-    const vecs = {} as VectorsMap<T>;
-    const inputs = Object.entries(input) as [keyof I, I[keyof I]][];
-    for (const [key, col] of inputs) {
+export function tableFromArrays<T extends TypeMap>(
+    input: Record<string, TypedArray | BigIntArray | readonly unknown[]>,
+    schema: Schema<T>
+): Table<T>;
+export function tableFromArrays<I extends Record<string | number | symbol, TypedArray | BigIntArray | readonly unknown[]>>(
+    input: I
+): Table<{ [P in keyof I]: ArrayDataType<I[P]> }>;
+export function tableFromArrays(
+    input: Record<string, TypedArray | BigIntArray | readonly unknown[]>,
+    schema?: Schema
+): Table {
+    if (schema) {
+        const vecs: Vector[] = [];
+        for (const field of schema.fields) {
+            const col = input[field.name];
+            if (col === undefined) {
+                throw new TypeError(
+                    `Schema field "${field.name}" not found in input. ` +
+                    `Available keys: [${Object.keys(input).join(', ')}]`
+                );
+            }
+            vecs.push(vectorFromArray(col as any, field.type));
+        }
+        const [adjustedSchema, batches] = distributeVectorsIntoRecordBatches(schema, vecs);
+        return new Table(adjustedSchema, batches);
+    }
+    const vecs = {} as Record<string, Vector>;
+    for (const [key, col] of Object.entries(input)) {
         vecs[key] = vectorFromArray(col);
     }
-    return new Table<T>(vecs);
+    return new Table(vecs);
 }
