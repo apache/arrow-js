@@ -65,10 +65,10 @@ function getVisitFn<T extends DataType>(visitor: Visitor, node: any, throwIfNotF
     if (typeof node === 'string' && (node in Type)) {
         return getVisitFnByTypeId(visitor, Type[node as keyof typeof Type], throwIfNotFound);
     }
-    if (node && (node instanceof DataType)) {
+    if (node && DataType.isDataType(node)) {
         return getVisitFnByTypeId(visitor, inferDType(node as T), throwIfNotFound);
     }
-    if (node?.type && (node.type instanceof DataType)) {
+    if (node?.type && DataType.isDataType(node.type)) {
         return getVisitFnByTypeId(visitor, inferDType(node.type as T), throwIfNotFound);
     }
     return getVisitFnByTypeId(visitor, Type.NONE, throwIfNotFound);
