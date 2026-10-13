@@ -23,6 +23,8 @@ import {
 } from '../validate.js';
 
 import {
+    AsyncByteStream,
+    ByteStream,
     Message,
     RecordBatchReader,
     RecordBatchStreamWriter,
@@ -121,6 +123,17 @@ describe(`RecordBatchStreamReader over message-sized chunks`, () => {
         }
         expect(i).toBe(table.batches.length);
     });
+});
+
+test.each([null, 0])(`ByteStream and AsyncByteStream advance after read(%s)`, async (size) => {
+    const chunks = [new Uint8Array([1]), new Uint8Array([2])];
+    for (const stream of [new ByteStream(chunks), new AsyncByteStream(async function* () { yield* chunks; }())]) {
+        for (const chunk of chunks) {
+            expect(await stream.read(size)).toEqual(chunk);
+        }
+        expect(await stream.read(size)).toEqual(new Uint8Array(0));
+        expect((await stream.next(size)).done).toBe(true);
+    }
 });
 
 // Splits an IPC stream into one Uint8Array per encapsulated message
