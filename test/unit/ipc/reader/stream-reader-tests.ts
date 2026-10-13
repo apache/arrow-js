@@ -22,7 +22,13 @@ import {
     validateRecordBatchReader
 } from '../validate.js';
 
-import { RecordBatchReader } from 'apache-arrow';
+import {
+    Message,
+    RecordBatchReader,
+    RecordBatchStreamWriter,
+    Table,
+    tableFromArrays
+} from 'apache-arrow';
 
 for (const table of generateRandomTables([10, 20, 30])) {
 
@@ -58,4 +64,74 @@ for (const table of generateRandomTables([10, 20, 30])) {
             test('Promise<ReadableByteStream>', io.whatwgReadableByteStream(validateAsyncWrapped));
         });
     });
+}
+
+describe(`RecordBatchStreamReader over message-sized chunks`, () => {
+
+    const source = tableFromArrays({ x: [0, 10, 20, 30, 40, 50] });
+    const batch = source.batches[0];
+    const table = new Table(source.schema, [batch.slice(0, 2), batch.slice(2, 4), batch.slice(4, 6)]);
+
+    test(`AsyncIterable yields each RecordBatch as soon as its chunk arrives`, async () => {
+        const messages = [...ipcMessages(await RecordBatchStreamWriter.writeAll(table).toUint8Array())];
+        let pulled = 0;
+        async function* chunks() {
+            for (const message of messages) { pulled++; yield message; }
+            // the byte stream stays open, like a WebSocket or network stream
+            await new Promise(() => { });
+        }
+
+        const reader = await (await RecordBatchReader.from(chunks())).open();
+        const iterator = reader[Symbol.asyncIterator]();
+
+        // reading the schema should not pull the next chunk
+        expect(pulled).toBe(1);
+        for (let i = 0; i < table.batches.length; i++) {
+            const { value } = await iterator.next();
+            expect(value).toEqualRecordBatch(table.batches[i]);
+            expect(pulled).toBe(i + 2);
+        }
+        await iterator.return!(null);
+    });
+
+    test(`AsyncIterable terminates when the byte stream ends`, async () => {
+        const messages = [...ipcMessages(await RecordBatchStreamWriter.writeAll(table).toUint8Array())];
+        const reader = await (await RecordBatchReader.from(async function* () { yield* messages; }())).open();
+        let i = 0;
+        for await (const batch of reader) {
+            expect(batch).toEqualRecordBatch(table.batches[i++]);
+        }
+        expect(i).toBe(table.batches.length);
+    });
+
+    test(`Iterable yields each RecordBatch as soon as its chunk arrives`, () => {
+        const messages = [...ipcMessages(RecordBatchStreamWriter.writeAll(table).toUint8Array(true))];
+        let pulled = 0;
+        function* chunks() {
+            for (const message of messages) { pulled++; yield message; }
+        }
+
+        const reader = RecordBatchReader.from(chunks()).open();
+        expect(pulled).toBe(1);
+
+        let i = 0;
+        for (const batch of reader) {
+            expect(batch).toEqualRecordBatch(table.batches[i]);
+            expect(pulled).toBe(++i + 1);
+        }
+        expect(i).toBe(table.batches.length);
+    });
+});
+
+// Splits an IPC stream into one Uint8Array per encapsulated message
+// (4- or 8-byte prefix, flatbuffer metadata + padding, body, EOS).
+function* ipcMessages(buffer: Uint8Array) {
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    for (let offset = 0; offset < buffer.byteLength;) {
+        const prefixSize = view.getInt32(offset, true) === -1 ? 8 : 4;
+        const metadataLength = view.getInt32(offset + (prefixSize - 4), true);
+        const bodyLength = metadataLength === 0 ? 0 : Number(
+            Message.decode(buffer.subarray(offset + prefixSize, offset + prefixSize + metadataLength)).bodyLength);
+        yield buffer.subarray(offset, offset += prefixSize + metadataLength + bodyLength);
+    }
 }

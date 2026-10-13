@@ -93,7 +93,7 @@ function* fromIterable<T extends ArrayBufferViewInput>(source: Iterable<T> | T):
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (size <= bufferLength);
             }
         } while (!done);
     } catch (e) {
@@ -141,7 +141,7 @@ async function* fromAsyncIterable<T extends ArrayBufferViewInput>(source: AsyncI
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (size <= bufferLength);
             }
         } while (!done);
     } catch (e) {
@@ -192,7 +192,7 @@ async function* fromDOMStream<T extends ArrayBufferViewInput>(source: ReadableSt
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (size <= bufferLength);
             }
         } while (!done);
     } catch (e) {
@@ -324,7 +324,7 @@ async function* fromNodeStream(stream: NodeJS.ReadableStream): AsyncUint8ArrayGe
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (size <= bufferLength);
             }
         } while (!done);
     } finally {
