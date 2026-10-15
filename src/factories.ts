@@ -60,6 +60,7 @@ export function makeBuilder<T extends dtypes.DataType = any, TNull = any>(option
  * const vi8 = vectorFromArray([1, 2, 3], new Int8);
  * const vdict = vectorFromArray(['foo', 'bar']);
  * const vstruct = vectorFromArray([{a: 'foo', b: 42}, {a: 'bar', b: 12}]);
+ * const vbinary = vectorFromArray([new Uint8Array([1, 2]), new Uint8Array([3])]);
  * ```
  */
 export function vectorFromArray(values: readonly (null | undefined)[], type?: dtypes.Null): Vector<dtypes.Null>;
@@ -115,6 +116,7 @@ function inferType(value: readonly unknown[]): dtypes.DataType {
     let bigintsCount = 0;
     let booleansCount = 0;
     let datesCount = 0;
+    let typedArraysCount = 0;
 
     for (const val of value) {
         if (val == null) { ++nullsCount; continue; }
@@ -126,6 +128,8 @@ function inferType(value: readonly unknown[]): dtypes.DataType {
             case 'object':
                 if (Array.isArray(val)) {
                     ++arraysCount;
+                } else if (ArrayBuffer.isView(val)) {
+                    ++typedArraysCount;
                 } else if (Object.prototype.toString.call(val) === '[object Date]') {
                     ++datesCount;
                 } else {
@@ -152,6 +156,12 @@ function inferType(value: readonly unknown[]): dtypes.DataType {
         if (array.every((ary) => ary == null || compareTypes(childType, inferType(ary)))) {
             return new dtypes.List(new Field('', childType, true));
         }
+    } else if (typedArraysCount + nullsCount === value.length) {
+        const views = value as (ArrayBufferView | null | undefined)[];
+        const type = inferTypedArrayType(views.find((view) => view != null)!);
+        if (views.every((view) => view == null || compareTypes(type, inferTypedArrayType(view)))) {
+            return type;
+        }
     } else if (objectsCount + nullsCount === value.length) {
         const fields = new Map<string, Field>();
         for (const row of value as Record<string, unknown>[]) {
@@ -166,6 +176,17 @@ function inferType(value: readonly unknown[]): dtypes.DataType {
     }
 
     throw new TypeError('Unable to infer Vector type from input values, explicit type declaration expected.');
+}
+
+/** @ignore */
+function inferTypedArrayType(view: ArrayBufferView): dtypes.DataType {
+    if (view instanceof DataView) {
+        throw new TypeError('Unable to infer Vector type from DataView values, explicit type declaration expected.');
+    }
+    if (view instanceof Uint8Array) {
+        return new dtypes.Binary;
+    }
+    return new dtypes.List(new Field('', makeVector(view as TypedArray | BigIntArray).type, true));
 }
 
 /**
