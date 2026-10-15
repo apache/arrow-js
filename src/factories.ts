@@ -80,8 +80,34 @@ export function vectorFromArray<T extends dtypes.DataType>(data: DataProps<T>): 
 export function vectorFromArray<T extends TypedArray | BigIntArray | readonly unknown[]>(data: T): Vector<ArrayDataType<T>>;
 
 export function vectorFromArray(init: any, type?: dtypes.DataType) {
-    if (init instanceof Data || init instanceof Vector || init.type instanceof dtypes.DataType || ArrayBuffer.isView(init)) {
+    if (init instanceof Data || init instanceof Vector || init.type instanceof dtypes.DataType) {
         return makeVector(init as any);
+    }
+    if (ArrayBuffer.isView(init) && !type) {
+        return makeVector(init as any);
+    }
+    if (ArrayBuffer.isView(init) && type) {
+        // Validate BigInt/number boundary
+        const isBigIntInput = init instanceof BigInt64Array || init instanceof BigUint64Array;
+        const isBigIntTarget = type.ArrayType === BigInt64Array || type.ArrayType === BigUint64Array;
+        if (isBigIntInput && !isBigIntTarget) {
+            throw new TypeError(
+                `Cannot convert BigInt input to ${type}. BigInt arrays can only target BigInt-based types (e.g. Int64, Uint64).`
+            );
+        }
+        if (!isBigIntInput && isBigIntTarget) {
+            throw new TypeError(
+                `Cannot convert non-BigInt input to ${type}. ${type} requires BigInt values.`
+            );
+        }
+
+        // Fast path: direct TypedArray conversion for Int and Float types
+        if (dtypes.DataType.isInt(type) || dtypes.DataType.isFloat(type)) {
+            const data = init.constructor === type.ArrayType
+                ? init                                  // zero-copy, same TypedArray type
+                : new (type.ArrayType as any)(init);    // standard JS TypedArray conversion
+            return makeVector({ type, data, offset: 0, length: data.length, nullCount: 0 } as any);
+        }
     }
     const options: IterableBuilderOptions = { type: type ?? inferType(init), nullValues: [null] };
     const chunks = [...builderThroughIterable(options)(init)];
