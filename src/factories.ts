@@ -179,14 +179,21 @@ function inferType(value: readonly unknown[]): dtypes.DataType {
 }
 
 /** @ignore */
+const listElementArrayTypes = [
+    Int8Array, Int16Array, Int32Array, BigInt64Array,
+    Uint8ClampedArray, Uint16Array, Uint32Array, BigUint64Array,
+    Float32Array, Float64Array,
+];
+
+/** @ignore */
 function inferTypedArrayType(view: ArrayBufferView): dtypes.DataType {
-    if (view instanceof DataView) {
-        throw new TypeError('Unable to infer Vector type from DataView values, explicit type declaration expected.');
-    }
     if (view instanceof Uint8Array) {
         return new dtypes.Binary;
     }
-    return new dtypes.List(new Field('', makeVector(view as TypedArray | BigIntArray).type, true));
+    if (listElementArrayTypes.some((ArrayType) => view instanceof ArrayType)) {
+        return new dtypes.List(new Field('', makeVector(view as TypedArray | BigIntArray).type, true));
+    }
+    throw new TypeError('Unable to infer Vector type from input values, explicit type declaration expected.');
 }
 
 /**
