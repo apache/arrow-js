@@ -439,9 +439,11 @@ export class RecordBatchFileWriter<T extends TypeMap = any> extends RecordBatchW
         this._writeLegacyIpcFormat = false;
     }
 
-    // @ts-ignore
     protected _writeSchema(schema: Schema<T>) {
-        return this._writeMagic()._writePadding(2);
+        // The file format embeds a complete IPC stream after the leading
+        // magic and padding, so the Schema message has to be written here too.
+        this._writeMagic()._writePadding(2);
+        return super._writeSchema(schema);
     }
 
     protected _writeDictionaryBatch(dictionary: Data, id: number, isDelta = false) {
