@@ -55,6 +55,11 @@ export interface RecordBatchStreamWriterOptions {
     writeLegacyIpcFormat?: boolean;
     /**
      * Specifies the optional compression algorithm to use for record batch body buffers.
+     *
+     * A codec with an `encode` method must be registered for this compression
+     * type with {@link compressionRegistry} before writing, otherwise writing a
+     * batch throws. Buffers that would not get smaller are written uncompressed,
+     * as the IPC format allows. Not supported with `writeLegacyIpcFormat`.
      */
     compressionType?: CompressionType | null;
 }
