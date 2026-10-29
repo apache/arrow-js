@@ -24,7 +24,8 @@ import {
     Schema, Field, Table, RecordBatch,
     Vector, builderThroughIterable,
     Float32, Int32, Dictionary, Utf8, Int8,
-    tableFromIPC, tableToIPC, vectorFromArray
+    tableFromIPC, tableToIPC, vectorFromArray,
+    tableFromJSON
 } from 'apache-arrow';
 
 const deepCopy = (t: Table) => tableFromIPC(tableToIPC(t));
@@ -305,6 +306,14 @@ describe(`Table`, () => {
         compareBatchAndTable(table, 0, batch1, deepCopy(new Table([batch1])));
         compareBatchAndTable(table, m, batch2, deepCopy(new Table([batch2])));
     });
+
+    test(`table.toHTML() create right HTML table`, () => {
+        const table = tableFromJSON([{name: "Alice", age: 30}, {name: "Bob", age: 32}])
+        const html = table.toHTML()
+        const expected = `<table><thead><tr><th>name</th><th>age></th></tr></thead><tbody><tr><td>Alice</td><td>30</td></tr><tr><td>Bob</td><td>32</td></tr></tbody></table>`
+
+        expect(html).toEqual(expected)
+    })
 
     for (const datum of test_data) {
         describe(datum.name, () => {
