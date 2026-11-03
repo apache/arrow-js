@@ -78,9 +78,14 @@ describe(`RecordBatchStreamReader over message-sized chunks`, () => {
         const messages = [...ipcMessages(await RecordBatchStreamWriter.writeAll(table).toUint8Array())];
         let pulled = 0;
         async function* chunks() {
-            for (const message of messages) { pulled++; yield message; }
-            // the byte stream stays open, like a WebSocket or network stream
-            await new Promise(() => { });
+            let release: () => void;
+            try {
+                for (const message of messages) { pulled++; yield message; }
+                // the byte stream stays open, like a WebSocket or network stream
+                await new Promise<void>((resolve) => { release = resolve; });
+            } finally {
+                release!();
+            }
         }
 
         const reader = await (await RecordBatchReader.from(chunks())).open();
@@ -123,6 +128,59 @@ describe(`RecordBatchStreamReader over message-sized chunks`, () => {
         }
         expect(i).toBe(table.batches.length);
     });
+
+    if (process.env.TEST_DOM_STREAMS === 'true') {
+        test(`whatwg.ReadableStream yields each RecordBatch as soon as its chunk arrives`, async () => {
+            const messages = [...ipcMessages(await RecordBatchStreamWriter.writeAll(table).toUint8Array())];
+            let pulled = 0;
+            const stream = new ReadableStream<Uint8Array>({
+                pull(controller) {
+                    if (pulled < messages.length) {
+                        controller.enqueue(messages[pulled++]);
+                    } else {
+                        controller.error(new Error(`source pulled past the last message`));
+                    }
+                }
+            }, { highWaterMark: 0 });
+
+            const reader = await (await RecordBatchReader.from(stream)).open();
+            const iterator = reader[Symbol.asyncIterator]();
+
+            // reading the schema should not pull the next chunk
+            expect(pulled).toBe(1);
+            for (let i = 0; i < table.batches.length; i++) {
+                const { value } = await iterator.next();
+                expect(value).toEqualRecordBatch(table.batches[i]);
+                expect(pulled).toBe(i + 2);
+            }
+            await iterator.return!(null);
+        });
+    }
+
+    if (process.env.TEST_NODE_STREAMS === 'true') {
+        test(`stream.Readable yields each RecordBatch as soon as its chunk arrives`, async () => {
+            const { PassThrough } = await import('node:stream');
+            const messages = [...ipcMessages(await RecordBatchStreamWriter.writeAll(table).toUint8Array())];
+            const stream = new PassThrough();
+            stream.write(messages[0]);
+
+            const reader = await (await RecordBatchReader.from(stream)).open();
+            const iterator = reader[Symbol.asyncIterator]();
+
+            for (let i = 0; i < table.batches.length; i++) {
+                stream.write(messages[i + 1]);
+                // each batch resolves without a pull of the next chunk
+                const next = iterator.next();
+                const settled = await Promise.race([
+                    next.then(() => true),
+                    new Promise((resolve) => setImmediate(() => resolve(false)))
+                ]);
+                expect(settled).toBe(true);
+                expect((await next).value).toEqualRecordBatch(table.batches[i]);
+            }
+            await iterator.return!(null);
+        });
+    }
 });
 
 test.each([null, 0])(`ByteStream and AsyncByteStream advance after read(%s)`, async (size) => {
