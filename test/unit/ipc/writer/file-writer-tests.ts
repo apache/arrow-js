@@ -31,6 +31,7 @@ import {
     RecordBatch,
     RecordBatchFileWriter,
     RecordBatchReader,
+    RecordBatchStreamReader,
     Table,
     tableFromArrays,
     Uint32,
@@ -133,6 +134,23 @@ describe('RecordBatchFileWriter', () => {
         expect(resultTable).toEqualTable(sourceTable);
         expect(dictionary).toBeInstanceOf(Vector);
         expect(dictionary.data).toHaveLength(20);
+    });
+
+    describe('embedded IPC stream', () => {
+        const cases: [string, Table][] = [
+            ['all types', generate.table([10, 20, 30]).table],
+            ['dictionaries', generateDictionaryTables([10, 20, 30]).next().value!],
+        ];
+        for (const [name, source] of cases) {
+            it(`can be read by a stream reader after the leading magic (${name})`, async () => {
+                const bytes = await RecordBatchFileWriter.writeAll(source).toUint8Array();
+                // Skip the leading "ARROW1" magic and its two bytes of padding.
+                const reader = RecordBatchStreamReader.from(bytes.subarray(FILE_FORMAT_HEADER_LENGTH));
+                const result = new Table(reader);
+                expect(result.schema.fields).toHaveLength(source.schema.fields.length);
+                expect(result).toEqualTable(source);
+            });
+        }
     });
 });
 
