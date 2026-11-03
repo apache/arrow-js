@@ -42,11 +42,16 @@ export class Schema<T extends TypeMap = any> {
     public readonly metadataVersion: MetadataVersion;
 
     constructor(
-        fields: Field<T[keyof T]>[] = [],
+        fields: Field<T[keyof T]>[] | FieldDictionary<T> = {} as FieldDictionary<T>,
         metadata?: Map<string, string> | null,
         dictionaries?: Map<number, DataType> | null,
         metadataVersion = MetadataVersion.V5) {
-        this.fields = (fields || []) as Field<T[keyof T]>[];
+        if (Array.isArray(fields)) {
+            this.fields = fields as Field<T[keyof T]>[];
+        } else {
+            const entries = Object.entries(fields);
+            this.fields = entries.map(([name, field]) => new Field(name, field.type, field.nullable, field.metadata));
+        }
         this.metadata = metadata || new Map();
         if (!dictionaries) {
             dictionaries = generateDictionaryMap(this.fields);
@@ -219,4 +224,14 @@ function generateDictionaryMap(fields: Field[], dictionaries = new Map<number, D
     }
 
     return dictionaries;
+}
+
+export type AnonymousField<T extends DataType> = {
+    readonly type: T;
+    readonly nullable?: boolean;
+    readonly metadata?: Map<string, string>;
+}
+
+export type FieldDictionary<T extends TypeMap> = {
+    [name in keyof T]: AnonymousField<T[name]>;
 }
