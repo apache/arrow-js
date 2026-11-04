@@ -56,6 +56,22 @@ describe('tableFromArrays()', () => {
         expect(table.getChild('d')!.type).toBeInstanceOf(Dictionary);
         expect(table.getChild('e' as any)).toBeNull();
     });
+
+    test(`creates table from arrays of strings`, () => {
+        const table = tableFromArrays({ word: [['a', 'b'], ['c', 'd']] });
+        expect(table.numRows).toBe(2);
+        const word = table.getChild('word')!;
+        expect(word.get(0)!.toArray()).toEqual(['a', 'b']);
+        expect(word.get(1)!.toArray()).toEqual(['c', 'd']);
+    });
+
+    test(`creates table from arrays of objects containing strings`, () => {
+        const table = tableFromArrays({ customers: [{ names: ['joe'] }, { names: ['bob'] }] });
+        expect(table.numRows).toBe(2);
+        const customers = table.getChild('customers')!;
+        expect(customers.get(0)!.names.toArray()).toEqual(['joe']);
+        expect(customers.get(1)!.names.toArray()).toEqual(['bob']);
+    });
 });
 
 
@@ -77,5 +93,21 @@ describe('tableFromJSON()', () => {
         expect(table.getChild('a')!.type).toBeInstanceOf(Float64);
         expect(table.getChild('b')!.type).toBeInstanceOf(Bool);
         expect(table.getChild('c')!.type).toBeInstanceOf(Dictionary);
+    });
+
+    test(`handles arrays of strings`, () => {
+        const t1 = tableFromJSON([{ a: ['hi'] }]);
+        expect(t1.getChild('a')!.get(0)!.toArray()).toEqual(['hi']);
+
+        const t2 = tableFromJSON([{ a: ['hi', 'there'] }]);
+        expect(t2.getChild('a')!.get(0)!.toArray()).toEqual(['hi', 'there']);
+    });
+
+    test(`handles nested objects containing strings`, () => {
+        const table = tableFromJSON([{ a: [{ b: 'hi' }, { b: 'there' }] }]);
+        expect(table.numRows).toBe(1);
+        const rows = table.getChild('a')!.get(0)!;
+        expect(rows.get(0)!.b).toBe('hi');
+        expect(rows.get(1)!.b).toBe('there');
     });
 });
