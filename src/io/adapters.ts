@@ -58,6 +58,13 @@ export default {
 /** @ignore */
 const pump = <T extends Uint8ArrayGenerator | AsyncUint8ArrayGenerator>(iterator: T) => { iterator.next(); return iterator; };
 
+// Keep yielding buffered bytes while a read fits inside what is still
+// buffered. A positive size that drains the buffer exactly is served too,
+// so a read never waits on the next source chunk for bytes already here.
+// Null and zero requests fall through to the next source read instead.
+const fitsInBuffer = (size: number, bufferLength: number) =>
+    size < bufferLength || (size > 0 && size === bufferLength);
+
 /** @ignore */
 function* fromIterable<T extends ArrayBufferViewInput>(source: Iterable<T> | T): Uint8ArrayGenerator {
 
@@ -93,7 +100,7 @@ function* fromIterable<T extends ArrayBufferViewInput>(source: Iterable<T> | T):
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (fitsInBuffer(size, bufferLength));
             }
         } while (!done);
     } catch (e) {
@@ -141,7 +148,7 @@ async function* fromAsyncIterable<T extends ArrayBufferViewInput>(source: AsyncI
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (fitsInBuffer(size, bufferLength));
             }
         } while (!done);
     } catch (e) {
@@ -192,7 +199,7 @@ async function* fromDOMStream<T extends ArrayBufferViewInput>(source: ReadableSt
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (fitsInBuffer(size, bufferLength));
             }
         } while (!done);
     } catch (e) {
@@ -324,7 +331,7 @@ async function* fromNodeStream(stream: NodeJS.ReadableStream): AsyncUint8ArrayGe
             if (done || size <= bufferLength) {
                 do {
                     ({ cmd, size } = yield byteRange());
-                } while (size < bufferLength);
+                } while (fitsInBuffer(size, bufferLength));
             }
         } while (!done);
     } finally {
