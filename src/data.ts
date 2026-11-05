@@ -168,6 +168,16 @@ export class Data<T extends DataType = DataType> {
             this.variadicBuffers = variadicBuffers;
         }
         this.variadicBuffers ??= [];
+
+        // Slice offsets to the correct length defined by the spec. Often the
+        // backing buffer of `valueOffsets` is longer than the spec requires,
+        // either due to IPC padding or builder over-allocation.
+        if (this.valueOffsets) {
+            const numValueOffsets = DataType.isUnion(type) ? this.length : this.length + 1;
+            if (this.valueOffsets.length > numValueOffsets) {
+                this.valueOffsets = this.valueOffsets.subarray(0, numValueOffsets);
+            }
+        }
     }
 
     public getValid(index: number): boolean {
