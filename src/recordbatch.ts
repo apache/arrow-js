@@ -39,11 +39,6 @@ export interface RecordBatch<T extends TypeMap = any> {
     readonly TType: Struct<T>;
     readonly TArray: Struct<T>['TArray'];
     readonly TValue: Struct<T>['TValue'];
-
-    /**
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/isConcatSpreadable
-     */
-    [Symbol.isConcatSpreadable]: true;
 }
 
 /**
@@ -306,7 +301,6 @@ export class RecordBatch<T extends TypeMap = any> {
     // out this logic, but also so we're still compliant with `"sideEffects": false`
     protected static [Symbol.toStringTag] = ((proto: RecordBatch) => {
         (proto as any)._nullCount = -1;
-        (proto as any)[Symbol.isConcatSpreadable] = true;
         (proto as any)[kRecordBatchSymbol] = true;
         return 'RecordBatch';
     })(RecordBatch.prototype);

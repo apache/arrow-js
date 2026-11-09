@@ -51,11 +51,6 @@ export interface Vector<T extends DataType = any> {
     readonly TType: T['TType'];
     readonly TArray: T['TArray'];
     readonly TValue: T['TValue'];
-
-    /**
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/isConcatSpreadable
-     */
-    [Symbol.isConcatSpreadable]: true;
 }
 
 const visitorsByTypeId = {} as { [typeId: number]: { get: any; set: any; indexOf: any } };
@@ -369,7 +364,6 @@ export class Vector<T extends DataType = any> {
         (proto as any).stride = 1;
         (proto as any).numChildren = 0;
         (proto as any)._offsets = new Uint32Array([0]);
-        (proto as any)[Symbol.isConcatSpreadable] = true;
         (proto as any)[kVectorSymbol] = true;
 
         const typeIds: Type[] = Object.keys(Type)
