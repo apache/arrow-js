@@ -56,11 +56,6 @@ export interface Table<T extends TypeMap = any> {
     readonly TType: Struct<T>;
     readonly TArray: Struct<T>['TArray'];
     readonly TValue: Struct<T>['TValue'];
-
-    /**
-     * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/isConcatSpreadable
-     */
-    [Symbol.isConcatSpreadable]: true;
 }
 
 /**
@@ -400,7 +395,6 @@ export class Table<T extends TypeMap = any> {
         (proto as any).batches = [];
         (proto as any)._offsets = new Uint32Array([0]);
         (proto as any)._nullCount = -1;
-        (proto as any)[Symbol.isConcatSpreadable] = true;
         (proto as any)[kTableSymbol] = true;
         (proto as any)['isValid'] = wrapChunkedCall1(isChunkedValid);
         (proto as any)['get'] = wrapChunkedCall1(getVisitor.getVisitFn(Type.Struct));
