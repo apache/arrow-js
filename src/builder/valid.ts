@@ -16,12 +16,11 @@
 // under the License.
 
 import { DataType } from '../type.js';
-import { valueToString } from '../util/pretty.js';
 
 /**
- * Dynamically compile the null values into an `isValid()` function whose
- * implementation is a switch statement. Microbenchmarks in v8 indicate
- * this approach is 25% faster than using an ES6 Map.
+ * Creates a validity predicate without compiling strings as JavaScript.
+ * A single null sentinel uses a direct comparison; multiple sentinels use a
+ * snapshot Set, including NaN and treating positive and negative zero equally.
  *
  * @example
  * console.log(createIsValidFunction([null, 'N/A', NaN]));
@@ -45,30 +44,12 @@ export function createIsValidFunction<T extends DataType = any, TNull = any>(nul
         return function isValid(value: any) { return true; };
     }
 
-    let fnBody = '';
-    const noNaNs = nullValues.filter((x) => x === x);
-
-    if (noNaNs.length > 0) {
-        fnBody = `
-    switch (x) {${noNaNs.map((x) => `
-        case ${valueToCase(x)}:`).join('')}
-            return false;
-    }`;
+    if (nullValues.length === 1) {
+        const nullValue = nullValues[0];
+        return nullValue !== nullValue
+            ? function isValid(value: T['TValue'] | TNull) { return value === value; }
+            : function isValid(value: T['TValue'] | TNull) { return value !== nullValue; };
     }
-
-    // NaN doesn't equal anything including itself, so it doesn't work as a
-    // switch case. Instead we must explicitly check for NaN before the switch.
-    if (nullValues.length !== noNaNs.length) {
-        fnBody = `if (x !== x) return false;\n${fnBody}`;
-    }
-
-    return new Function(`x`, `${fnBody}\nreturn true;`) as (value: T['TValue'] | TNull) => boolean;
-}
-
-/** @ignore */
-function valueToCase(x: any) {
-    if (typeof x !== 'bigint') {
-        return valueToString(x);
-    }
-    return `${valueToString(x)}n`;
+    const invalidValues = new Set<T['TValue'] | TNull>(nullValues);
+    return function isValid(value: T['TValue'] | TNull) { return !invalidValues.has(value); };
 }
