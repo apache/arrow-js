@@ -102,19 +102,19 @@ export interface IndexOfVisitor extends Visitor {
 export class IndexOfVisitor extends Visitor { }
 
 /** @ignore */
-function nullIndexOf(data: Data<Null>, searchElement?: null) {
-    // if you're looking for nulls and the vector isn't empty, we've got 'em!
-    return searchElement === null && data.length > 0 ? 0 : -1;
+function nullIndexOf(data: Data<Null>, searchElement?: null, fromIndex = 0) {
+    // if you're looking for nulls and the search starts inside the vector, we've got 'em!
+    return searchElement === null && fromIndex < data.length ? fromIndex : -1;
 }
 
 /** @ignore */
-function indexOfNull<T extends DataType>(data: Data<T>, fromIndex?: number): number {
+function indexOfNull<T extends DataType>(data: Data<T>, fromIndex = 0): number {
     const { nullBitmap } = data;
     if (!nullBitmap || data.nullCount <= 0) {
         return -1;
     }
-    let i = 0;
-    for (const isValid of new BitIterator(nullBitmap, data.offset + (fromIndex || 0), data.length, nullBitmap, getBool)) {
+    let i = fromIndex;
+    for (const isValid of new BitIterator(nullBitmap, data.offset + i, data.length - i, nullBitmap, getBool)) {
         if (!isValid) { return i; }
         ++i;
     }

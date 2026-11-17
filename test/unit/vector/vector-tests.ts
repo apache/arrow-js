@@ -334,6 +334,31 @@ describe(`toArray()`, () => {
     });
 });
 
+describe(`indexOf() and includes() with an offset`, () => {
+    const values = [5, 7, 5, 7, 5];
+    const withNulls = [1, null, 2, null, 3];
+    const cases: [string, (number | null)[], Vector][] = [
+        ['one chunk', values, vectorFromArray(values, new Int32)],
+        ['two chunks', values, vectorFromArray([5, 7], new Int32).concat(vectorFromArray([5, 7, 5], new Int32))],
+        ['one chunk with nulls', withNulls, vectorFromArray(withNulls, new Int32)],
+        ['two chunks with nulls', withNulls, vectorFromArray([1, null], new Int32).concat(vectorFromArray([2, null, 3], new Int32))],
+        ['Null type', [null, null, null], vectorFromArray([null, null, null])],
+    ];
+
+    const offsets = [undefined, 0, 1, 1.5, 2, 3, 4, 5, 6, 99, -1, -2, -4, -99, Number.NaN, Infinity, -Infinity];
+
+    for (const [name, expected, vector] of cases) {
+        test(`${name}: same results as Array.prototype.indexOf`, () => {
+            for (const value of [...new Set(expected), 9]) {
+                for (const offset of offsets) {
+                    expect(vector.indexOf(value, offset)).toBe(expected.indexOf(value, offset));
+                    expect(vector.includes(value, offset)).toBe(expected.includes(value, offset));
+                }
+            }
+        });
+    }
+});
+
 // Creates some basic tests for the given vector.
 // Verifies that:
 // - `get` and the native iterator return the same data as `values`

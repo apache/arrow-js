@@ -138,11 +138,25 @@ export function wrapChunkedCall2<T extends DataType>(fn: (c: Data<T>, _1: number
     };
 }
 
+/**
+ * Turns an `indexOf` offset into a start index, using the same rules as
+ * `Array.prototype.indexOf`: fractions are truncated and a negative offset
+ * counts back from the end.
+ * @ignore
+ */
+export function toIndexOfStart(offset: number | undefined, length: number) {
+    const index = Math.trunc(Number(offset)) || 0;
+    return index < 0 ? Math.max(0, length + index) : index;
+}
+
 /** @ignore */
 export function wrapChunkedIndexOf<T extends DataType>(indexOf: (c: Data<T>, e: T['TValue'], o?: number) => any) {
     let _1: any;
     function chunkedIndexOf(data: ReadonlyArray<Data<T>>, chunkIndex: number, fromIndex: number) {
         let begin = fromIndex, index = 0, total = 0;
+        for (let i = -1; ++i < chunkIndex;) {
+            total += data[i].length;
+        }
         for (let i = chunkIndex - 1, n = data.length; ++i < n;) {
             const chunk = data[i];
             if (~(index = indexOf(chunk, _1, begin))) {
@@ -156,9 +170,10 @@ export function wrapChunkedIndexOf<T extends DataType>(indexOf: (c: Data<T>, e: 
     return function (this: any, element: T['TValue'], offset?: number) {
         _1 = element;
         const data = this.data as ReadonlyArray<Data<T>>;
-        const result = typeof offset !== 'number'
+        const start = toIndexOfStart(offset, this.length);
+        const result = start === 0
             ? chunkedIndexOf(data, 0, 0)
-            : binarySearch(data, this._offsets, offset, chunkedIndexOf);
+            : binarySearch(data, this._offsets, start, chunkedIndexOf) ?? -1;
         _1 = undefined;
         return result;
     };

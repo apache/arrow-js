@@ -30,6 +30,7 @@ import {
     wrapChunkedCall1,
     wrapChunkedCall2,
     wrapChunkedIndexOf,
+    toIndexOfStart,
 } from './util/chunk.js';
 
 import { instance as getVisitor } from './visitor/get.js';
@@ -90,7 +91,7 @@ export class Vector<T extends DataType = any> {
                 this.isValid = (index: number) => isChunkedValid(unchunkedData, index);
                 this.get = (index: number) => get(unchunkedData, index);
                 this.set = (index: number, value: T) => set(unchunkedData, index, value);
-                this.indexOf = (index: number) => indexOf(unchunkedData, index);
+                this.indexOf = (element: T['TValue'], offset?: number) => indexOf(unchunkedData, element, toIndexOfStart(offset, unchunkedData.length));
                 this._offsets = [0, unchunkedData.length];
                 break;
             }
