@@ -33,6 +33,11 @@ type AsyncRecordBatchReaders<T extends TypeMap = any> = AsyncRecordBatchFileRead
 /**
  * Deserialize the IPC format into a {@link Table}. This function is a
  * convenience wrapper for {@link RecordBatchReader}. Opposite of {@link tableToIPC}.
+ *
+ * Compressed IPC data (LZ4 frame or ZSTD body buffers) is decompressed
+ * automatically, but only if a codec for that compression type has been
+ * registered with {@link compressionRegistry} first; no codec is registered by
+ * default, and reading a compressed batch without one throws.
  */
 export function tableFromIPC<T extends TypeMap = any>(source: FromArg0 | FromArg2): Table<T>;
 export function tableFromIPC<T extends TypeMap = any>(source: FromArg1): Promise<Table<T>>;
@@ -58,6 +63,8 @@ export function tableFromIPC<T extends TypeMap = any>(input: any): Table<T> | Pr
  *
  * @param table The Table to serialize.
  * @param type Whether to serialize the Table as a file or a stream.
+ * @param compressionType Optional compression for the record batch body buffers.
+ * A codec for it must be registered with {@link compressionRegistry} first.
  */
 export function tableToIPC<T extends TypeMap = any>(table: Table, type: 'file' | 'stream' = 'stream', compressionType: CompressionType | null = null): Uint8Array {
     const writerOptions: RecordBatchStreamWriterOptions = { compressionType };
