@@ -16,7 +16,7 @@
 // under the License.
 
 import {
-    Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, Utf8View, BinaryView, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
+    Binary, Bool, DateDay, DateMillisecond, Dictionary, Float64, Int32, List, makeVector, Struct, Utf8, LargeUtf8, Utf8View, BinaryView, Int64, Float32, Uint8, tableFromArrays, tableFromJSON, util, Vector, vectorFromArray, makeData, FixedSizeList, Field,
 } from 'apache-arrow';
 
 describe(`makeVectorFromArray`, () => {
@@ -30,6 +30,65 @@ describe(`makeVectorFromArray`, () => {
         test(`toJSON retains null`, () => {
             expect(vector.toJSON()).toEqual(values);
         });
+    });
+
+    describe(`infers Binary from Uint8Array values`, () => {
+        const values = [new Uint8Array([1, 2]), null, new Uint8Array([3, 4, 5]), new Uint8Array(0)];
+        const vector = vectorFromArray(values);
+        test(`has binary type`, () => {
+            expect(vector.type).toBeInstanceOf(Binary);
+        });
+        test(`retains values of varying lengths and nulls`, () => {
+            expect(vector.toArray()).toEqual(values);
+        });
+    });
+
+    test(`treats a single Uint8Array as a Uint8 column`, () => {
+        const bytes = new Uint8Array([1, 2, 3]);
+        expect(vectorFromArray(bytes).type).toBeInstanceOf(Uint8);
+        const table = tableFromArrays({ column: bytes, values: [bytes, bytes, bytes] });
+        expect(table.getChild('column')!.type).toBeInstanceOf(Uint8);
+        expect(table.getChild('values')!.type).toBeInstanceOf(Binary);
+    });
+
+    test(`infers List<T> from other typed array values`, () => {
+        const vector = vectorFromArray([new Int32Array([1, 2]), null, new Int32Array([3])]);
+        expect(vector.type).toBeInstanceOf(List);
+        expect(vector.type.children[0].type).toBeInstanceOf(Int32);
+        expect(vector.toJSON().map((v) => v?.toJSON())).toEqual([[1, 2], undefined, [3]]);
+    });
+
+    test(`infers List<Float32> from Float32Array values`, () => {
+        const vector = vectorFromArray([new Float32Array([1.5])]);
+        expect(vector.type.children[0].type).toBeInstanceOf(Float32);
+    });
+
+    test(`infers List<Int64> from BigInt64Array values`, () => {
+        const vector = vectorFromArray([new BigInt64Array([1n, 2n])]);
+        expect(vector.type.children[0].type).toBeInstanceOf(Int64);
+        expect([...vector.get(0)!]).toEqual([1n, 2n]);
+    });
+
+    test(`infers List<Binary> from nested arrays of Uint8Array`, () => {
+        const values = [new Uint8Array(16), new Uint8Array(16).fill(1)];
+        const table = tableFromArrays({ ids: [values] });
+        const type = table.schema.fields[0].type;
+        expect(type).toBeInstanceOf(List);
+        expect(type.children[0].type).toBeInstanceOf(Binary);
+        expect(table.get(0)!.ids.toArray()).toEqual(values);
+    });
+
+    test(`infers Binary for Uint8Array struct fields`, () => {
+        const table = tableFromJSON([{ id: new Uint8Array([1, 2]) }]);
+        expect(table.schema.fields[0].type).toBeInstanceOf(Binary);
+    });
+
+    test(`throws on mixed typed array types`, () => {
+        expect(() => vectorFromArray([new Uint8Array(1), new Int32Array(1)])).toThrow(TypeError);
+    });
+
+    test(`throws on DataView values`, () => {
+        expect(() => vectorFromArray([new DataView(new ArrayBuffer(1))])).toThrow(TypeError);
     });
 });
 
