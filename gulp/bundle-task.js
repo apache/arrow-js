@@ -98,6 +98,9 @@ const webpackDir = join(bundleDir, 'webpack');
 export const webpackTask = (opts = { minify: true, analyze: false }) => () => observableFromStreams(
     gulp.src(bundlesGlob),
     webpack({
+        // One bundle per file, as esbuild and rollup make: in a single bundle
+        // the files that come first would load the library for the others.
+        entry: Object.fromEntries(fileNames.map(fileName => [fileName, join(bundleDir, `${fileName}.js`)])),
         mode: opts?.minify == false ? 'development' : 'production',
         optimization: {
             usedExports: true
