@@ -181,7 +181,11 @@ export class VectorLoader extends Visitor {
         return this.variadicBufferCounts[++this.variadicBufferIndex] ?? 0;
     }
     protected readDictionary<T extends type.Dictionary>(type: T): Vector<T['dictionary']> {
-        return this.dictionaries.get(type.id)!;
+        const dictionary = this.dictionaries.get(type.id);
+        if (dictionary === undefined) {
+            throw new Error(`Cannot read dictionary-encoded data: dictionary id ${type.id} was not sent`);
+        }
+        return dictionary;
     }
 }
 
