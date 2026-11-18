@@ -56,6 +56,26 @@ export interface Vector<T extends DataType = any> {
 const visitorsByTypeId = {} as { [typeId: number]: { get: any; set: any; indexOf: any } };
 const vectorPrototypesByTypeId = {} as { [typeId: number]: any };
 
+// The visitors import this module, so they may not be initialized yet while it
+// loads (when a bundle reaches it through a visitor, e.g. from `StructRow`).
+// Look them up the first time a Vector of each type is made, not at load time.
+function visitorsFor(typeId: Type) {
+    return visitorsByTypeId[typeId] ??= {
+        get: getVisitor.getVisitFnByTypeId(typeId),
+        set: setVisitor.getVisitFnByTypeId(typeId),
+        indexOf: indexOfVisitor.getVisitFnByTypeId(typeId),
+    };
+}
+
+function vectorPrototypeFor(typeId: Type) {
+    return vectorPrototypesByTypeId[typeId] ??= Object.create(Vector.prototype, {
+        ['isValid']: { value: wrapChunkedCall1(isChunkedValid) },
+        ['get']: { value: wrapChunkedCall1(getVisitor.getVisitFnByTypeId(typeId)) },
+        ['set']: { value: wrapChunkedCall2(setVisitor.getVisitFnByTypeId(typeId)) },
+        ['indexOf']: { value: wrapChunkedIndexOf(indexOfVisitor.getVisitFnByTypeId(typeId)) },
+    });
+}
+
 /**
  * Array-like data structure. Use the convenience method {@link makeVector} and {@link vectorFromArray} to create vectors.
  */
@@ -84,7 +104,7 @@ export class Vector<T extends DataType = any> {
             case 0: this._offsets = [0]; break;
             case 1: {
                 // special case for unchunked vectors
-                const { get, set, indexOf } = visitorsByTypeId[type.typeId];
+                const { get, set, indexOf } = visitorsFor(type.typeId);
                 const unchunkedData = data[0];
 
                 this.isValid = (index: number) => isChunkedValid(unchunkedData, index);
@@ -95,7 +115,7 @@ export class Vector<T extends DataType = any> {
                 break;
             }
             default:
-                Object.setPrototypeOf(this, vectorPrototypesByTypeId[type.typeId]);
+                Object.setPrototypeOf(this, vectorPrototypeFor(type.typeId));
                 this._offsets = computeChunkOffsets(data);
                 break;
         }
@@ -365,24 +385,6 @@ export class Vector<T extends DataType = any> {
         (proto as any).numChildren = 0;
         (proto as any)._offsets = new Uint32Array([0]);
         (proto as any)[kVectorSymbol] = true;
-
-        const typeIds: Type[] = Object.keys(Type)
-            .map((T: any) => Type[T] as any)
-            .filter((T: any) => typeof T === 'number' && T !== Type.NONE);
-
-        for (const typeId of typeIds) {
-            const get = getVisitor.getVisitFnByTypeId(typeId);
-            const set = setVisitor.getVisitFnByTypeId(typeId);
-            const indexOf = indexOfVisitor.getVisitFnByTypeId(typeId);
-
-            visitorsByTypeId[typeId] = { get, set, indexOf };
-            vectorPrototypesByTypeId[typeId] = Object.create(proto, {
-                ['isValid']: { value: wrapChunkedCall1(isChunkedValid) },
-                ['get']: { value: wrapChunkedCall1(getVisitor.getVisitFnByTypeId(typeId)) },
-                ['set']: { value: wrapChunkedCall2(setVisitor.getVisitFnByTypeId(typeId)) },
-                ['indexOf']: { value: wrapChunkedIndexOf(indexOfVisitor.getVisitFnByTypeId(typeId)) },
-            });
-        }
 
         return 'Vector';
     })(Vector.prototype);
