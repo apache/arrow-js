@@ -26,6 +26,7 @@ import { ArrowJSON, ArrowJSONLike, ITERATOR_DONE, FileHandle } from '../io/inter
 
 /** @ignore */ const invalidMessageType = (type: MessageHeader) => `Expected ${MessageHeader[type]} Message in stream, but was null or length 0.`;
 /** @ignore */ const nullMessage = (type: MessageHeader) => `Header pointer of flatbuffer-encoded ${MessageHeader[type]} Message is null or length 0.`;
+/** @ignore */ const invalidMessagePrefix = (expected: number, actual: number) => `Expected to read ${expected} bytes for message metadata length, but only read ${actual}.`;
 /** @ignore */ const invalidMessageMetadata = (expected: number, actual: number) => `Expected to read ${expected} metadata bytes, but only read ${actual}.`;
 /** @ignore */ const invalidMessageBodyLength = (expected: number, actual: number) => `Expected to read ${expected} bytes for message body, but only read ${actual}.`;
 
@@ -43,7 +44,7 @@ export class MessageReader implements IterableIterator<Message> {
         // the next 4 for the 32-bit metadata length. Otherwise, assume this is a
         // pre-v0.15 message, where the first 4 bytes are the metadata length.
         if ((r.value === -1) &&
-            (r = this.readMetadataLength()).done) { return ITERATOR_DONE; }
+            (r = this.readMetadataLength(true)).done) { return ITERATOR_DONE; }
         if ((r = this.readMetadata(r.value)).done) { return ITERATOR_DONE; }
         return (<any>r) as IteratorResult<Message>;
     }
@@ -77,17 +78,20 @@ export class MessageReader implements IterableIterator<Message> {
         }
         return schema;
     }
-    protected readMetadataLength(): IteratorResult<number> {
+    protected readMetadataLength(afterContinuation = false): IteratorResult<number> {
         const buf = this.source.read(PADDING);
-        const bb = buf && new ByteBuffer(buf);
-        const len = bb?.readInt32(0) || 0;
+        const byteLength = buf?.byteLength ?? 0;
+        // The source may end before a message, but not inside its prefix.
+        if (byteLength < PADDING && (afterContinuation || byteLength > 0)) {
+            throw new Error(invalidMessagePrefix(PADDING, byteLength));
+        }
+        const len = buf && byteLength > 0 ? new ByteBuffer(buf).readInt32(0) : 0;
         return { done: len === 0, value: len };
     }
     protected readMetadata(metadataLength: number): IteratorResult<Message> {
         const buf = this.source.read(metadataLength);
-        if (!buf) { return ITERATOR_DONE; }
-        if (buf.byteLength < metadataLength) {
-            throw new Error(invalidMessageMetadata(metadataLength, buf.byteLength));
+        if (!buf || buf.byteLength < metadataLength) {
+            throw new Error(invalidMessageMetadata(metadataLength, buf?.byteLength ?? 0));
         }
         return { done: false, value: Message.decode(buf) };
     }
@@ -112,7 +116,7 @@ export class AsyncMessageReader implements AsyncIterableIterator<Message> {
         // the next 4 for the 32-bit metadata length. Otherwise, assume this is a
         // pre-v0.15 message, where the first 4 bytes are the metadata length.
         if ((r.value === -1) &&
-            (r = await this.readMetadataLength()).done) { return ITERATOR_DONE; }
+            (r = await this.readMetadataLength(true)).done) { return ITERATOR_DONE; }
         if ((r = await this.readMetadata(r.value)).done) { return ITERATOR_DONE; }
         return (<any>r) as IteratorResult<Message>;
     }
@@ -146,17 +150,20 @@ export class AsyncMessageReader implements AsyncIterableIterator<Message> {
         }
         return schema;
     }
-    protected async readMetadataLength(): Promise<IteratorResult<number>> {
+    protected async readMetadataLength(afterContinuation = false): Promise<IteratorResult<number>> {
         const buf = await this.source.read(PADDING);
-        const bb = buf && new ByteBuffer(buf);
-        const len = bb?.readInt32(0) || 0;
+        const byteLength = buf?.byteLength ?? 0;
+        // The source may end before a message, but not inside its prefix.
+        if (byteLength < PADDING && (afterContinuation || byteLength > 0)) {
+            throw new Error(invalidMessagePrefix(PADDING, byteLength));
+        }
+        const len = buf && byteLength > 0 ? new ByteBuffer(buf).readInt32(0) : 0;
         return { done: len === 0, value: len };
     }
     protected async readMetadata(metadataLength: number): Promise<IteratorResult<Message>> {
         const buf = await this.source.read(metadataLength);
-        if (!buf) { return ITERATOR_DONE; }
-        if (buf.byteLength < metadataLength) {
-            throw new Error(invalidMessageMetadata(metadataLength, buf.byteLength));
+        if (!buf || buf.byteLength < metadataLength) {
+            throw new Error(invalidMessageMetadata(metadataLength, buf?.byteLength ?? 0));
         }
         return { done: false, value: Message.decode(buf) };
     }

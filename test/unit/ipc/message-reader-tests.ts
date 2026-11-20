@@ -18,7 +18,7 @@
 import { generateRandomTables } from '../../data/tables.js';
 import { ArrowIOTestHelper } from './helpers.js';
 
-import { AsyncMessageReader, MessageReader } from 'apache-arrow';
+import { AsyncMessageReader, MessageReader, tableFromArrays, tableFromIPC, tableToIPC } from 'apache-arrow';
 
 for (const table of generateRandomTables([10, 20, 30])) {
 
@@ -108,3 +108,41 @@ export async function validateAsyncMessageReader(numMessages: number, source: an
     expect(index).toBe(numMessages);
     await reader.return();
 }
+
+describe(`a stream that ends inside a message`, () => {
+    const stream = tableToIPC(tableFromArrays({ x: Int32Array.of(1, 2, 3) }), 'stream');
+    // The Schema message has no body, so the RecordBatch message starts after its metadata.
+    const view = new DataView(stream.buffer, stream.byteOffset, stream.byteLength);
+    const recordBatchStart = 8 + view.getInt32(4, true);
+
+    // 2 and 6: inside the continuation marker and the metadata length.
+    // 4 and 8: after them, with the metadata length or the metadata missing.
+    for (const cut of [2, 4, 6, 8]) {
+        const bytes = stream.subarray(0, recordBatchStart + cut);
+
+        test(`MessageReader throws ${cut} bytes into the message prefix`, () => {
+            expect(() => Array.from(new MessageReader(bytes))).toThrow(/but only read/);
+        });
+
+        test(`AsyncMessageReader throws ${cut} bytes into the message prefix`, async () => {
+            const source = (async function* () { yield bytes; })();
+            const readAll = async () => {
+                const messages = [];
+                for await (const message of new AsyncMessageReader(source)) {
+                    messages.push(message);
+                }
+                return messages;
+            };
+            await expect(readAll()).rejects.toThrow(/but only read/);
+        });
+
+        test(`tableFromIPC throws ${cut} bytes into the message prefix`, () => {
+            expect(() => tableFromIPC(bytes)).toThrow(/but only read/);
+        });
+    }
+
+    test(`a stream without the end-of-stream marker is still read`, () => {
+        const table = tableFromIPC(stream.subarray(0, stream.byteLength - 8));
+        expect(table.numRows).toBe(3);
+    });
+});
