@@ -46,7 +46,7 @@
     "jest.config.js"
   ],
   "dependencies": {
-    "@types/node": "^25.2.0",
+    "@types/node": "^26.6.6",
     "flatbuffers": "^25.1.24",
     "json-with-bigint": "^3.5.3",
     "tslib": "^2.6.2"
