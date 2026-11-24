@@ -17,7 +17,11 @@
 
 import { createIsValidFunction } from 'apache-arrow/builder/valid';
 
-describe('Null sentinel validity predicates', () => {
+// createIsValidFunction isn't exported from the UMD bundle, where every
+// `apache-arrow/*` import resolves to the public bundle.
+const describePredicates = createIsValidFunction ? describe : describe.skip;
+
+describePredicates('Null sentinel validity predicates', () => {
     test('empty sentinel lists accept every value, including NaN', () => {
         for (const nullValues of [undefined, []]) {
             const isValid = createIsValidFunction(nullValues);
