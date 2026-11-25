@@ -23,16 +23,10 @@ import { DataType } from '../type.js';
  * snapshot Set, including NaN and treating positive and negative zero equally.
  *
  * @example
- * console.log(createIsValidFunction([null, 'N/A', NaN]));
- * `function (x) {
- *     if (x !== x) return false;
- *     switch (x) {
- *         case null:
- *         case "N/A":
- *             return false;
- *     }
- *     return true;
- * }`
+ * const isValid = createIsValidFunction([null, 'N/A', NaN]);
+ * isValid('N/A'); // false
+ * isValid(NaN);   // false
+ * isValid('a');   // true
  *
  * @ignore
  * @param nullValues
