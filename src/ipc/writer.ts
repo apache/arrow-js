@@ -380,11 +380,11 @@ export class RecordBatchWriter<T extends TypeMap = any> extends ReadableInterop<
     protected _writeDictionaries(batch: RecordBatch<T>) {
         for (const [id, dictionary] of batch.dictionaries) {
             const chunks = dictionary?.data ?? [];
-            const prevDictionary = this._seenDictionaries.get(id);
+            const previousChunks = this._seenDictionaries.get(id)?.data;
             const offset = this._dictionaryDeltaOffsets.get(id) ?? 0;
-            // * If no previous dictionary was written, write an initial DictionaryMessage.
-            // * If the current dictionary does not share chunks with the previous dictionary, write a replacement DictionaryMessage.
-            if (!prevDictionary || prevDictionary.data[0] !== chunks[0]) {
+            // A delta can only extend the entire previously written dictionary.
+            const retainsPreviousChunks = previousChunks === chunks || previousChunks?.every((chunk, i) => chunk === chunks[i]);
+            if (!retainsPreviousChunks) {
                 // * If `index > 0`, then `isDelta` is true.
                 // * If `index = 0`, then `isDelta` is false, because this is either the initial or a replacement DictionaryMessage.
                 for (const [index, chunk] of chunks.entries()) this._writeDictionaryBatch(chunk, id, index > 0);

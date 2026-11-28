@@ -20,8 +20,8 @@ import * as generate from '../../generate-test-data.js';
 
 import {
     Table, Schema, Field, DataType, TypeMap, Dictionary, Int32, Float32, Uint8, Utf8, Null, Bool,
-    makeVector, vectorFromArray,
-    tableFromIPC, tableToIPC, RecordBatchReader, RecordBatchStreamWriter
+    makeData, makeVector, vectorFromArray,
+    tableFromIPC, tableToIPC, RecordBatch, RecordBatchReader, RecordBatchStreamWriter
 } from 'apache-arrow';
 
 const deepCopy = (t: Table) => tableFromIPC(tableToIPC(t));
@@ -79,6 +79,27 @@ describe('tableToIPC()', () => {
         const buffer = tableToIPC(source, 'stream');
         const result = tableFromIPC(buffer);
         expect(result).toEqualTable(source);
+    });
+
+    describe('when a later dictionary chunk is replaced', () => {
+        const type = new Dictionary(new Utf8(), new Int32());
+        const shared = vectorFromArray(['Oslo'], type.dictionary);
+        const batches = ['Lima', 'Bern'].map((city) => new RecordBatch({
+            city: makeData({
+                type, data: Int32Array.of(0, 1),
+                dictionary: shared.concat(vectorFromArray([city], type.dictionary)),
+            }),
+        }));
+        const table = new Table(batches);
+
+        test('stream format reads each batch with its own dictionary', () => {
+            const result = tableFromIPC(tableToIPC(table, 'stream'));
+            expect(result.getChild('city')!.toArray()).toEqual(['Oslo', 'Lima', 'Oslo', 'Bern']);
+        });
+
+        test('file format rejects the replacement', () => {
+            expect(() => tableToIPC(table, 'file')).toThrow('does not support replacement dictionaries');
+        });
     });
 
     test(`doesn't swap the order of buffers that share the same underlying ArrayBuffer but are in a different order`, () => {
